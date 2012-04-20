@@ -20,6 +20,7 @@ set ( LIBS
     png12
     rt
     openal
+    lwapi
 )
 
 # find_files.cpp excluded ; it refers to headers missing
@@ -30,6 +31,7 @@ set( SOURCE
     enabler_input.cpp
     files.cpp
     find_files_posix.cpp
+    fugr_dump.cc
     graphics.cpp
     init.cpp
     interface.cpp

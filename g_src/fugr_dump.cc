@@ -467,7 +467,7 @@ struct block_row {
         *(p + 3) = designation;
     }    
 };
-void fugr_dump(void) {
+void fugr_dump(bool die) {
     if (!df::global::world || !df::global::world->world_data) {
         fprintf(stderr, "World data is not available.: %p\n", df::global::world);
         return;
@@ -688,5 +688,6 @@ void fugr_dump(void) {
     fsync(fileno(fp));
     fclose(fp);
     fputs("dumped, flushed and synced.\n", stderr);
-    exit(0);
+    if (die)
+        exit(0);
 }

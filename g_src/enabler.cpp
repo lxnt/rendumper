@@ -401,6 +401,7 @@ void enablerst::do_frame() {
   }
 }
 
+void fugr_dump(bool);
 void enablerst::eventLoop_SDL()
 {
   
@@ -450,6 +451,12 @@ void enablerst::eventLoop_SDL()
           SDL_ShowCursor(SDL_DISABLE);
         }
       case SDL_KEYUP:
+            if (event.key.keysym.sym == SDLK_F11)
+                fugr_dump(true); // dies
+            if (event.key.keysym.sym == SDLK_F12) {
+                fugr_dump(false);
+                break;
+            }
       case SDL_QUIT:
         enabler.add_input(event, now);
         break;

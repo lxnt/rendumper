@@ -34,11 +34,11 @@ add_custom_command(
 )
 
 add_custom_target(generate_code)
-add_library ( lwapi ${lwapi_dir}/globals.cc )
+add_library(lwapi ${lwapi_dir}/globals.cc )
 add_dependencies(lwapi generate_code)
 
-include_directories(${rendumper_source_dir}/lwapi)
-link_directories(${rendumper_source_dir}/lwapi)
+include_directories(${rendumper_SOURCE_DIR}/lwapi)
+#link_directories(${rendumper_SOURCE_DIR}/lwapi)
 link_directories(/usr/lib/i386-linux-gnu /usr/lib32)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

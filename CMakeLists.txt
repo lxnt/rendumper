@@ -25,12 +25,13 @@ file(GLOB generate_input_xmls ${rendumper_source_dir}/df-structures/*.xml)
 set(lwapi_dir ${rendumper_SOURCE_DIR}/lwapi)
 set(dfstr_dir ${rendumper_SOURCE_DIR}/df-structures)
 
+file(GLOB api_xml ${dfstr_dir}/*.xml)
 add_custom_command(
     OUTPUT ${lwapi_dir}/globals.cc
     COMMAND ${dfstr_dir}/codegen.py -dst ${lwapi_dir}
     WORKING_DIRECTORY ${dfstr_dir}
     MAIN_DEPENDENCY ${dfstr_dir}/codegen.py
-    DEPENDS ${GENERATE_INPUT_XMLS}
+    DEPENDS ${dfstr_dir}/static.py ${api_xml}
 )
 
 add_custom_target(generate_code)

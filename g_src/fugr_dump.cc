@@ -4,13 +4,12 @@
 */
 
 #include <string.h>
+#include <stdlib.h> // getenv
 
 #include <set>
 #include <map>
 #include <utility>
-//#include "enums.h"
-//#include "bitfields.h"
-//#include "structs.h"
+
 #include "globals.h"
 
 static const uint16_t NONEMAT_NO = 0;
@@ -79,6 +78,16 @@ struct _bicache {
     }
     ~_bicache() { head.clear(); }
     
+    bool whine_unit_pos(df::unit *unit) {
+        df::coord pos = unit->pos/16;
+        if (not pos.in(size)) {
+            fprintf(stderr, "unit out of map: race=%s pos=%hd:%hd:%hd wsize=%hd:%hd:%hd\n",
+                df::creature_raw::get_vector()[unit->race]->creature_id.c_str(),
+                pos.x, pos.y, pos.z, size.x, size.y, size.z);
+            return true;
+        }
+        return false;
+    }
     void update(df::coord a, df::coord b) {
         if ( size < b - a ) {
             size = b - a;
@@ -88,7 +97,7 @@ struct _bicache {
         
         for ( int i=0; i < df::global::world->items.all.size(); i++ ) {
             df::item *item  = df::global::world->items.all[i];
-            if (item->pos.x != -30000) {
+            if (item->pos.valid()) {
                 at(item->pos/16).items.push_back(item);
                 at(item->pos/16).has_something = true;
             }
@@ -106,8 +115,11 @@ struct _bicache {
         }
         for (int i=0; i<df::global::world->units.all.size(); i++ ) {
             df::unit *unit = df::global::world->units.all[i];
-            at(unit->pos/16).units.push_back(unit);
-            at(unit->pos/16).has_something = true;
+            if (unit->pos.valid()) {
+                if (whine_unit_pos(unit)) continue;
+                at(unit->pos/16).units.push_back(unit);
+                at(unit->pos/16).has_something = true;
+            }
         }
         for (int i=0; i < df::global::world->constructions.size() ; i ++) {
             df::construction *c = df::global::world->constructions[i];
@@ -115,7 +127,6 @@ struct _bicache {
             at(c->pos/16).has_something = true;
         }
     }
-    
     inline _bicache_item& at(df::coord w) {
         return head[w.z*size.x*size.y + w.y*size.x +w.x];
     }
@@ -241,16 +252,16 @@ static void init_materials(void) {
 
     std::vector<df::historical_figure*>& histfigs = df::historical_figure::get_vector();
     for (index = 0; index < histfigs.size(); index ++) {
-        df::creature_raw *crea = df::creature_raw::get_vector()[histfigs[index]->race];
-        if (!crea)
-            continue;
-        for (int subtype = 0; subtype < crea->material.size(); subtype ++) {
-            int16_t type = subtype + 219;
-            std::string& subid = crea->material[subtype]->id;
-            if ( subid == "SOAP")
-                _add_mat(soapmat, type, index);
-            else
-                _add_mat(skipmat, type, index);
+        if (histfigs[index]->race != -1) {
+            df::creature_raw *crea = df::creature_raw::get_vector()[histfigs[index]->race];
+            for (int subtype = 0; subtype < crea->material.size(); subtype ++) {
+                int16_t type = subtype + 219;
+                std::string& subid = crea->material[subtype]->id;
+                if ( subid == "SOAP")
+                    _add_mat(soapmat, type, index);
+                else
+                    _add_mat(skipmat, type, index);
+            }
         }
     }
 
@@ -265,6 +276,7 @@ static void init_materials(void) {
                 id += plants[index]->id;
                 id += " subklass=";
                 id += subid;
+                if (getenv("FGD_PLANT_MATS"))
                 fprintf(stderr, "id=%s subid=%s val=%d subval=%d\n", id.c_str(), subid.c_str(), 
                            plants[index]->value, plants[index]->material[subtype]-> material_value); 
                 _mat plamat = { _mat::PLANT, matnum, type, index, id };
@@ -510,7 +522,7 @@ void fugr_dump(bool die) {
 
         // 64K-align map data posn, calc other offsets        
 #define ALIGN64K(val) ( ( ((val)>>16) + 1 ) << 16 )
-        fprintf(stderr, "row.size=%ld data_size=%ld", row.size, row.size * (end.y - start.y) * (end.z - start.z));
+        fprintf(stderr, "row.size=%ld data_size=%ld\n", row.size, row.size * (end.y - start.y) * (end.z - start.z));
         const long data_size = ALIGN64K(row.size * (end.y - start.y) * (end.z - start.z));
         map_offset = ALIGN64K(ftell(fp));
         eff_offset = map_offset + data_size;
@@ -564,13 +576,14 @@ void fugr_dump(bool die) {
                         plant_mats[pc.x + 16*pc.y] = _map_mat(
                             plant_raws[material]->material_defs.type_basic_mat,
                             plant_raws[material]->material_defs.idx_basic_mat );
-                        fprintf(stderr, "%hd basic %hd:%d maps to %hd\n", material, 
-                            plant_raws[material]->material_defs.type_basic_mat,
-                            plant_raws[material]->material_defs.idx_basic_mat,
-                            _map_mat(
-                            plant_raws[material]->material_defs.type_basic_mat,
-                            plant_raws[material]->material_defs.idx_basic_mat )                        
-                        );
+                        if (getenv("FGD_PLANT_MAT_MAP"))
+                            fprintf(stderr, "%hd basic %hd:%d maps to %hd\n", material, 
+                                plant_raws[material]->material_defs.type_basic_mat,
+                                plant_raws[material]->material_defs.idx_basic_mat,
+                                _map_mat(
+                                plant_raws[material]->material_defs.type_basic_mat,
+                                plant_raws[material]->material_defs.idx_basic_mat )                        
+                            );
                     }
                     /* look if we've got buildings here */
                     _bicache_item& bi = beecee.at(x,y,z);
@@ -606,18 +619,18 @@ void fugr_dump(bool die) {
                                 case df::block_square_event_type::mineral:
                                 {
                                    df::block_square_event_mineralst *e = (df::block_square_event_mineralst *)b->block_events[i];
-                                    if ( e->tile_bitmask[t_y] & ( 1 << t_x  ) )
+                                    if ( e->tile_bitmask.bits[t_y] & ( 1 << t_x  ) )
                                         tile_mat = _map_mat(0, e->inorganic_mat);
                                     break;
                                 }
                                 case df::block_square_event_type::world_construction:
                                 {
                                     df::block_square_event_world_constructionst *e = (df::block_square_event_world_constructionst *)b->block_events[i];
-                                    if ( e->tile_bitmask[t_y] & ( 1 << t_x  ) ) {
+                                    if ( e->tile_bitmask.bits[t_y] & ( 1 << t_x  ) ) {
                                         worldconstr_mat = e->inorganic_mat;
                                     }
                                     fprintf(stderr,"wconstr at %hd %hd %hd %d mat=(0, %d)\n", pos.x, pos.y, pos.z, 
-                                        e->tile_bitmask[t_y] & ( 1 << t_x  ), e->inorganic_mat);
+                                        e->tile_bitmask.bits[t_y] & ( 1 << t_x  ), e->inorganic_mat);
                                     break;
                                 }
                                 case df::block_square_event_type::grass:
@@ -634,8 +647,8 @@ void fugr_dump(bool die) {
                                     df::block_square_event_frozen_liquidst *e = (df::block_square_event_frozen_liquidst *)b->block_events[i];
                                     if (e->tiles[t_x][t_y]) {
                                         fseek(fp, eff_offset, SEEK_SET);
-                                        eff_offset += fprintf(fp, "%hd:%hd:%hd frozen tile=%hd liquid_type=%hhd tiletype=%hd\n",
-                                            pos.x, pos.y, pos.z, e->tiles[t_x][t_y], e->liquid_type[t_x][t_y], tiletype);
+                                        eff_offset += fprintf(fp, "%hd:%hd:%hd frozen tile=%hd liquid_type=%d tiletype=%hd\n",
+                                            pos.x, pos.y, pos.z, e->tiles[t_x][t_y], (int)(e->liquid_type[t_x][t_y]), tiletype);
                                     }
                                     break;
                                 }

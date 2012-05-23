@@ -425,7 +425,7 @@ static void init_enumtabs() {
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedPillar] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallRD2] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallR2D] = true,
-        constructed_tiles[df::enums::tiletype::tiletype:: ConstructedWallR2U] = true,
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallR2U] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallRU2] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallL2U] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedWallLU2] = true,
@@ -500,7 +500,7 @@ void fugr_dump(bool die) {
     _bicache beecee;
     beecee.update(start, end);
     
-    long map_offset, eff_offset;
+    long map_offset, flow_offset;
     block_row row(end.x - start.x);
     
     FILE *fp = fopen("fugr.dump", "w");
@@ -525,7 +525,7 @@ void fugr_dump(bool die) {
         fprintf(stderr, "row.size=%ld data_size=%ld\n", row.size, row.size * (end.y - start.y) * (end.z - start.z));
         const long data_size = ALIGN64K(row.size * (end.y - start.y) * (end.z - start.z));
         map_offset = ALIGN64K(ftell(fp));
-        eff_offset = map_offset + data_size;
+        flow_offset = map_offset + data_size;
 #undef ALIGN64K
         
         // write header
@@ -533,12 +533,12 @@ void fugr_dump(bool die) {
         fprintf(fp, "origin:%d:%d:%d\n", start.x, start.y, start.z);  // max 40 chars
         fprintf(fp, "extent:%d:%d:%d\n", (end.x - start.x), (end.y - start.y), (end.z - start.z)); // same
         fprintf(fp, "tiles:%ld:%ld\n", map_offset, data_size); // max 49 on x86_64
-        fprintf(fp, "effects:%ld\n", eff_offset); // max 29 on x86_64. 158 max total 
+        fprintf(fp, "flows:%ld\n", flow_offset); // max 29 on x86_64. 158 max total 
 
-        // write effects section header
-        const char *esh = "\nsection:effects\n";
-        fseek(fp, eff_offset, SEEK_SET);
-        eff_offset += fwrite(esh, 1, strlen(esh), fp);
+        // write flows section header
+        const char *fsh = "\nsection:flows\n";
+        fseek(fp, flow_offset, SEEK_SET);
+        flow_offset += fwrite(fsh, 1, strlen(fsh), fp);
     }
 
     uint16_t building_mats[256];
@@ -593,12 +593,12 @@ void fugr_dump(bool die) {
                         building_mats[i] = _map_mat(bi.buildings[i]->mat_type, bi.buildings[i]->mat_index);
                     }
                     
-                    /* dump effects */
-                    for (int i=0; i< b->effects.size(); i++) {
-                        df::effect &e = *b->effects[i];
-                        fseek(fp, eff_offset, SEEK_SET);
-                        eff_offset += fprintf(fp, "%hd,%hd,%hd effect type=%s mat=(%hd, %d) density=%hd\n",
-                            e.x, e.y, e.z, df::enums::effect_type::key(e.type), e.mat_type, e.mat_index, e.density);
+                    /* dump effects which are now 'flows' */
+                    for (int i=0; i< b->flows.size(); i++) {
+                        df::flow_info &e = *b->flows[i];
+                        fseek(fp, flow_offset, SEEK_SET);
+                        flow_offset += fprintf(fp, "%hd,%hd,%hd flow type=%s mat=(%hd, %d) density=%hd\n",
+                            e.x, e.y, e.z, df::enums::flow_type::key(e.type), e.mat_type, e.mat_index, e.density);
                     }
                     
                     for (int ti = 0; ti < 256; ti++) {
@@ -646,8 +646,8 @@ void fugr_dump(bool die) {
                                 {
                                     df::block_square_event_frozen_liquidst *e = (df::block_square_event_frozen_liquidst *)b->block_events[i];
                                     if (e->tiles[t_x][t_y]) {
-                                        fseek(fp, eff_offset, SEEK_SET);
-                                        eff_offset += fprintf(fp, "%hd:%hd:%hd frozen tile=%hd liquid_type=%d tiletype=%hd\n",
+                                        fseek(fp, flow_offset, SEEK_SET);
+                                        flow_offset += fprintf(fp, "%hd:%hd:%hd frozen tile=%hd liquid_type=%d tiletype=%hd\n",
                                             pos.x, pos.y, pos.z, e->tiles[t_x][t_y], (int)(e->liquid_type[t_x][t_y]), tiletype);
                                     }
                                     break;

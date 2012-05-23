@@ -446,6 +446,36 @@ static void init_enumtabs() {
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedStairD] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedStairU] = true,
         constructed_tiles[df::enums::tiletype::tiletype::ConstructedRamp] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackN] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackS] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNS] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackSE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackSW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNSE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNSW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackSEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedFloorTrackNSEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackN] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackS] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNS] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackSE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackSW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNSE] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNSW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackSEW] = true;
+        constructed_tiles[df::enums::tiletype::tiletype::ConstructedRampTrackNSEW] = true;
     }
 }
 

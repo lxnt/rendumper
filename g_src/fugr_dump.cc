@@ -593,6 +593,14 @@ void fugr_dump(bool die) {
                         building_mats[i] = _map_mat(bi.buildings[i]->mat_type, bi.buildings[i]->mat_index);
                     }
                     
+                    /* dump effects */
+                    for (int i=0; i< b->effects.size(); i++) {
+                        df::effect &e = *b->effects[i];
+                        fseek(fp, eff_offset, SEEK_SET);
+                        eff_offset += fprintf(fp, "%hd,%hd,%hd effect type=%s mat=(%hd, %d) density=%hd\n",
+                            e.x, e.y, e.z, df::enums::effect_type::key(e.type), e.mat_type, e.mat_index, e.density);
+                    }
+                    
                     for (int ti = 0; ti < 256; ti++) {
                         int t_x = ti % 16;
                         int t_y = ti / 16;

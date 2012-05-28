@@ -535,11 +535,11 @@ void fugr_dump(bool die) {
     
     FILE *fp = fopen("fugr.dump", "w");
     {
-        {   /* reserve space for the header, keeping it human-readable. 52*3 = 156*/
-            char filler[53];
+        {   /* reserve space for the header, keeping it human-readable. */
+            char filler[64];
             memset(filler, 32, sizeof(filler)-1);
             filler[sizeof(filler) - 1] = 10;
-            for (int i = 0; i < 3; i ++)
+            for (int i = 0; i < 5; i ++)
                 fwrite(filler, sizeof(filler), 1, fp);
         }
         /* dump stuff */
@@ -560,10 +560,14 @@ void fugr_dump(bool die) {
         
         // write header
         fseek(fp, 0, SEEK_SET);
-        fprintf(fp, "origin:%d:%d:%d\n", start.x, start.y, start.z);  // max 40 chars
-        fprintf(fp, "extent:%d:%d:%d\n", (end.x - start.x), (end.y - start.y), (end.z - start.z)); // same
-        fprintf(fp, "tiles:%ld:%ld\n", map_offset, data_size); // max 49 on x86_64
-        fprintf(fp, "flows:%ld\n", flow_offset); // max 29 on x86_64. 158 max total 
+        fprintf(fp, "origin:%d:%d:%d\n", start.x, start.y, start.z);
+        fprintf(fp, "extent:%d:%d:%d\n", (end.x - start.x),
+            (end.y - start.y), (end.z - start.z));
+        fprintf(fp, "window:%d:%d:%d\n", *df::global::window_x,
+            *df::global::window_y, *df::global::window_z);
+        fprintf(fp, "tiles:%ld:%ld\n", map_offset, data_size);
+        fprintf(fp, "flows:%ld\n", flow_offset);
+
 
         // write flows section header
         const char *fsh = "\nsection:flows\n";

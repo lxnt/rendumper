@@ -202,8 +202,9 @@ static void init_materials(void) {
     std::vector<df::creature_raw*>& creas = df::creature_raw::get_vector();
     std::vector<df::inorganic_raw*>& inorgs = df::inorganic_raw::get_vector();
     std::vector<df::plant_raw*>& plants = df::plant_raw::get_vector();
-    const int builtin_mats = 659;
-    df::material **builtins =  df::global::world->raws.mat_table.builtin;
+    const int builtin_mats = 
+        sizeof(df::global::world->raws.mat_table.builtin)/sizeof(df::material*);
+    df::material **builtins = df::global::world->raws.mat_table.builtin;
     
     // add nonmat rec
     _mat nonmat = { _mat::BUILTIN, NONEMAT_NO, -1, -1, "NONEMAT" };

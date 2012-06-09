@@ -9,6 +9,8 @@ else()
     add_definitions(-DNO_FMOD=1)
 endif()
 
+set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
+
 set ( LIBS 
     SDL-1.2
     sndfile
@@ -83,7 +85,7 @@ set( HEADERS
     ttf_manager.hpp
     ViewBase.h
 )
-
+link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
 find_package(GTK2 2.10 REQUIRED gtk)
 include_directories(${GTK2_INCLUDE_DIRS})

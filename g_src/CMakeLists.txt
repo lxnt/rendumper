@@ -9,13 +9,17 @@ else()
     add_definitions(-DNO_FMOD=1)
 endif()
 
-set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
+set(SDL32_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE STRING "sdlsdl" )
 
-set ( LIBS 
-    SDL-1.2
+add_definitions(${SDL32_PREFIX}/include)
+link_directories(${SDL32_PREFIX}/lib)
+
+include
+set ( LIBS
+    SDL2
+    SDL2_ttf
+    SDL2_image
     sndfile
-    SDL_image-1.2
-    SDL_ttf-2.0
     GLU
     GLEW
     m
@@ -85,10 +89,11 @@ set( HEADERS
     ttf_manager.hpp
     ViewBase.h
 )
+
 link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
 find_package(GTK2 2.10 REQUIRED gtk)
-include_directories(${GTK2_INCLUDE_DIRS})
+include_directories(${GTK2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
 target_link_libraries(graphics ${GTK2_LIBRARIES} ${LIBS})
 install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
 

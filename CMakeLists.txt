@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
 set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
+set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
+
 if(UNIX)
     set(CMAKE_CXX_COMPILER g++-4.5)
-    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
+    set(CMAKE_SYSTEM_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu ${LIB32_LINK_DIR})
     set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x -Wall -Wno-sign-compare")
     set(CMAKE_C_FLAGS_DEBUG "-m32 -g -Wall")
     set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x -Wno-sign-compare ")
@@ -18,9 +20,8 @@ set(LWAPI_HDRS
     globals.h
 )
 # Generation
-set_source_files_properties(${lwapi_hdrs} properties header_file_only true generated true)
 
-file(GLOB generate_input_xmls ${rendumper_source_dir}/df-structures/*.xml)
+set_source_files_properties(${lwapi_hdrs} properties header_file_only true generated true)
 
 set(lwapi_dir ${rendumper_SOURCE_DIR}/lwapi)
 set(dfstr_dir ${rendumper_SOURCE_DIR}/df-structures)

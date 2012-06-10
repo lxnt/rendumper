@@ -11,10 +11,9 @@ endif()
 
 set(SDL32_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE STRING "sdlsdl" )
 
-add_definitions(${SDL32_PREFIX}/include)
+include_directories(${SDL32_PREFIX}/include/SDL2)
 link_directories(${SDL32_PREFIX}/lib)
 
-include
 set ( LIBS
     SDL2
     SDL2_ttf
@@ -27,6 +26,7 @@ set ( LIBS
     rt
     openal
     lwapi
+    python3.2mu
 )
 
 # find_files.cpp excluded ; it refers to headers missing
@@ -46,14 +46,15 @@ set( SOURCE
     music_and_sound_fmodex.cpp
     music_and_sound_openal.cpp
     random.cpp
-    renderer_offscreen.cpp
-    resize++.cpp
+    renderer_glsl.cc
     textlines.cpp
     textures.cpp
     ttf_manager.cpp
     ViewBase.cpp
     win32_compat.cpp
 )
+
+#  resize++.cpp   renderer_offscreen.cpp removed pending rendered_2d rewrite
 
 set( HEADERS
     basics.h
@@ -78,10 +79,7 @@ set( HEADERS
     music_and_sound_v.h
     platform.h
     random.h
-    renderer_2d.hpp
     renderer_curses.cpp
-    renderer_opengl.hpp
-    resize++.h
     svector.h
     template.h
     textlines.h
@@ -89,11 +87,12 @@ set( HEADERS
     ttf_manager.hpp
     ViewBase.h
 )
+#renderer_2d.hpp  resize++.h removed pending rewrite to sdl2.
 
 link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
 find_package(GTK2 2.10 REQUIRED gtk)
-include_directories(${GTK2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
+include_directories(${GTK2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} /usr/include/python3.2mu)
 target_link_libraries(graphics ${GTK2_LIBRARIES} ${LIBS})
 install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
 

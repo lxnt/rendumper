@@ -1,12 +1,12 @@
 #include "keybindings.h"
 
-#include <SDL/SDL.h>
+#include "SDL_keycode.h"
 
 using namespace std;
 
 bimap<InterfaceKey,std::string> bindingNames;
 bimap<InterfaceKey,std::string> displayNames;
-bimap<SDLKey,std::string> sdlNames;
+bimap<SDL_Keycode,std::string> sdlNames;
 
 void keybinding_init() {
 	bindingNames.insert(INTERFACEKEY_NONE, "NONE");
@@ -2952,16 +2952,16 @@ void keybinding_init() {
   sdlNames.insert(SDLK_y, "y");
   sdlNames.insert(SDLK_z, "z");
   sdlNames.insert(SDLK_DELETE, "Delete");
-  sdlNames.insert(SDLK_KP0, "Numpad 0");
-  sdlNames.insert(SDLK_KP1, "Numpad 1");
-  sdlNames.insert(SDLK_KP2, "Numpad 2");
-  sdlNames.insert(SDLK_KP3, "Numpad 3");
-  sdlNames.insert(SDLK_KP4, "Numpad 4");
-  sdlNames.insert(SDLK_KP5, "Numpad 5");
-  sdlNames.insert(SDLK_KP6, "Numpad 6");
-  sdlNames.insert(SDLK_KP7, "Numpad 7");
-  sdlNames.insert(SDLK_KP8, "Numpad 8");
-  sdlNames.insert(SDLK_KP9, "Numpad 9");
+  sdlNames.insert(SDLK_KP_0, "Numpad 0");
+  sdlNames.insert(SDLK_KP_1, "Numpad 1");
+  sdlNames.insert(SDLK_KP_2, "Numpad 2");
+  sdlNames.insert(SDLK_KP_3, "Numpad 3");
+  sdlNames.insert(SDLK_KP_4, "Numpad 4");
+  sdlNames.insert(SDLK_KP_5, "Numpad 5");
+  sdlNames.insert(SDLK_KP_6, "Numpad 6");
+  sdlNames.insert(SDLK_KP_7, "Numpad 7");
+  sdlNames.insert(SDLK_KP_8, "Numpad 8");
+  sdlNames.insert(SDLK_KP_9, "Numpad 9");
   sdlNames.insert(SDLK_KP_PERIOD, "Numpad Period");
   sdlNames.insert(SDLK_KP_DIVIDE, "Numpad Divide");
   sdlNames.insert(SDLK_KP_MULTIPLY, "Numpad Multiply");
@@ -2993,27 +2993,27 @@ void keybinding_init() {
   sdlNames.insert(SDLK_F13, "F13");
   sdlNames.insert(SDLK_F14, "F14");
   sdlNames.insert(SDLK_F15, "F15");
-  sdlNames.insert(SDLK_NUMLOCK, "Numlock");
+  sdlNames.insert(SDLK_NUMLOCKCLEAR, "Numlock");
   sdlNames.insert(SDLK_CAPSLOCK, "Capslock");
-  sdlNames.insert(SDLK_SCROLLOCK, "Scrollock");
+  sdlNames.insert(SDLK_SCROLLLOCK, "Scrollock");
   sdlNames.insert(SDLK_RSHIFT, "Rshift");
   sdlNames.insert(SDLK_LSHIFT, "Lshift");
   sdlNames.insert(SDLK_RCTRL, "Rctrl");
   sdlNames.insert(SDLK_LCTRL, "Lctrl");
   sdlNames.insert(SDLK_RALT, "Ralt");
   sdlNames.insert(SDLK_LALT, "Lalt");
-  sdlNames.insert(SDLK_RMETA, "Rmeta");
-  sdlNames.insert(SDLK_LMETA, "Lmeta");
-  sdlNames.insert(SDLK_LSUPER, "Lsuper");
-  sdlNames.insert(SDLK_RSUPER, "Rsuper");
+  //sdlNames.insert(SDLK_RMETA, "Rmeta");
+  //sdlNames.insert(SDLK_LMETA, "Lmeta");
+  //sdlNames.insert(SDLK_LSUPER, "Lsuper");
+  //sdlNames.insert(SDLK_RSUPER, "Rsuper");
   sdlNames.insert(SDLK_MODE, "Mode");
-  sdlNames.insert(SDLK_COMPOSE, "Compose");
+  //sdlNames.insert(SDLK_COMPOSE, "Compose");
   sdlNames.insert(SDLK_HELP, "Help");
-  sdlNames.insert(SDLK_PRINT, "Print");
+  sdlNames.insert(SDLK_PRINTSCREEN, "Print");
   sdlNames.insert(SDLK_SYSREQ, "Sysreq");
-  sdlNames.insert(SDLK_BREAK, "Break");
+  //sdlNames.insert(SDLK_BREAK, "Break");
   sdlNames.insert(SDLK_MENU, "Menu");
   sdlNames.insert(SDLK_POWER, "Power");
-  sdlNames.insert(SDLK_EURO, "Euro");
+  //sdlNames.insert(SDLK_EURO, "Euro");
   sdlNames.insert(SDLK_UNDO, "Undo");
 }

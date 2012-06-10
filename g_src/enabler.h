@@ -6,14 +6,14 @@
 #define ENABLER_H
 
 #include "platform.h"
-#include <SDL/SDL.h>
-#include <SDL/SDL_thread.h>
+#include "SDL.h"
+#include "SDL_thread.h"
 #ifdef __APPLE__
 # include <SDL_ttf/SDL_ttf.h>
 # include <SDL_image/SDL_image.h>
 #else
-# include <SDL/SDL_ttf.h>
-# include <SDL/SDL_image.h>
+# include "SDL_ttf.h"
+# include "SDL_image.h"
 #endif
 
 #include "GL/glew.h"
@@ -868,7 +868,7 @@ class renderer {
   void gps_allocate(int x, int y);
   Either<texture_fullid,texture_ttfid> screen_to_texid(int x, int y);
  public:
-  void display();
+  virtual void display(); // had to virtualize it since it's useless for the GLSL renderer.
   virtual void update_tile(int x, int y) = 0;
   virtual void update_all() = 0;
   virtual void render() = 0;
@@ -876,7 +876,7 @@ class renderer {
   virtual void zoom(zoom_commands cmd) {};
   virtual void resize(int w, int h) = 0;
   virtual void grid_resize(int w, int h) = 0;
-  void swap_arrays();
+  virtual void swap_arrays();
   renderer() {
     screen = NULL;
     screentexpos = NULL;

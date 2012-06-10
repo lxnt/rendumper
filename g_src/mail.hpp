@@ -1,8 +1,8 @@
 #ifndef MAIL_H
 #define MAIL_H
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_thread.h>
+//#include "SDL/SDL.h"
+#include "SDL_thread.h"
 #include <queue>
 
 template <typename T>

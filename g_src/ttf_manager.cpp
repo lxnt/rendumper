@@ -216,14 +216,14 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
         SDL_FreeSurface(textimg_seg);
       }
       // ..and make the whole thing display format. Phew!
-      SDL_Surface *textimg_2 = SDL_DisplayFormat(textimg);
+      //SDL_Surface *textimg_2 = SDL_DisplayFormat(textimg);
 #ifdef DEBUG
       // cout << "Rendering \"" << text.text << "\" at height " << box2->h << endl;
       // cout << " width " << textimg->w << " in box of " << box->w << endl;
 #endif
-      SDL_FreeSurface(textimg);
+      //SDL_FreeSurface(textimg);
       // Store it for later.
-      textures[it->handle] = textimg_2;
+      textures[it->handle] = textimg; // textimg_2
     }
     todo.clear();
   }

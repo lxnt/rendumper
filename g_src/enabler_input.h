@@ -1,7 +1,7 @@
 #ifndef ENABLER_INPUT_H
 #define ENABLER_INPUT_H
 
-#include <SDL/SDL.h>
+#include "SDL.h"
 #include <string>
 #include <set>
 #include <list>
@@ -36,7 +36,7 @@ struct EventMatch {
   Uint8 scancode; // not defined for type=button
   union {
     Uint16 unicode;
-    SDLKey key;
+    SDL_Keycode key;
     Uint8 button;
   };
   

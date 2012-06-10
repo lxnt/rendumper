@@ -38,6 +38,7 @@ bool testTextureSize(GLuint texnum, int w, int h) {
 void textures::upload_textures() {
   if (uploaded) return; // Don't bother
   if (!enabler.uses_opengl()) return; // No uploading
+#if 0  // pending rewrite to gl3.
   glEnable(GL_TEXTURE_2D);
   printGLError();
   glGenTextures(1, &gl_catalog);
@@ -171,7 +172,6 @@ void textures::upload_textures() {
     long raws_pos = ordered[pos].pos;
     SDL_Surface *s = ordered[pos].s;
     SDL_PixelFormat *f = s->format;
-    SDL_LockSurface(s);
     // Make /real/ sure we get the GL format right.
     unsigned char *pixels = new unsigned char[ordered[pos].w * ordered[pos].h * 4];
     // Recall, ordered[pos].w is 2 larger than s->w because of the border.
@@ -217,6 +217,7 @@ void textures::upload_textures() {
   }
   // And that's that. Locked, loaded and ready for texturing.
   printGLError();
+#endif
   uploaded=true;
 }
 
@@ -295,31 +296,19 @@ if(luminosity>255)luminosity=255;
 //
 // It uses the same pixel format (RGBA, R at lowest address) regardless of
 // hardware.
+/* Now. We worry about big-endian hardware when someone resurrects it.
+   And then, we worry about it here only if we have to. 
+   Until then, it's ABGR8888 all the way.
+*/
 SDL_Surface *canonicalize_format(SDL_Surface *src, bool convert_magenta) {
-  SDL_PixelFormat fmt;
-  fmt.palette = NULL;
-  fmt.BitsPerPixel = 32;
-  fmt.BytesPerPixel = 4;
-  fmt.Rloss = fmt.Gloss = fmt.Bloss = fmt.Aloss = 0;
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-  fmt.Rshift = 24; fmt.Gshift = 16; fmt.Bshift = 8; fmt.Ashift = 0;
-#else
-  fmt.Rshift = 0; fmt.Gshift = 8; fmt.Bshift = 16; fmt.Ashift = 24;
-#endif
-  fmt.Rmask = 255 << fmt.Rshift;
-  fmt.Gmask = 255 << fmt.Gshift;
-  fmt.Bmask = 255 << fmt.Bshift;
-  fmt.Amask = 255 << fmt.Ashift;
-  fmt.colorkey = 0;
-  fmt.alpha = 255;
+    SDL_PixelFormat *fmt = SDL_AllocFormat(SDL_PIXELFORMAT_ABGR8888);
 
-  if (src->format->Amask == 0 && convert_magenta) { // No alpha
-    SDL_SetColorKey(src, SDL_SRCCOLORKEY,
-		    SDL_MapRGB(src->format, 255, 0, 255));
-  }
-  SDL_Surface *tgt = SDL_ConvertSurface(src, &fmt, SDL_SWSURFACE);
-  SDL_FreeSurface(src);
-  return tgt;
+    if (src->format->Amask == 0 && convert_magenta) { // No alpha
+        SDL_SetColorKey(src, SDL_TRUE, SDL_MapRGB(src->format, 255, 0, 255));
+    }
+    SDL_Surface *tgt = SDL_ConvertSurface(src, fmt, 0);
+    SDL_FreeSurface(src);
+    return tgt;
 }
 
 // Finds or creates a free spot in the texture array, and inserts
@@ -348,7 +337,7 @@ void textures::load_multi_pdim(const string &filename, long *tex_pos, long dimx,
     exit(1);
   }
   SDL_Surface *src = canonicalize_format(raw, convert_magenta);
-  SDL_SetAlpha(src, 0, 255);
+  SDL_SetSurfaceBlendMode(src, SDL_BLENDMODE_NONE);
   *disp_x = src->w / dimx;
   *disp_y = src->h / dimy;
   long idx = 0;
@@ -359,7 +348,7 @@ void textures::load_multi_pdim(const string &filename, long *tex_pos, long dimx,
 					       src->format->Gmask,
 					       src->format->Bmask,
 					       src->format->Amask);
-      SDL_SetAlpha(tile, 0,255);
+      SDL_SetSurfaceBlendMode(tile, SDL_BLENDMODE_NONE);
       SDL_Rect pos_src;
       pos_src.x = *disp_x * x;
       pos_src.y = *disp_y * y;

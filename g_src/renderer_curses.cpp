@@ -349,7 +349,7 @@ extern "C" {
       nodelay(*stdscr_p, true);
       set_escdelay(25); // Possible bug
       curs_set(0);
-      mmask_t dummy;
+      // mmask_t dummy;
       // mousemask(ALL_MOUSE_EVENTS, &dummy);
       start_color();
       init_pair(1, COLOR_WHITE, COLOR_BLACK);

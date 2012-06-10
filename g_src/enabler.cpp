@@ -15,6 +15,7 @@
 #ifdef unix
 # include <locale.h>
 #endif
+#include "ttf_manager.hpp"
 
 using namespace std;
 
@@ -114,9 +115,8 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
 #ifdef CURSES
 # include "renderer_curses.cpp"
 #endif
-#include "renderer_2d.hpp"
-#include "renderer_opengl.hpp"
-
+// #include "renderer_2d.hpp" got to rewrite it to SDL_Textures
+#include "renderer_glsl.h"
 
 enablerst::enablerst() {
   fullscreen = false;
@@ -406,13 +406,9 @@ void enablerst::eventLoop_SDL()
 {
   
   SDL_Event event;
-  const SDL_Surface *screen = SDL_GetVideoSurface();
   Uint32 mouse_lastused = 0;
   SDL_ShowCursor(SDL_DISABLE);
- 
-  // Initialize the grid
-  renderer->resize(screen->w, screen->h);
-
+    
   while (loopvar) {
     Uint32 now = SDL_GetTicks();
     bool paused_loop = false;
@@ -488,36 +484,53 @@ void enablerst::eventLoop_SDL()
           SDL_ShowCursor(SDL_ENABLE);
         }
         break;
-      case SDL_ACTIVEEVENT:
-        enabler.clear_input();
-        if (event.active.state & SDL_APPACTIVE) {
-          if (event.active.gain) {
-            enabler.flag|=ENABLERFLAG_RENDER;
-            gps.force_full_display_count++;
-          }
+      case SDL_WINDOWEVENT:
+        switch(event.window.event) {
+            // former SDL_ACTIVEEVENT & SDL_APPACTIVE && event.active.gain
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+                enabler.clear_input();
+                enabler.flag|=ENABLERFLAG_RENDER;
+                gps.force_full_display_count++;
+                break;
+            // former SDL_ACTIVEEVENT & SDL_APPACTIVE
+            case SDL_WINDOWEVENT_LEAVE:
+            case SDL_WINDOWEVENT_ENTER:
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+                enabler.clear_input();
+                break;
+            // former SDL_VIDEOEXPOSE
+            case SDL_WINDOWEVENT_EXPOSED:
+                gps.force_full_display_count++;
+                enabler.flag|=ENABLERFLAG_RENDER;
+                break;
+            // former SDL_VIDEORESIZE
+            case SDL_WINDOWEVENT_RESIZED:
+                if (is_fullscreen());
+                    //errorlog << "Caught resize event in fullscreen??\n";
+                else {
+                    //gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
+                    renderer->resize(event.window.data1, event.window.data2);
+                }
+                break;
+            case SDL_WINDOWEVENT_SHOWN:
+            case SDL_WINDOWEVENT_HIDDEN:
+            case SDL_WINDOWEVENT_CLOSE:
+            case SDL_WINDOWEVENT_RESTORED:
+            case SDL_WINDOWEVENT_MAXIMIZED:
+            case SDL_WINDOWEVENT_MINIMIZED:
+            case SDL_WINDOWEVENT_MOVED:
+            default:
+                break;
         }
         break;
-      case SDL_VIDEOEXPOSE:
-        gps.force_full_display_count++;
-        enabler.flag|=ENABLERFLAG_RENDER;
-        break;
-      case SDL_VIDEORESIZE:
-        if (is_fullscreen());
-          //errorlog << "Caught resize event in fullscreen??\n";
-        else {
-          //gamelog << "Resizing window to " << event.resize.w << "x" << event.resize.h << endl << flush;
-          renderer->resize(event.resize.w, event.resize.h);
-        }
-        break;
-      } // switch (event.type)
-    } //while have event
+      }
+    }
 
     // Update mouse state
     if (!init.input.flag.has_flag(INIT_INPUT_FLAG_MOUSE_OFF)) {
       int mouse_x = -1, mouse_y = -1, mouse_state;
       // Check whether the renderer considers this valid input or not, and write it to gps
-      if ((SDL_GetAppState() & SDL_APPMOUSEFOCUS) &&
-          renderer->get_mouse_coords(mouse_x, mouse_y)) {
+      if (renderer->get_mouse_coords(mouse_x, mouse_y)) {
         mouse_state = 1;
       } else {
         mouse_state = 0;
@@ -548,7 +561,6 @@ void enablerst::eventLoop_SDL()
 
 int enablerst::loop(string cmdline) {
   command_line = cmdline;
-
   // Initialize the tick counters
   simticks.write(0);
   gputicks.write(0);
@@ -565,21 +577,12 @@ int enablerst::loop(string cmdline) {
     report_error("PRINT_MODE", "TEXT not supported on windows");
     exit(EXIT_FAILURE);
 #endif
+#if defined(HAVE_REWRITTEN_RENDERER_2D)
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
     renderer = new renderer_2d();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
-    renderer = new renderer_accum_buffer();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
-    renderer = new renderer_framebuffer();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT)) {
-    if (init.display.partial_print_count)
-      renderer = new renderer_partial();
-    else
-      renderer = new renderer_once();
-  } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_VBO)) {
-    renderer = new renderer_vbo();
+#endif
   } else {
-    renderer = new renderer_opengl();
+    renderer = new renderer_glsl();
   }
 
   // At this point we should have a window that is setup to render DF.
@@ -588,7 +591,6 @@ int enablerst::loop(string cmdline) {
     eventLoop_ncurses();
 #endif
   } else {
-    SDL_EnableUNICODE(1);
     eventLoop_SDL();
   }
 
@@ -596,6 +598,7 @@ int enablerst::loop(string cmdline) {
 
   // Clean up graphical resources
   delete renderer;
+  return 23;
 }
 
 void enablerst::override_grid_size(int x, int y) {
@@ -735,7 +738,7 @@ int main (int argc, char* argv[]) {
   enabler.renderer_threadid = SDL_ThreadID();
 
   // Spawn simulation thread
-  SDL_CreateThread(call_loop, NULL);
+  SDL_CreateThread(call_loop, "call_loop", NULL);
 
   init.begin(); // Load init.txt settings
   
@@ -925,7 +928,6 @@ void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
 
 	//ADD EACH OF THE STRINGS ON IN TURN
 	string curstr;
-	long strlength=0;
 	long s,pos;
 	for(s=0;s<src.str.size();s++)
 		{

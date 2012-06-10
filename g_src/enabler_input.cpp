@@ -1,4 +1,4 @@
-#include <SDL/SDL.h>
+#include "SDL.h"
 #include <map>
 #include <vector>
 #include <iostream>
@@ -196,7 +196,7 @@ static string display(const EventMatch &match) {
   switch (match.type) {
   case type_unicode: ret << (char)match.unicode; break;
   case type_key: {
-    map<SDLKey,string>::iterator it = sdlNames.left.find(match.key);
+    map<SDL_Keycode,string>::iterator it = sdlNames.left.find(match.key);
     if (it != sdlNames.left.end())
       ret << it->second;
     else
@@ -331,7 +331,7 @@ void enabler_inputst::load_keybindings(const string &file) {
           EventMatch matcher;
           // SDL Keys
           if (parse_line(*line, sym, match)) {
-            map<string,SDLKey>::iterator it = sdlNames.right.find(match[2]);
+            map<string,SDL_Keycode>::iterator it = sdlNames.right.find(match[2]);
             if (it != sdlNames.right.end()) {
               matcher.mod  = atoi(string(match[1]).c_str());
               matcher.type = type_key;
@@ -339,7 +339,7 @@ void enabler_inputst::load_keybindings(const string &file) {
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
               update_keydisplay(binding, display(matcher));
             } else {
-              cout << "Unknown SDLKey: " << match[2] << endl;
+              cout << "Unknown SDL_Keycode: " << match[2] << endl;
             }
             ++line;           
           } // Unicode
@@ -567,12 +567,12 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     sdl.key = SDLK_BACKSPACE;
   } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
     sdl.mod |= DFMOD_CTRL;
-    sdl.key = (SDLKey)(SDLK_a + (-key) - 1);
+    sdl.key = (SDL_Keycode)(SDLK_a + (-key) - 1);
   } else if (key <= -32 && key >= -126) { // ASCII character set
     uni.unicode = -key;
-    sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
+    sdl.key = (SDL_Keycode)-key; // Most of this maps directly to SDL keys, except..
     if (sdl.key > 64 && sdl.key < 91) { // Uppercase
-      sdl.key = (SDLKey)(sdl.key + 32); // Maps to lowercase, and
+      sdl.key = (SDL_Keycode)(sdl.key + 32); // Maps to lowercase, and
       sdl.mod |= DFMOD_SHIFT; // Add shift.
     }
   } else if (key < -127) { // Unicode, no matching SDL keys

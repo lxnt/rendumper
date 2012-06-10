@@ -7,6 +7,7 @@ struct glsl_private;
 class renderer_glsl : public renderer {
     glsl_private *self;
 public:
+    virtual void accept_textures(textures& );
     virtual void display() {};
     virtual void update_tile(int x, int y) {};
     virtual void update_all() {};

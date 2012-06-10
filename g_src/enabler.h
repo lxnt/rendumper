@@ -760,6 +760,7 @@ class textures
 {
   friend class enablerst;
   friend class renderer_opengl;
+  friend class renderer_glsl;
  private:
   vector<SDL_Surface *> raws;
   bool uploaded;
@@ -868,6 +869,7 @@ class renderer {
   void gps_allocate(int x, int y);
   Either<texture_fullid,texture_ttfid> screen_to_texid(int x, int y);
  public:
+    virtual void accept_textures(textures& ) {}
   virtual void display(); // had to virtualize it since it's useless for the GLSL renderer.
   virtual void update_tile(int x, int y) = 0;
   virtual void update_all() = 0;

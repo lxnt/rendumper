@@ -37,8 +37,8 @@ bool testTextureSize(GLuint texnum, int w, int h) {
 // Texture catalog implementation
 void textures::upload_textures() {
   if (uploaded) return; // Don't bother
-  if (!enabler.uses_opengl()) return; // No uploading
 #if 0  // pending rewrite to gl3.
+  if (!enabler.uses_opengl()) return; // No uploading
   glEnable(GL_TEXTURE_2D);
   printGLError();
   glGenTextures(1, &gl_catalog);
@@ -223,7 +223,7 @@ void textures::upload_textures() {
 
 void textures::remove_uploaded_textures() {
   if (!uploaded) return; // Nothing to do
-  glDeleteTextures(1, &gl_catalog);
+  //glDeleteTextures(1, &gl_catalog);
   uploaded=false;
 }
 

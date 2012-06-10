@@ -255,6 +255,7 @@ void enablerst::async_wait() {
         puts("Resetting textures");
         textures.remove_uploaded_textures();
         textures.upload_textures();
+        renderer->accept_textures(textures);
       }
       return;
     case async_msg::set_fps:

@@ -39,8 +39,7 @@ struct glsl_private {
     PyObject *py_zoom;         // def zoom(cmd): pass    # handle zoom and fullscreen toggle
     PyObject *py_resize;       // def resize(x, y): pass # handle window resize. has to call dfr.grid_resize().
     PyObject *py_uniforms;     // def uniforms(): pass # update uniforms, expect glUseProgram already done.
-        
-    PyObject *load_textures;
+    PyObject *py_accept_textures;
    
     void gps_ulod_resize(int w, int h) {
         fprintf(stderr, "gps_ulod_resize(%d, %d)\n", w, h);
@@ -166,6 +165,11 @@ dfr_set_callback(PyObject *self, PyObject *args) {
         dfr_self->py_uniforms = candidate;
         Py_RETURN_NONE;
     } 
+    if (!strcmp("accept_textures", name)) {
+        Py_INCREF(candidate);
+        dfr_self->py_accept_textures = candidate;
+        Py_RETURN_NONE;
+    } 
     PyErr_Format(PyExc_NameError ,"unknown callback name '%'", name);
     return NULL;
 }
@@ -276,9 +280,7 @@ void renderer_glsl::render() {
 }
 
 void renderer_glsl::zoom(zoom_commands cmd) {
-    PyObject *pArgs = PyTuple_New(1);
-    PyObject *pValue = PyLong_FromLong(cmd);
-    PyTuple_SetItem(pArgs, 0, pValue);
+    PyObject *pArgs = Py_BuildValue("i", cmd);
     PyObject *pRetVal = PyObject_CallObject(self->py_zoom, pArgs);
     Py_DECREF(pArgs);
     if (!pRetVal) {
@@ -289,11 +291,7 @@ void renderer_glsl::zoom(zoom_commands cmd) {
 }
 
 void renderer_glsl::resize(int w, int h) {
-    PyObject *pArgs = PyTuple_New(2);
-    PyObject *pValueW = PyLong_FromLong(w);
-    PyObject *pValueH = PyLong_FromLong(h);
-    PyTuple_SetItem(pArgs, 0, pValueW);
-    PyTuple_SetItem(pArgs, 1, pValueH);
+    PyObject *pArgs = Py_BuildValue("ii", w,h);
     PyObject *pRetVal = PyObject_CallObject(self->py_resize, pArgs);
     Py_DECREF(pArgs);
     if (!pRetVal) {
@@ -311,6 +309,7 @@ void renderer_glsl::grid_resize(int w, int h) {
 renderer_glsl::renderer_glsl() {
     // well. we're here when we've got SDL_InitSubSystem(VIDEO) done. that's it.
     self = dfr_self = new glsl_private();
+    signal(SIGINT, SIG_DFL);
     
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -355,6 +354,36 @@ renderer_glsl::renderer_glsl() {
     resize(w,h); // init grid and other shit
     
 }
+void renderer_glsl::accept_textures(textures &tm) {
+    // screen and texpos referer to the index in the raws.
+    // which is pos.
+    // now just submit a list of SDL_Surface ptrs to the python.
+    // std::vector<SDL_Surface *>& raws
+    
+    PyObject *plist = PyList_New(tm.raws.size()), *pval;
+    
+    for (int pos = 0; pos < tm.raws.size(); pos++) {
+        SDL_Surface *surf = tm.raws[pos];
+        if (surf) {
+            if (NULL== (pval = Py_BuildValue("iIii", pos, surf, surf->w, surf->h)))
+                PyErr_Print(), exit(1);
+        } else {
+            if (NULL== (pval = Py_BuildValue("iIii", pos, 0, 0, 0)))
+                PyErr_Print(), exit(1);
+        }
+        if (-1 == PyList_SetItem(plist, pos, pval))
+            PyErr_Print(), exit(1);
+    }
+    PyObject *pArgs = PyTuple_Pack(1, plist);
+    PyObject *pRetVal = PyObject_CallObject(self->py_accept_textures, pArgs);
+    Py_DECREF(pArgs);
+    if (!pRetVal) {
+        PyErr_Print();
+        exit(1);
+    }
+    Py_DECREF(pRetVal);
+}
+
 bool renderer_glsl::get_mouse_coords(int &x, int &y) {
     if ( SDL_GetWindowFlags(self->window) && SDL_WINDOW_MOUSE_FOCUS) {
         SDL_GetMouseState(&x, &y);

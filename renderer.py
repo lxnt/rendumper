@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import dfr
-import os
+import os, time
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
@@ -36,12 +36,17 @@ def resize(w, h):
     
 def uniforms():
     print("uniforms woo-hoo")
+    time.sleep(0.1)
     
+def accept_textures(raws):
+    print("accept_textures woo-hoo")
+    print("{} raws: {}".format(len(raws), repr(raws)))
 
 dfr.set_callback('gl_init', gl_init)
 dfr.set_callback('gl_fini', gl_fini)
 dfr.set_callback('zoom', zoom)
 dfr.set_callback('resize', resize)
 dfr.set_callback('uniforms', uniforms)
+dfr.set_callback('accept_textures', accept_textures)
 
 

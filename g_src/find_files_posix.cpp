@@ -20,7 +20,7 @@ extern "C" {
 #endif
 }
 #include "svector.h"
-#include "random.h"
+//#include "random.h"
 
 using std::string;
 

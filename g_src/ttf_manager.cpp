@@ -24,7 +24,7 @@ bool ttf_managerst::init(int ceiling, int tile_width) {
     font = TTF_OpenFont("data/art/font.ttf", sz);
     if (!font) continue;
     if (TTF_FontHeight(font) <= ceiling) {
-#ifdef DEBUG
+#ifdef DEBUG_TTF
       cout << "Picked font at " << sz << " points for ceiling " << ceiling << endl;
       // get the glyph metric for the letter 'M' in a loaded font
       cout << "TTF_FontHeight " << TTF_FontHeight(font) << endl;
@@ -37,7 +37,7 @@ bool ttf_managerst::init(int ceiling, int tile_width) {
         puts(TTF_GetError());
       else {
         em_width = maxx;
-#ifdef DEBUG
+#ifdef DEBUG_TTF
         printf("minx    : %d\n",minx);
         printf("maxx    : %d\n",maxx);
         printf("miny    : %d\n",miny);
@@ -181,7 +181,7 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
                                 Uint8(enabler.ccolor[bg][0]*255),
                                 Uint8(enabler.ccolor[bg][1]*255),
                                 Uint8(enabler.ccolor[bg][2]*255));
-#ifdef DEBUG
+#ifdef DEBUG_TTF
         // SDL_Color white = {255,255,255};
         // Uint32 red = SDL_MapRGB(textimg->format, 255,0,0);
         // fgc = white;
@@ -217,7 +217,7 @@ SDL_Surface *ttf_managerst::get_texture(int handle) {
       }
       // ..and make the whole thing display format. Phew!
       //SDL_Surface *textimg_2 = SDL_DisplayFormat(textimg);
-#ifdef DEBUG
+#ifdef DEBUG_TTF
       // cout << "Rendering \"" << text.text << "\" at height " << box2->h << endl;
       // cout << " width " << textimg->w << " in box of " << box->w << endl;
 #endif

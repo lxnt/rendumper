@@ -36,7 +36,7 @@ typedef int32_t Ordinal;
 
 #endif
 
-#include "random.h"
+//#include "random.h"
 
 #include "endian.h"
 
@@ -80,12 +80,13 @@ extern string errorlog_prefix;
 
 void process_object_lines(textlinesst &lines,string &chktype,string &graphics_dir);
 
+/* unused
 // Add, then increment to the (possible) PBO alignment requirement
 static void align(size_t &sz, off_t inc) {
   sz += inc;
   while (sz%64) sz++; // So.. tired.. FIXME.
 }
-
+*/
 void graphicst::resize(int x, int y)  {
   dimx = x; dimy = y;
   init.display.grid_x = x;

@@ -757,7 +757,7 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
     // Delete the event from the timeline and iterate
     timeline.erase(ev++);
   }
-#ifdef DEBUG
+#ifdef DEBUG_INPUT
   if (input.size() && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     cout << "Returning input:\n";
     set<InterfaceKey>::iterator it;
@@ -1073,7 +1073,7 @@ void enabler_inputst::prefix_toggle() {
 
 void enabler_inputst::prefix_add_digit(char digit) {
   prefix_command.push_back(digit);
-#ifdef DEBUG
+#ifdef DEBUG_INPUT
   cout << "Built prefix to " << prefix_command << endl;
 #endif
   if (atoi(prefix_command.c_str()) > 99)

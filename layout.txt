@@ -1,0 +1,19 @@
+fg layout
+
+it has come to this 
+
+df_linux/libs/
+    libSDL2*          - 32bit sdl2, sdl2_ttf, sdl2_image
+    libpython3.2*     - 32bit libpython3.2mu.so
+    libSDL-1.2.so.0   - 32bit dummy object | or maybe just a link to libSDL2?
+    shaders/  - *.[vf]s
+    python3.2/   <- 32bit python stuff: modules.
+        site-packages/
+            renderer/|renderer.py - what gets imported by the libgraphics.so. just an "import renderer"
+            OpenGL/    - PyOpenGL
+            pygame2/   - pgreloaded
+            fgtestbed/ - py3sdl2.py raw.py fgtestbed.py glnames.py sdlenums.py etc
+            
+    
+    
+    

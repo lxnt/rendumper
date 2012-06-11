@@ -1,0 +1,36 @@
+#!/bin/sh
+export DF_DIR=$(dirname "$0")
+cd "${DF_DIR}"
+
+BINARY=./libs/Dwarf_Fortress
+case "$1" in
+    gdb)
+	shift 1
+	gdb --args ${BINARY} "$@"
+	;;
+    memcheck)
+	shift 1
+	valgrind --tool=memcheck ${BINARY} "$@"
+	;;
+    memfull)
+	shift 1
+	valgrind --tool=memcheck --leak-check=full --track-origins=yes ${BINARY} "$@"
+	;;
+    callgrind)
+	shift 1
+	valgrind --tool=callgrind --separate-threads=yes ${BINARY} "$@"
+	;;
+    strace)
+	shift 1
+	strace -o st ${BINARY} "$@"
+	;;
+    objdump)
+	shift 1
+	objdump -TC ${BINARY} |grep UND | grep -v GLIBC | grep -v CXXABI | grep -v GCC_3.0 | sort -k 5
+	;;
+    *)
+	${BINARY} "$@"
+	;;
+esac
+
+

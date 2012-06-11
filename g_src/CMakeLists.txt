@@ -9,10 +9,12 @@ else()
     add_definitions(-DNO_FMOD=1)
 endif()
 
-set(SDL32_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE STRING "sdlsdl" )
+include_directories(/usr/include/python3.2mu)
 
-include_directories(${SDL32_PREFIX}/include/SDL2)
-link_directories(${SDL32_PREFIX}/lib)
+set(SDL2_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE STRING "sdl2p" )
+
+include_directories(${SDL2_PREFIX}/include/SDL2)
+link_directories(${SDL2_PREFIX}/lib)
 
 set ( LIBS
     SDL2
@@ -54,7 +56,7 @@ set( SOURCE
     win32_compat.cpp
 )
 
-#  resize++.cpp   renderer_offscreen.cpp removed pending rendered_2d rewrite
+# resize++.cpp, renderer_offscreen.cpp removed pending renderer_2d rewrite
 
 set( HEADERS
     basics.h
@@ -81,18 +83,22 @@ set( HEADERS
     random.h
     renderer_curses.cpp
     svector.h
-    template.h
     textlines.h
     texture_handler.h
     ttf_manager.hpp
     ViewBase.h
 )
-#renderer_2d.hpp  resize++.h removed pending rewrite to sdl2.
+# renderer_2d.hpp, resize++.h removed pending rewrite to sdl2.
+# template.h removed as unused
 
-link_directories( ${LIB32_LINK_DIR} )
+
+file(GLOB shaders shaders/*.[vf]s)
+
 add_library( graphics SHARED ${SOURCE} )
 find_package(GTK2 2.10 REQUIRED gtk)
-include_directories(${GTK2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} /usr/include/python3.2mu)
+include_directories(${GTK2_INCLUDE_DIRS})
 target_link_libraries(graphics ${GTK2_LIBRARIES} ${LIBS})
-install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
+install(TARGETS graphics LIBRARY DESTINATION libs)
+install(FILES ${shaders} DESTINATION libs/shaders)
+
 

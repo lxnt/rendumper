@@ -19,7 +19,7 @@ C++ : remaining cruft.
 
 #include "GL/glew.h"
 
-#define NO_SDL_GLEXT // ahem. do we need the glew after all ?
+#define NO_SDL_GLEXT 
 #include "SDL.h"
 #include "SDL_video.h"
 #include "SDL_opengl.h"
@@ -29,17 +29,17 @@ C++ : remaining cruft.
 #include "enabler.h"
 
 struct glsl_private {
+    std::string libdir;        // where the .so-s are, for pygame2 and pythonpath
+
     SDL_Window *window;
     SDL_GLContext context;
-    
-    GLuint gl_program;         // set by python code. 
-    
+
     PyObject *py_gl_init;      // def gl_init(): pass # initialize an existing context
     PyObject *py_gl_fini;      // def gl_fini(): pass # release all GL object we know of
     PyObject *py_zoom;         // def zoom(cmd): pass    # handle zoom and fullscreen toggle
     PyObject *py_resize;       // def resize(x, y): pass # handle window resize. has to call dfr.grid_resize().
-    PyObject *py_uniforms;     // def uniforms(): pass # update uniforms, expect glUseProgram already done.
-    PyObject *py_accept_textures;
+    PyObject *py_render;       // def render(): pass # do a frame
+    PyObject *py_accept_textures; // def accept_textures(raws): pass
    
     void gps_ulod_resize(int w, int h) {
         fprintf(stderr, "gps_ulod_resize(%d, %d)\n", w, h);
@@ -50,6 +50,7 @@ struct glsl_private {
     struct _bo_offset {
         unsigned char *head;
         unsigned w, h;
+        unsigned used;
         
         // offsets:
         unsigned screen;     // uchar[4]
@@ -68,7 +69,7 @@ struct glsl_private {
            Resizes, ha. Just adjust offsets. */
         if (!bo.head) {
             bo.head = (unsigned char *) mmap(NULL, 768*768*16+4096, 
-                                PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE,-1, 0);
+                                PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
             if (bo.head == MAP_FAILED) {
                 perror("mmap");
                 exit(1);
@@ -91,19 +92,24 @@ struct glsl_private {
         gps.screentexpos_cf             = (unsigned char *) ( bo.head + bo.cf );
         gps.screentexpos_cbr            = (unsigned char *) ( bo.head + bo.cbr );
 
+        bo.used                         = w*h*16;
         // screen is memset(0) in graphicst::erasescreen
         // grid is initialized below.
         // memset the rest
         memset(gps.screentexpos, 0, w*h*8); 
 
         /* init grid. it's two shorts describing the tile position 
-           in the viewport just like fgtesbed (that is, in DF grid coords) */
+           in the viewport in NDC coord system. 
+           However, df's screen and friends are row-wise, 
+           that is, tileat(x,y) = x*w + y. This is accounted here for. */
         for (int i=0; i <w*h; i++)
-            *((short *)(bo.head+bo.grid+i*2)) = i % w, *((short *)(bo.head+bo.grid+i*2 +1)) = i / w;
+            *((short *)(bo.head+bo.grid+i*4)) = i / h, *((short *)(bo.head+bo.grid+i*4 +2)) = i % h;
 
         gps.resize(w,h);
     }
-    glsl_private() { bo.head = NULL; gl_program = 0;}
+    glsl_private() { bo.head = NULL; libdir=""; step=0; frame=0; }
+    int step;
+    int frame;
 };
 
 static glsl_private *dfr_self;
@@ -115,16 +121,6 @@ dfr_grid_resize(PyObject *self, PyObject *args) {
         return NULL;
     
     dfr_self->ulod_resize(w, h);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
-dfr_set_program(PyObject *self, PyObject *args) {
-    unsigned p;
-    if(!PyArg_ParseTuple(args, "I", &p))
-        return NULL;
-    
-    dfr_self->gl_program = p;
     Py_RETURN_NONE;
 }
 
@@ -160,9 +156,9 @@ dfr_set_callback(PyObject *self, PyObject *args) {
         dfr_self->py_resize = candidate;
         Py_RETURN_NONE;
     }
-    if (!strcmp("uniforms", name)) {
+    if (!strcmp("render", name)) {
         Py_INCREF(candidate);
-        dfr_self->py_uniforms = candidate;
+        dfr_self->py_render = candidate;
         Py_RETURN_NONE;
     } 
     if (!strcmp("accept_textures", name)) {
@@ -172,6 +168,33 @@ dfr_set_callback(PyObject *self, PyObject *args) {
     } 
     PyErr_Format(PyExc_NameError ,"unknown callback name '%'", name);
     return NULL;
+}
+
+static PyObject*
+dfr_ccolor(PyObject *self, PyObject *args) {
+    return PyByteArray_FromStringAndSize((const char *) enabler.ccolor, 16*3*sizeof(float));
+}
+static PyObject*
+dfr_window_size(PyObject *self, PyObject *args) {
+    int w = 0, h = 0;
+    SDL_GetWindowSize(dfr_self->window, &w, &h);  
+    return Py_BuildValue("ii", w, h);
+}
+
+static PyObject*
+dfr_toggle_fullscreen(PyObject *self, PyObject *args) {
+    Uint32 wf = SDL_GetWindowFlags(dfr_self->window);
+    if (wf & SDL_WINDOW_FULLSCREEN)
+        SDL_SetWindowFullscreen(dfr_self->window, SDL_FALSE);
+    else
+        SDL_SetWindowFullscreen(dfr_self->window, SDL_TRUE);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+dfr_step_inc(PyObject *self, PyObject *args) {
+    dfr_self->step += 1;
+    Py_RETURN_NONE;
 }
 
 static int
@@ -218,13 +241,15 @@ static PyMethodDef DfrMethods[] = {
      "Return struct _bo_offset as a dict." },
     {"set_callback", dfr_set_callback, METH_VARARGS,
      "Set a callback (name, callable); name one of gl_init, gl_fini, zoom, resize."},
-    {"set_program", dfr_set_program, METH_VARARGS,
-     "Set the gl_program (shader) name"},
-
-/*    {"", dfr_, METH_VARARGS,
-     ""},
-*/
-     {NULL, NULL, 0, NULL}
+    {"ccolor", dfr_ccolor, METH_NOARGS,
+     "Return enabler.ccolors as a bytearray." },
+    {"window_size", dfr_window_size, METH_NOARGS,
+     "Return this renderer's window size as a tuple." },
+    {"toggle_fullscreen", dfr_toggle_fullscreen, METH_NOARGS,
+     "as is says on the can" },    
+     {"step_inc", dfr_step_inc, METH_NOARGS,
+     "as is says on the can" },    
+    {NULL, NULL, 0, NULL}
 };
 
 static PyModuleDef DfrModule = {
@@ -237,18 +262,27 @@ PyInit_dfr(void) {
     return PyModule_Create(&DfrModule);
 }
 
-static void python_init(void) {
+static void python_init(const std::string &libdir) {
     /* fiddle with env because gdb is compiled with py2.7 */
-    char *dfp = getenv("DFPYPATH");
-    if (!dfp || (strlen(dfp) == 0)) {
-        fprintf(stderr, "DFPYPATH envvar is required.\n");
-        exit(1);
-    }
-    setenv("PYTHONPATH", dfp,1); 
+    
+    std::string pylib;
+    pylib += libdir;
+    pylib += "/python3.2";
+    std::string pypath;
+    pypath += pylib;
+    pypath += ":";
+    pypath += pylib;
+    pypath += "/site-packages:";
+    pypath += pylib;
+    pypath += "/plat-linux2:";
+    pypath += pylib;
+    pypath += "/lib-dynload";
+    
+    setenv("PYTHONPATH", pypath.c_str(),1);
+    setenv("PGLIBDIR", libdir.c_str(),1);
     
     PyImport_AppendInittab("dfr", &PyInit_dfr);
     Py_Initialize();
-    
 
     PyRun_SimpleString("import sys\nprint(repr(sys.path))\n");
     
@@ -273,10 +307,12 @@ static void _callcallback(PyObject *cb) {
 }
 
 void renderer_glsl::render() {
-    glUseProgram(self->gl_program);
-    _callcallback(self->py_uniforms);
-    glDrawArrays(GL_POINTS, 0, self->bo.w*self->bo.h);
+    self->step = 0;
+    _callcallback(self->py_render);
+    self->step += 1;
     SDL_GL_SwapWindow(self->window);
+    self->step += 1;
+    self->frame += 1;
 }
 
 void renderer_glsl::zoom(zoom_commands cmd) {
@@ -291,6 +327,7 @@ void renderer_glsl::zoom(zoom_commands cmd) {
 }
 
 void renderer_glsl::resize(int w, int h) {
+    fprintf(stderr, "renderer_glsl::resize(%d, %d)\n", w, h);
     PyObject *pArgs = Py_BuildValue("ii", w,h);
     PyObject *pRetVal = PyObject_CallObject(self->py_resize, pArgs);
     Py_DECREF(pArgs);
@@ -310,6 +347,14 @@ renderer_glsl::renderer_glsl() {
     // well. we're here when we've got SDL_InitSubSystem(VIDEO) done. that's it.
     self = dfr_self = new glsl_private();
     signal(SIGINT, SIG_DFL);
+
+    char *dfp = getenv("DF_DIR");
+    if (!dfp || (strlen(dfp) == 0)) {
+        fprintf(stderr, "DF_DIR envvar is required.\n");
+        exit(1);
+    }
+    self->libdir = dfp;
+    self->libdir += "/libs";
     
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -347,11 +392,14 @@ renderer_glsl::renderer_glsl() {
     GLenum glerr;
     while (0 != (glerr = glGetError()))
         fprintf(stderr, "glewInit glGetError(): %d\n", glerr);
+    fprintf(stderr, "%s %s\nOpenGL %s GLSL %s\n", glGetString(GL_VENDOR), 
+            glGetString(GL_RENDERER), glGetString(GL_VERSION), 
+            glGetString(GL_SHADING_LANGUAGE_VERSION));
     int w,h;
     SDL_GetWindowSize(self->window, &w, &h);
-    python_init();
+    python_init(self->libdir);
     _callcallback(self->py_gl_init);
-    resize(w,h); // init grid and other shit
+    //resize(w,h); // init grid and other shit. hmm. can't do before textures are here.
     
 }
 void renderer_glsl::accept_textures(textures &tm) {

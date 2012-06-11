@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
-set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
-set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
+set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/dfpy")
 
 if(UNIX)
     set(CMAKE_CXX_COMPILER g++-4.5)
-    set(CMAKE_SYSTEM_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu ${LIB32_LINK_DIR})
-    set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x -Wall -Wno-sign-compare")
-    set(CMAKE_C_FLAGS_DEBUG "-m32 -g -Wall")
-    set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x -Wno-sign-compare ")
-    set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic")
+    set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x -Wall -Wno-sign-compare -g")
+    set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic -Wall -Wno-sign-compare -g")
 endif()
 
 set(LWAPI_HDRS
@@ -40,8 +36,6 @@ add_library(lwapi ${lwapi_dir}/globals.cc )
 add_dependencies(lwapi generate_code)
 
 include_directories(${rendumper_SOURCE_DIR}/lwapi)
-#link_directories(${rendumper_SOURCE_DIR}/lwapi)
-link_directories(/usr/lib/i386-linux-gnu /usr/lib32)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG=8)
@@ -49,6 +43,9 @@ endif()
 
 add_definitions( -D_GNU_SOURCE=1 -D_REENTRANT )
 add_subdirectory(g_src)
+
+install(FILES renderer.py DESTINATION libs/python3.2/site-packages)
+install(PROGRAMS df DESTINATION "./")
 
 set(CPACK_GENERATOR TBZ2)
 set(CPACK_PACKAGE_NAME "rendumper")

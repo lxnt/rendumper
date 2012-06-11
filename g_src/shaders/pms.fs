@@ -4,18 +4,17 @@ uniform usampler2D      findex; // RGBA16UI: cs, cy, cw, ch
 uniform sampler2D       font;
 
 uniform vec3 pszar;
-uniform vec4 mouse_color;
 uniform float final_alpha;
 
-flat in ivec4 tx;
-flat in  vec4 fg;
-flat in  vec4 bg;
+flat in  int  ch;
+flat in  vec3 fg;
+flat in  vec3 bg;
 
 out vec4 frag;
 
-vec4 blit_execute(in vec2 pc, in uint cindex, in vec4 fg, in vec4 bg) {
+vec4 blit_execute(in vec2 pc, in int cindex, in vec4 fg, in vec4 bg) {
     ivec2 finsz = textureSize(findex,0);
-    ivec2 fintc = ivec2(int(cindex) % finsz.x, int(cindex) / finsz.x);
+    ivec2 fintc = ivec2(cindex % finsz.x, cindex / finsz.x);
     uvec4 cinfo = texelFetch(findex, fintc, 0);
     ivec2 fonsz = textureSize(font,0);
     
@@ -37,6 +36,6 @@ void main() {
     if ((pc.x > 1.0) || (pc.y > 1.0))
         discard;
     
-    frag = blit_execute(pc, tx.x, fg, bg);
+    frag = blit_execute(pc, ch, vec4(fg,1), vec4(bg,1));
     frag.a = final_alpha;
 }

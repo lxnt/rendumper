@@ -1,11 +1,10 @@
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
-#if defined(DFAPI_EXPORT) // building the dlls
+#if defined(DFMODULE_BUILD) // building the dlls
 # define BUILD_SDL
 #endif
 #include "begin_code.h"
 #include "end_code.h" // struct pack forcing is of no use.
-#define DFAPI DECLSPEC
 #define APIENTRY __stdcall
 
 /* the texture loader interface. 
@@ -25,4 +24,4 @@ struct itextures {
     virtual void delete_texture(long pos) = 0;
     virtual void reset(void) = 0;
 };
-extern "C" DFAPI itextures * APIENTRY gettextures(void);
+extern "C" DECLSPEC itextures * APIENTRY gettextures(void);

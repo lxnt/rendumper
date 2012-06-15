@@ -4,12 +4,11 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
-#if defined(DFAPI_EXPORT) // building the dlls
+#if defined(DFMODULE_BUILD) // building the dlls
 # define BUILD_SDL
 #endif
-#include "begin_code.h"
-#include "end_code.h" // struct pack forcing is of no use.
-#define DFAPI DECLSPEC
+#include "begin_code.h" // defines DECLSPEC
+#include "end_code.h" // struct packing is not used here.
 #define APIENTRY __stdcall
 
 /* Most of the graphicst functions are inlines, used, I guess, by the viewscreenst
@@ -177,7 +176,7 @@ struct irenderer {
     virtual void release_buffer(df_buffer_t *buf) = 0;
     
 };
-extern "C" DFAPI irenderer * APIENTRY getrenderer(void);
+extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void);
 
 typedef void (*vvfunc_t)(void);
 class graphicst;
@@ -211,6 +210,6 @@ struct isimuloop {
 
 }
 
-extern "C" DFAPI isimuloop * APIENTRY getsimuloop(void);
+extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void);
 
 

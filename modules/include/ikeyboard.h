@@ -1,11 +1,10 @@
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
-#if defined(DFRENDERER_BUILD) // building the dlls
+#if defined(DFMODULE_BUILD) // building the dlls
 # define BUILD_SDL
 #endif
 #include "begin_code.h"
 #include "end_code.h" // struct pack forcing is of no use.
-#define DFAPI DECLSPEC
 #define APIENTRY __stdcall
 
 /*
@@ -59,7 +58,7 @@
 
     
 */
-#if defined (DFRENDERER_BUILD)
+#if defined (DFMODULE_BUILD)
 # define DFMOD_SHIFT 1 // from enabler_input.h
 # define DFMOD_CTRL 2
 # define DFMOD_ALT 4
@@ -88,4 +87,6 @@ struct ikeyboard {
     virtual const char *key_name(const event_t e) = 0;
     virtual unsigned short key_name(const char *name) = 0;
 };
+
+extern "C" DECLSPEC iplatform * APIENTRY getplatform(void);
 

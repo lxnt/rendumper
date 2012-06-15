@@ -1,6 +1,6 @@
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
-#if defined(DFAPI_EXPORT) // building the dlls
+#if defined(DFMODULE_BUILD) // building the dlls
 # define BUILD_SDL
 #endif
 #include "begin_code.h"

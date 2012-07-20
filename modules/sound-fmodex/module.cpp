@@ -1,6 +1,7 @@
-#ifndef NO_FMOD
+#define DFMODULE_BUILD
+#include "imusicsound.h"
 
-#include "platform.h"
+/*
 #include <string.h>
 #include <math.h>
 #include <iosfwd>
@@ -17,70 +18,97 @@
 
 #include "svector.h"
 
-#ifdef WIN32
-
-#ifndef INTEGER_TYPES
-	#define INTEGER_TYPES
-	typedef short int16_t;
-	typedef int int32_t;
-	typedef long long int64_t;
-	typedef unsigned short uint16_t;
-	typedef unsigned int uint32_t;
-	typedef unsigned long long uint64_t;
-#endif
-
-typedef int32_t VIndex;
-typedef int32_t Ordinal;
-
-#endif
 
 #include "random.h"
 
 using std::string;
 using std::map;
 using std::pair;
+*/
 
-#include "basics.h"
-#include "endian.h"
-#include "files.h"
-#include "enabler.h"
-#include "init.h"
+#include <fmod.hpp>
+#include <fmod_errors.h>
 
-#include "music_and_sound_fmodex.h"
-#include "music_and_sound_v.h"
+struct fmodSound {
+	FMOD::Sound *sound;
+	FMOD::Channel *channel;
+};
 
-void musicsoundst::startbackgroundmusic(int new_song)
+class implementation : public imusicsound {
+  private:
+    enum linux_sound_system {
+        ALSA,
+        OSS,
+        ESD,
+    } sound_system;
+    int SoftChannelNumber;
+
+    int song;
+    char musicactive;
+    char soundpriority;
+    int soundplaying;
+
+    bool on;
+
+    FMOD::System *system;
+    FMOD::ChannelGroup *masterchannelgroup;
+    fmodSound      mod[MAXSONGNUM];
+    fmodSound      samp[MAXSOUNDNUM];
+
+    musicsoundst::linux_sound_system sound_system;
+
+  public:
+    implementation() : song(-1), system(NULL), masterchannelgroup(NULL), sound_system(ALSA) {
+        memset(mod, 0, sizeof(mod));
+        memset(samp, 0, sizeof(mod));
+    }
+  
+    /* interface part below */
+    void release();
+    
+    void update();
+    void set_master_volume(long newvol);
+    void load_sound(const char *filename, int islot, bool is_song);
+    void play_sound(int islot, bool is_song);
+    void start_background(int islot, bool is_song);
+    void stop_background(void);
+    void stop_all(void);
+    void stop_sound(int islot, bool is_song);
+};
+
+
+void implementation::start_background(int new_song)
 {	
-	if (!on || new_song < 0 || new_song > MAXSONGNUM || mod[new_song].sound == NULL) {
-		return;
-	}
+    if (!on || new_song < 0 || new_song > MAXSONGNUM || mod[new_song].sound == NULL) {
+        return;
+    }
 
-	if (song != new_song) {
+    if (song != new_song) {
 
-		stopbackgroundmusic(); /* This is safe to call, even if song isn't valid. */
+    stopbackgroundmusic(); /* This is safe to call, even if song isn't valid. */
 
-		song = new_song;
-		FMOD_CHANNELINDEX cid = static_cast<FMOD_CHANNELINDEX>(0);
-		system->playSound(cid, mod[song].sound, false, &mod[song].channel);
-	}
+    song = new_song;
+    FMOD_CHANNELINDEX cid = static_cast<FMOD_CHANNELINDEX>(0);
+    system->playSound(cid, mod[song].sound, false, &mod[song].channel);
+    }
 }
 
-void musicsoundst::stopbackgroundmusic()
+void implementation::stop_background()
 {
-	if (!on || song == -1) {
-		return;
-	}
+    if (!on || song == -1) {
+        return;
+    }
 
-	if (mod[song].channel != NULL) { 
-		mod[song].channel->stop();
-		mod[song].channel = NULL;
-	}
+    if (mod[song].channel != NULL) { 
+        mod[song].channel->stop();
+        mod[song].channel = NULL;
+    }
 
-	song = -1;
+    song = -1;
 }
 
 /* Set channel to less than 0 to have FMOD decide the channel for you. */
-void musicsoundst::playsound(int s,int channel)
+void implementation::playsound(int s,int channel)
 {
 	if (!on || s < 0 || s > MAXSOUNDNUM || samp[s].sound == NULL) {
 		return;
@@ -98,8 +126,7 @@ void musicsoundst::playsound(int s,int channel)
 /* Yeah, I started porting all that other crap, but it wasn't all applicable to ex
  * and besides which, you never call it anyway.
  */
-void musicsoundst::playsound(int s, int min_channel, int max_channel, int force_channel)
-{
+void implementation::playsound(int s, int min_channel, int max_channel, int force_channel) {
 	if (!on || s < 0 || s > MAXSOUNDNUM || samp[s].sound == NULL) {
 		return;
 	}
@@ -108,8 +135,7 @@ void musicsoundst::playsound(int s, int min_channel, int max_channel, int force_
 }
 
 // Prints a relevent error message to stderr.
-inline void err(FMOD_RESULT r)
-{
+inline void err(FMOD_RESULT r) {
 	std::cerr << "sound: failure: " << FMOD_ErrorString(r) << std::endl;
 }
 
@@ -163,58 +189,53 @@ void musicsoundst::initsound()
 	on = 1;
 }
 
-void musicsoundst::deinitsound()
+void implementation::release()
 {
-	if (!on) {
-		return;
-	}
+    if (!on)
+        return;
+    int s;
+    for (s = 0; s < MAXSONGNUM; s++) {
+        if (mod[s].sound != NULL) {
+            mod[s].sound->release();
+            mod[s].sound = NULL;
+            mod[s].channel = NULL;
+        }
+    }
 
-	int s;
-	for (s = 0; s < MAXSONGNUM; s++) {
-		if (mod[s].sound != NULL) {
-			mod[s].sound->release();
-			mod[s].sound = NULL;
-			mod[s].channel = NULL;
-		}
-	}
+    for (s = 0; s < MAXSOUNDNUM; s++) {
+        if (samp[s].sound != NULL) {
+            samp[s].sound->release();
+            samp[s].sound = NULL;
+            samp[s].channel = NULL;
+        }
+    }
 
-	for (s = 0; s < MAXSOUNDNUM; s++) {
-		if (samp[s].sound != NULL) {
-			samp[s].sound->release();
-			samp[s].sound = NULL;
-			samp[s].channel = NULL;
-		}
-	}
-
-	system->release();
-	on = 0;
+    system->release();
+    on = false;
 }
 
+void implementation::set_song(string &filename, int slot) {
+    if (!on || slot < 0 || slot > MAXSONGNUM) {
+        return;
+    }
 
+    if (mod[slot].sound != NULL) {
+        mod[slot].sound->release();
+        mod[slot].sound = NULL;
+        mod[slot].channel = NULL; 
+    }
 
-void musicsoundst::set_song(string &filename, int slot)
-{
-	if (!on || slot < 0 || slot > MAXSONGNUM) {
-		return;
-	}
+    FMOD_RESULT result = system->createSound(filename.c_str(), FMOD_DEFAULT, 0, &mod[slot].sound);
+    if (result != FMOD_OK) {
+        mod[slot].sound = NULL;
+        mod[slot].channel = NULL;
+        return;
+    }
 
-	if (mod[slot].sound != NULL) {
-		mod[slot].sound->release();
-		mod[slot].sound = NULL;
-		mod[slot].channel = NULL; 
-	}
-
-	FMOD_RESULT result = system->createSound(filename.c_str(), FMOD_DEFAULT, 0, &mod[slot].sound);
-	if (result != FMOD_OK) {
-		mod[slot].sound = NULL;
-		mod[slot].channel = NULL;
-		return;
-	}
-	
-	mod[slot].sound->setMode(FMOD_LOOP_NORMAL);
+    mod[slot].sound->setMode(FMOD_LOOP_NORMAL);
 }
 
-void musicsoundst::set_sound(string &filename, int slot, int pan, int priority)
+void implementation::set_sound(string &filename, int slot, int pan, int priority)
 {
 	if (!on || slot < 0 || slot > MAXSOUNDNUM) {
 		return;
@@ -234,7 +255,7 @@ void musicsoundst::set_sound(string &filename, int slot, int pan, int priority)
 	}
 }
 
-void musicsoundst::set_sound_params(int slot, int p1, int vol, int pan, int priority)
+void implementation::set_sound_params(int slot, int p1, int vol, int pan, int priority)
 {
 	if (slot < 0 || slot > MAXSOUNDNUM) {
 		return;
@@ -248,7 +269,7 @@ void musicsoundst::set_sound_params(int slot, int p1, int vol, int pan, int prio
 	samp[slot].channel->setFrequency(static_cast<float>(p1));
 }
 
-void musicsoundst::stop_sound(int channel)
+void implementation::stop_sound(int channel)
 {
 	FMOD::Channel* c;
 
@@ -260,49 +281,43 @@ void musicsoundst::stop_sound(int channel)
 	c->stop();
 }
 
-
-void musicsoundst::set_master_volume(long newvol)
-{
-	masterchannelgroup->setVolume(oldval_to_volumefloat(newvol));
+void implementation::set_master_volume(long newvol) {
+    masterchannelgroup->setVolume(oldval_to_volumefloat(newvol));
 }
 
 // Converts old FMOD 3 0 - 255 volume values to FMOD Ex 0.0 <-> 1.0 float values.
-float musicsoundst::oldval_to_volumefloat(int val) 
-{
-	if (val < 0) {
-		return 0.0;
-	} else if (val > 255) {
-		return 1.0;
-	}
+float musicsoundst::oldval_to_volumefloat(int val)  {
+    if (val < 0) {
+        return 0.0;
+    } else if (val > 255) {
+        return 1.0;
+    }
 
-	return static_cast<float>(val) / 255;
+    return static_cast<float>(val) / 255;
 }
 
 // Converts old FMOD 3 0 - 255 pan values to FMOD Ex -1.0 <-> 1.0 float values.
-float musicsoundst::oldval_to_panfloat(int val)
-{
-	if (val < 0) { 
-		return -1.0;
-	} else if (val > 255) {
-		return 1.0;
-	}
-	
-	float n = static_cast<float>(val) / 255;
-	return (n * 2) - 1.0;
+float musicsoundst::oldval_to_panfloat(int val) {
+    if (val < 0) { 
+        return -1.0;
+    } else if (val > 255) {
+        return 1.0;
+    }
+
+    float n = static_cast<float>(val) / 255;
+    return (n * 2) - 1.0;
 }
 
 // Converts old FMOD 3 0(lowest) - 255(highest) priority values to
 // FmodEx 0(highest) - 256(lowest) priority values.
-int musicsoundst::oldval_to_priority(int val)
-{
-	if (val < 0) {
-		return 256;
-	} else if (val > 255) {
-		return 0;
-	}
+int musicsoundst::oldval_to_priority(int val) {
+    if (val < 0) {
+        return 256;
+    } else if (val > 255) {
+        return 0;
+    }
 
-	return 255 - val;
+    return 255 - val;
 }
 
-#endif // NO_FMOD
 

@@ -1,17 +1,8 @@
 /* DF renderer modularization. Based on 
 http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#CppMatureApproach
-*/
+ 
 
-/* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
-   which defines necessary dllimport/export stuff */
-#if defined(DFMODULE_BUILD) // building the dlls
-# define BUILD_SDL
-#endif
-#include "begin_code.h" // defines DECLSPEC
-#include "end_code.h" // struct packing is not used here.
-#define APIENTRY __stdcall
-
-/* Most of the graphicst functions are inlines, used, I guess, by the viewscreenst
+  Most of the graphicst functions are inlines, used, I guess, by the viewscreenst
    family. making them virtual instead obviously imposes a performance penalty. 
 
     A solution might be conversion of the viewscreenst family to the interfaces instead,
@@ -96,6 +87,10 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
         The dfhack, the fugr_dump and other such stuff runs in separate threads, 
         and uses isimuloop::pause()/isimuloop::unpause() calls to control simulation.
         
+    Thread borders:
+        irenderer methods are supposed to be called from simulation thread only.
+        
+    
     Simulation thread pseudocode:
         # now() - floating point seconds here, resolution should be 
         # bettern that a microsecond.
@@ -148,6 +143,8 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 */
 
+#include "ideclspec.h"
+
 struct df_buffer_t {
     int dimx, dimy;
 
@@ -176,10 +173,15 @@ struct irenderer {
     virtual void release_buffer(df_buffer_t *buf) = 0;
     
 };
+
+#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
 extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void);
+#else // using glue and runtime loading.
+extern "C" DECLSPEC irenderer * APIENTRY (*getrenderer)(void);
+#endif
 
 typedef void (*vvfunc_t)(void);
-class graphicst;
+typedef void (*viifunc_t)(int, int);
 
 /* interface used to control the simulation loop */
 struct isimuloop {
@@ -187,7 +189,7 @@ struct isimuloop {
     
     /* supplies the gps, render_things() and mainloop() 
        to the simulation loop object/thread implementation. */
-    virtual void set_callbacks(vvfunc_t render_things, vvfunc_t mainloop, graphicst *gps);
+    virtual void set_callbacks(vvfunc_t render_things, vvfunc_t mainloop, viifunc_t gps_resize);
     
     /* fps control used for movies */
     virtual int  get_fps(void) = 0; // returns actual calculated value (ema).
@@ -208,8 +210,12 @@ struct isimuloop {
     virtual int render_time(void) = 0;
     virtual int simulate_time(void) = 0; 
 
-}
+};
 
+#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
 extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void);
+#else // using glue and runtime loading.
+extern "C" DECLSPEC isimuloop * APIENTRY (*getsimuloop)(void);
+#endif
 
 

@@ -1,17 +1,10 @@
-/* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
-   which defines necessary dllimport/export stuff */
-#if defined(DFMODULE_BUILD) // building the dlls
-# define BUILD_SDL
-#endif
-#include "begin_code.h"
-#include "end_code.h" // struct pack forcing is of no use.
-#define APIENTRY __stdcall
-
 /* the texture loader interface. 
     It provides a facility for loading graphics and mapping individual tiles (cels)
     to indices that are subsequently used in the gps.screen and gps.texpos arrays 
     
 */
+
+#include "ideclspec.h"
 
 struct itextures {
     virtual void release() = 0;
@@ -24,4 +17,9 @@ struct itextures {
     virtual void delete_texture(long pos) = 0;
     virtual void reset(void) = 0;
 };
+
+#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
 extern "C" DECLSPEC itextures * APIENTRY gettextures(void);
+#else // using glue and runtime loading.
+extern "C" DECLSPEC itextures * APIENTRY (*gettextures)(void);
+#endif

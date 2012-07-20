@@ -4,9 +4,72 @@
 #include <dlfcn.h>
 #include <string.h>
 
-#include "platform.h"
-#include "music_and_sound_openal.h"
-#include "music_and_sound_v.h"
+#include <AL/al.h>
+#include <AL/alc.h>
+
+// HACKY HACKY HACK
+// Fixes sndfile.h, until the bug is properly fixed
+#include <stdio.h>
+#include <sys/types.h>
+#define _MSCVER
+typedef int64_t __int64;
+#include <sndfile.h>
+#undef _MSCVER
+// END HACKY HACKY HACK
+
+#include <string>
+#include <vector>
+#include <list>
+#include <map>
+#include <algorithm>
+#include <utility>
+
+#define SOUND_CHANNELNUM 16
+
+// Preferred mixer frequency. Should be the same as what the ogg files
+// use, to avoid resampling.
+#define SOUND_FREQUENCY 44100
+
+// If the bool is false, a sound; otherwise a song
+typedef std::pair<bool,int> slot;
+
+#define DFMODULE_BUILD
+#include "imusicsound.h"
+
+#include "iplatform.h"
+static iplatform *platform = NULL;
+
+class implementation : public imusicsound {
+  private:
+    ALCdevice *device;
+    ALCcontext *context;
+
+    std::map<std::string,ALuint> buffers; // OpenAL buffers
+    std::map<std::string,ALuint> sources; // And sources
+    std::map<slot, ALuint> slot_buffer; // Mappings from DF slots to openal
+    std::map<slot, ALuint> slot_source;
+
+    slot background_slot; // Currently playing background music, or -1    
+  public:
+    implementation(ALCdevice *d, ALCcontext *c) {
+        device = d;
+        context = c;
+    }
+  
+    /* interface part below */
+    void release();
+    
+    void update();
+    void set_master_volume(long newvol);
+    void load_sound(const char *filename, int islot, bool is_song);
+    void play_sound(int islot, bool is_song);
+    void start_background(int islot, bool is_song);
+    void stop_background(void);
+    void stop_all(void);
+    void stop_sound(int islot, bool is_song);
+};
+
+static implementation *impl = NULL;
 
 #define ABORT(str) do { printf("%s: line %d: %s\n", __FILE__, __LINE__, str); abort(); } while(0);
 static bool init_openal();
@@ -21,88 +84,88 @@ static void alPrintErrors_(const char* file, int line) {
   while ((err = alGetError()) != AL_NO_ERROR) {
     printf("At %s: %d: ", file, line);
     switch (err) {
-    case AL_INVALID_NAME: puts("AL_INVALID_NAME detected"); break;
-    case AL_INVALID_ENUM: puts("AL_INVALID_ENUM detected"); break;
-    case AL_INVALID_VALUE: puts("AL_INVALID_VALUE detected"); break;
-    case AL_INVALID_OPERATION: puts("AL_INVALID_OPERATION detected"); break;
-    case AL_OUT_OF_MEMORY: puts("AL_OUT_OF_MEMORY detected"); break;
+    case AL_INVALID_NAME: platform->log_error("AL_INVALID_NAME detected"); break;
+    case AL_INVALID_ENUM: platform->log_error("AL_INVALID_ENUM detected"); break;
+    case AL_INVALID_VALUE: platform->log_error("AL_INVALID_VALUE detected"); break;
+    case AL_INVALID_OPERATION: platform->log_error("AL_INVALID_OPERATION detected"); break;
+    case AL_OUT_OF_MEMORY: platform->log_error("AL_OUT_OF_MEMORY detected"); break;
     }
   }
 }
 
-bool musicsoundst::initsound() {
-  if (functional) return true;
 
+/* former initsound() */
+DECLSPEC imusicsound * APIENTRY getmusicsound(void) {
+  if (impl)
+    return impl;
+  
+  if (!platform)
+    platform = getplatform();
+    
   // Load the libraries
   if (!init_openal()) {
-    puts("Dynamically loading the OpenAL library failed, disabling sound");
-    MessageBox(NULL, "Dynamically loading the OpenAL library failed, disabling sound", 0, 0);
-    return false;
+    platform->log_error("Dynamically loading the OpenAL library failed, disabling sound");
+    platform->MessageBox(NULL, "Dynamically loading the OpenAL library failed, disabling sound", 0, 0);
+    return NULL;
   }
   if (!init_sndfile()) {
-    puts("Dynamically loading the sndfile library failed, disabling sound");
-    MessageBox(NULL, "Dynamically loading the sndfile library failed, disabling sound", 0, 0);
-    return false;
+    platform->log_error("Dynamically loading the sndfile library failed, disabling sound");
+    platform->MessageBox(NULL, "Dynamically loading the sndfile library failed, disabling sound", 0, 0);
+    return NULL;
   }
   
   // Find out what devices we have available
   const char *devices = alcGetString(NULL, ALC_DEVICE_SPECIFIER);
   if (!devices) {
-    puts("No sound devices available. Sound disabled. OpenAL broken?");
-    return false;
+    platform->log_error("No sound devices available. Sound disabled. OpenAL broken?");
+    return NULL;
   }
 
   const char *firstdevice = devices;
-  puts("Sound devices available:");
+  platform->log_info("Sound devices available:");
   while (*devices) {
-    puts(devices);
+    platform->log_error(devices);
     devices += strlen(devices) + 1;
   }
-  printf("Picking %s. If your desired device was missing, make sure you have the appropriate 32-bit libraries installed. If you wanted a different device, configure ~/.openalrc appropriately.\n",
-         firstdevice);
+  platform->log_info("Picking %s. If your desired device was missing, make "
+    "sure you have the appropriate 32-bit libraries installed. "
+    "If you wanted a different device, configure ~/.openalrc appropriately.\n",
+     firstdevice);
 
   // Create the context
-  device = alcOpenDevice(firstdevice);
+  ALCdevice *device = alcOpenDevice(firstdevice);
   if (!device)
-    return false;
+    return NULL;
 
   const ALCint attrlist[] = { ALC_FREQUENCY, SOUND_FREQUENCY,
                               ALC_MONO_SOURCES, 0,
                               ALC_STEREO_SOURCES, SOUND_CHANNELNUM };
-  context = alcCreateContext(device, attrlist);
+  ALCcontext *context = alcCreateContext(device, attrlist);
   if (context) {
-    puts("Perfect OpenAL context attributes GET");
+    platform->log_error("Perfect OpenAL context attributes GET");
     goto done;
   }
   context = alcCreateContext(device, NULL);
   if (context) {
-    puts("Using OpenAL in compatibility mode");
+    platform->log_error("Using OpenAL in compatibility mode");
     goto done;
   }
   alcCloseDevice(device);
-  return false;
+  return NULL;
 
  done:
   if (ALC_FALSE == alcMakeContextCurrent(context)) {
-    puts("alcMakeContextCurrent failed");
-    return false;
+    platform->log_error("alcMakeContextCurrent failed");
+    return NULL;
   }
-  functional = true;
-  return true;
+  
+  impl =  new implementation(device, context);
+  return impl;
 }
 
-// int main() {
-//   musicsound.initsound();
-//   string str = "data/sound/song_title.ogg";
-//   musicsound.set_song(str, 14);
-//   musicsound.startbackgroundmusic(14);
-//   sleep(9999);
-//   exit(1);
-// }
-
-void musicsoundst::set_song(string &filename, slot slot) {
-  if (!functional) return;
-
+void implementation::load_sound(const char *filename_cc, int islot, bool is_song) {
+  std::string filename(filename_cc);
+  slot slot(is_song, islot);
   // printf("%s requested in %d-%d\n", filename.c_str(), (int)slot.first, slot.second);
   if (!buffers.count(filename)) {
     // Song not already loaded. Load it.
@@ -123,7 +186,7 @@ void musicsoundst::set_song(string &filename, slot slot) {
     ALuint albuf;
     alGenBuffers(1, &albuf);
     if (!alIsBuffer(albuf)) {
-      puts("Constructing OpenAL buffer mysteriously failed!");
+      platform->log_error("Constructing OpenAL buffer mysteriously failed!");
       goto end;
     }
     ALenum format;
@@ -146,7 +209,7 @@ void musicsoundst::set_song(string &filename, slot slot) {
     ALuint source;
     alGenSources(1, &source);
     if (!alIsSource(source)) {
-      puts("Constructing OpenAL source mysteriously failed!");
+      platform->log_error("Constructing OpenAL source mysteriously failed!");
       goto end;
     }
     alSourceQueueBuffers(source, 1, &albuf);
@@ -164,24 +227,20 @@ void musicsoundst::set_song(string &filename, slot slot) {
     alPrintErrors();
 }
 
-void musicsoundst::set_song(string &filename, int slot) {
-  set_song(filename, make_pair(true, slot));
-}
-
-void musicsoundst::set_master_volume(long newvol) {
-  if (!functional) return;
+void implementation::set_master_volume(long newvol) {
   alListenerf(AL_GAIN, newvol / 255.0f);
 }
 
-void musicsoundst::playsound(slot slot) {
-  if (!functional) return;
+void implementation::play_sound(int islot, bool is_song) {
+  slot slot(is_song, islot); 
+
   // printf("%d requested\n", slot);
   if (!slot_source.count(slot)) {
     // printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
   if (background_slot == slot) {
-    puts("playsound called on background song, background song cancelled!?");
+    platform->log_error("playsound called on background song, background song cancelled!?");
     background_slot = make_pair(false,-1);
   }
   alSourcei(slot_source[slot], AL_LOOPING, AL_FALSE);
@@ -189,21 +248,17 @@ void musicsoundst::playsound(slot slot) {
   alPrintErrors();
 }
 
-void musicsoundst::playsound(int slot) {
-  playsound(make_pair(false,slot));
-}
-
-void musicsoundst::startbackgroundmusic(slot slot) {
-  if (!functional) return;
-
+void implementation::start_background(int islot, bool is_song) {
+  slot slot(is_song, islot); 
+    
   if (!slot_source.count(slot)) {
-    // printf("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
+    platform->log_error("Slot %d-%d requested, but no song loaded\n", (int)slot.first, slot.second);
     return;
   }
 
   if (background_slot == slot)
     return; // Verily, it is already playing
-  stop_sound(background_slot);
+  stop_sound(background_slot.second, background_slot.first);
   background_slot = slot;
   // printf("%d backgrounded\n", slot);
 
@@ -212,35 +267,28 @@ void musicsoundst::startbackgroundmusic(slot slot) {
   alPrintErrors();
 }
 
-void musicsoundst::startbackgroundmusic(int slot) {
-  startbackgroundmusic(make_pair(true,slot));
-}
-
-void musicsoundst::stopbackgroundmusic() {
-  if (!functional) return;
+void implementation::stop_background() {
   if (background_slot == make_pair(false,-1)) return;
 
   alSourceStop(slot_source[background_slot]);
 }
 
-void musicsoundst::stop_sound() {
-  if (!functional) return;
+void implementation::stop_all() {
   // Stop all playing sounds. Does this include background music?
   std::map<std::string,ALuint>::iterator it;
   for (it = sources.begin(); it != sources.end(); ++it)
     alSourceStop(it->second);
 }
 
-void musicsoundst::stop_sound(slot slot) {
-  if (!functional) return;
+void implementation::stop_sound(int islot, bool is_song) {
+  slot slot(is_song, islot); 
+
   if (slot_source.count(slot) == 0) return;
   ALuint source = slot_source[slot];
   alSourceStop(source);
 }
 
-void musicsoundst::deinitsound() {
-  if (!functional) return;
-
+void implementation::release() {
   std::map<std::string,ALuint>::iterator it;
   // Free all sources
   for (it = sources.begin(); it != sources.end(); ++it) {
@@ -256,21 +304,10 @@ void musicsoundst::deinitsound() {
   alcMakeContextCurrent(NULL);
   alcDestroyContext(context);
   alcCloseDevice(device);
-
-  functional=false;
+  context = NULL;
+  device = NULL;
 }
 
-void musicsoundst::set_sound(string &filename, int slot, int pan, int priority) {
-  if (!functional) return;
-  set_song(filename, make_pair(false,slot));
-}
-
-// Deprecated stuff below
-
-void musicsoundst::playsound(int s, int channel) {
-  if (!functional) return;
-  playsound(s);
-}
 
 
 //// OpenAL, ALC and sndfile stub ////

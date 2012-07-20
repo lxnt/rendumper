@@ -3,19 +3,17 @@ add_definitions(-Dlinux) # music_and_sound_fmodex.cpp music_and_sound_g.h
 add_definitions(-Dunix)  # curses.h enabler.cpp KeybindingScreen.cpp win32_compat.cpp
 add_definitions(-DCURSES) # enabler.cpp
  
-option(WITH_FMOD "include fmod" OFF)
-if (WITH_FMOD)
-else()
-    add_definitions(-DNO_FMOD=1)
-endif()
+include_directories(${rendumper_SOURCE_DIR}/modules/include)
+include_directories(/usr/include/SDL)
+
 
 set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
 
 set ( LIBS 
-    SDL-1.2
+    SDL
     sndfile
-    SDL_image-1.2
-    SDL_ttf-2.0
+    SDL_image
+    SDL_ttf
     GLU
     GLEW
     m
@@ -39,8 +37,6 @@ set( SOURCE
     interface.cpp
     keybindings.cpp
     KeybindingScreen.cpp
-    music_and_sound_fmodex.cpp
-    music_and_sound_openal.cpp
     random.cpp
     renderer_offscreen.cpp
     resize++.cpp
@@ -48,7 +44,9 @@ set( SOURCE
     textures.cpp
     ttf_manager.cpp
     ViewBase.cpp
-    win32_compat.cpp
+    
+    platform.cpp
+    music_and_sound.cpp
 )
 
 set( HEADERS
@@ -68,10 +66,7 @@ set( HEADERS
     KeybindingScreen.h
     keybindings.h
     mail.hpp
-    music_and_sound_fmodex.h
     music_and_sound_g.h
-    music_and_sound_openal.h
-    music_and_sound_v.h
     platform.h
     random.h
     renderer_2d.hpp
@@ -87,8 +82,6 @@ set( HEADERS
 )
 link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
-find_package(GTK2 2.10 REQUIRED gtk)
-include_directories(${GTK2_INCLUDE_DIRS})
-target_link_libraries(graphics ${GTK2_LIBRARIES} ${LIBS})
+target_link_libraries(graphics ${LIBS})
 install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
 

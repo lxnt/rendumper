@@ -1,9 +1,3 @@
-#ifdef __APPLE__
-# include "osx_messagebox.h"
-#elif defined(unix)
-# include <gtk/gtk.h>
-#endif
-
 #include <cassert>
 
 #include "platform.h"
@@ -539,10 +533,7 @@ void enablerst::eventLoop_SDL()
       unpause_async_loop();
 
     do_frame();
-#if !defined(NO_FMOD)
-    // Call FMOD::System.update(). Manages a bunch of sound stuff.
     musicsound.update();
-#endif
   }
 }
 
@@ -716,15 +707,6 @@ int call_loop(void *dummy) {
 }
 
 int main (int argc, char* argv[]) {
-#ifdef unix
-  setlocale(LC_ALL, "");
-#endif
-#if !defined(__APPLE__) && defined(unix)
-  bool gtk_ok = false;
-  if (getenv("DISPLAY"))
-    gtk_ok = gtk_init_check(&argc, &argv);
-#endif
-
   // Initialise minimal SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER);
   // Report failure?
@@ -738,18 +720,19 @@ int main (int argc, char* argv[]) {
   SDL_CreateThread(call_loop, NULL);
 
   init.begin(); // Load init.txt settings
-  
+#if 0 // rework this to use renderer init failure instead.
 #if !defined(__APPLE__) && defined(unix)
   if (!gtk_ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
     puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
     exit(EXIT_FAILURE);
   }
+#endif
+#endif
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) &&
       init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
     puts("Graphical tiles are not compatible with text output, sorry");
     exit(EXIT_FAILURE);
   }
-#endif
 
   // Initialize video, if we /use/ video
   retval = SDL_InitSubSystem(init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO);
@@ -758,21 +741,13 @@ int main (int argc, char* argv[]) {
     return false;
   }
   
-#ifdef linux
   if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
     // Initialize OpenAL
     if (!musicsound.initsound()) {
-      puts("Initializing OpenAL failed, no sound will be played");
+      puts("Initializing sound failed, no sound will be played");
       init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
     }
   }
-#endif
-
-#ifdef WIN32
-  // Attempt to get as good a timer as possible
-  int ms = 1;
-  while (timeBeginPeriod(ms) != TIMERR_NOERROR) ms++;
-#endif
 
   // Load keyboard map
   keybinding_init();
@@ -787,11 +762,7 @@ int main (int argc, char* argv[]) {
   int result = enabler.loop(cmdLine);
 
   SDL_Quit();
-
-#ifdef WIN32
-  timeEndPeriod(ms);
-#endif
-  
+ 
   return result;
 }
 

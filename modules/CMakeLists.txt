@@ -142,9 +142,9 @@ endif()
 add_library(glue glue.cpp)
 install(TARGETS glue ARCHIVE DESTINATION lib)
 
-add_executable(test test.cpp)
-target_link_libraries(test glue dl)
-install(TARGETS test RUNTIME DESTINATION bin)
+add_executable(test-alert tests/alert.cpp)
+target_link_libraries(test-alert glue dl pthread)
+install(TARGETS test-alert RUNTIME DESTINATION bin)
 
 
 

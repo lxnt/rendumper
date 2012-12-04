@@ -1,9 +1,9 @@
-/* DF renderer modularization. Based on 
+/* DF renderer modularization. Based on
 http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#CppMatureApproach
- 
+
 
   Most of the graphicst functions are inlines, used, I guess, by the viewscreenst
-   family. making them virtual instead obviously imposes a performance penalty. 
+   family. making them virtual instead obviously imposes a performance penalty.
 
     A solution might be conversion of the viewscreenst family to the interfaces instead,
     which will allow to hide (and optimize) their implementation completely.
@@ -14,9 +14,9 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
     it inside the blob, and define a screen submission interface instead. However, this
     has its own problem, that is, the TTF support, which can't really work with just the
     screen/texpos arrays.
-    
-    This is, in fact, workable. This way libgraphics.so gets split into the renderer and 
-    the 'rest of it' parts, the renderer being a DLL on windows. Changes to the source code 
+
+    This is, in fact, workable. This way libgraphics.so gets split into the renderer and
+    the 'rest of it' parts, the renderer being a DLL on windows. Changes to the source code
     are also minimized, and, importantly, this allows development to proceed without
     frequent recompiles of the entire game.
 
@@ -26,16 +26,16 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
      - initst?
      - renderer, obviously
      - the offscreen renderer : ioffscreen TODO.
-     - textures. They are in fact married to the renderer, so it's not the textures struct 
-        as it exists today, but an interface for the game engine to map portions of the 
+     - textures. They are in fact married to the renderer, so it's not the textures struct
+        as it exists today, but an interface for the game engine to map portions of the
         png files to screen/texpos values and have them loaded at the same time.
-     - something for enabler_inputst and keybinding_init to be divorced from SDL constants 
+     - something for enabler_inputst and keybinding_init to be divorced from SDL constants
         and data types
-     - enabler, turned inside out. should accept function pointers to render_things, mainloop, 
+     - enabler, turned inside out. should accept function pointers to render_things, mainloop,
         etc, so that it can run the main loop.
-    
-    
-    offscreen renderer does: 
+
+
+    offscreen renderer does:
         - create it
         - stuff gps with the map
         - update_all() on the renderer
@@ -47,7 +47,7 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
     Main threads:
 
-     1. render thread: processes raw input events, control events from 
+     1. render thread: processes raw input events, control events from
         the simulation thread, renders stuff from the gps object.
      2. simulation thread: calls the mainloop() and the render_things()
         functions. They, in turn, update the gps object, and use the
@@ -55,44 +55,44 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
         and ikeyboard interfaces.
 
     The data flow:
-    
-     1. Control events: 
+
+     1. Control events:
       {S: interfacest::loop, etc -> irenderer::zoom_in, etc } -> | -> {R: irenderer implementation }
       This is how zoom_*, etc methods are implemented.
-      
-     2. Input events: 
-        {R event loop -> ikeyboard mapper to DF 'syms'} -> | 
+
+     2. Input events:
+        {R event loop -> ikeyboard mapper to DF 'syms'} -> |
             -> { S: ikeyboard::get_input -> simulation (enabler_inputst::add_input, etc }
-            
+
      3. Data for the renderer - the arrays in the graphicst gps object.
-        The render_things() function is understood to fill out the arrays. 
+        The render_things() function is understood to fill out the arrays.
         It is the renderer's task to allocate and manage the arrays.
-        When the simulation thread needs a buffer to render_things() into, 
-        it calls irenderer::get_buffer() method. It is guaranteed to return 
+        When the simulation thread needs a buffer to render_things() into,
+        it calls irenderer::get_buffer() method. It is guaranteed to return
         an otherwise unused buffer. When it is done with it, and the buffer
         is ready to be displayed, it releases it by calling irenderer::release_buffer()
-        on it. 
-        
-        Who controls grid size? The renderer does. gps.resize() gets called after 
+        on it.
+
+        Who controls grid size? The renderer does. gps.resize() gets called after
         a buffer is acquired, in the simulation thread.
-        
+
         Who controls the fps and the decision to call the render_things()?
-        
-        This is controlled via the isimuloop interface. FPS setting is done by the 
+
+        This is controlled via the isimuloop interface. FPS setting is done by the
         interfacest object via enablerst methods, that is, from the simulation thread itself.
-        
+
         render_things() call is requested by the renderer when it's time to render
         something, with isimuloop::render() call.
-        
-        The dfhack, the fugr_dump and other such stuff runs in separate threads, 
+
+        The dfhack, the fugr_dump and other such stuff runs in separate threads,
         and uses isimuloop::pause()/isimuloop::unpause() calls to control simulation.
-        
+
     Thread borders:
         irenderer methods are supposed to be called from simulation thread only.
-        
-    
+
+
     Simulation thread pseudocode:
-        # now() - floating point seconds here, resolution should be 
+        # now() - floating point seconds here, resolution should be
         # bettern that a microsecond.
         ... set_callbacks() called
         done = False
@@ -105,11 +105,11 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
             g_fps.update( 1 / (now() - last_g_frame_at) )
             last_g_frame_at = now()
             next_g_frame_at = 1/g_fps_limit + last_g_frame_at
-            
+
             irenderer::get_buffer()
             gps.resize()
             render_things()
-            irenderer::release_buffer()            
+            irenderer::release_buffer()
 
             while True:
                 check_for_messages()
@@ -128,7 +128,7 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
                     if mainloop():
                         done = True
                         break
-                    simticks += 1 
+                    simticks += 1
                 if next_g_frame_at > now():
                     break
 
@@ -156,22 +156,28 @@ struct df_buffer_t {
     unsigned char *cbr;
 };
 
-/* this is the interface used from the simulation thread 
-    via enablerst/enabler_inputst methods. */
+
 struct irenderer {
     virtual void release(void) = 0;
+
+    /* this is the interface used from the simulation thread
+       via enablerst/enabler_inputst methods. */
 
     virtual void zoom_in(void) = 0;
     virtual void zoom_out(void) = 0;
     virtual void zoom_reset(void) = 0;
     virtual void toggle_fullscreen(void) = 0;
     virtual void override_grid_size(void) = 0;
-    virtual void release_grid_size(void) = 0; 
+    virtual void release_grid_size(void) = 0;
     virtual int mouse_state(int *mx, int *my) = 0; // ala sdl2's one.
-    
+
     virtual df_buffer_t *get_buffer(void) = 0;
     virtual void release_buffer(df_buffer_t *buf) = 0;
-    
+
+    /* this is what kicks off the loop (see pseudocode above)
+       must be called from other than the simulation thread. */
+    virtual void loop(void) = 0;
+
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
@@ -186,29 +192,29 @@ typedef void (*viifunc_t)(int, int);
 /* interface used to control the simulation loop */
 struct isimuloop {
     virtual void release(void) = 0;
-    
-    /* supplies the gps, render_things() and mainloop() 
+
+    /* supplies the gps, render_things() and mainloop()
        to the simulation loop object/thread implementation. */
-    virtual void set_callbacks(vvfunc_t render_things, vvfunc_t mainloop, viifunc_t gps_resize);
-    
+    virtual void set_callbacks(vvfunc_t render_things, vvfunc_t mainloop, viifunc_t gps_resize) = 0;
+
     /* fps control used for movies */
     virtual int  get_fps(void) = 0; // returns actual calculated value (ema).
-    virtual void set_fps(int fps) = 0; 
+    virtual void set_fps(int fps) = 0;
 
-    /* execution control for the direct access to the memory 
+    /* execution control for the direct access to the memory
        has non-recursive lock semantics */
     virtual void pause(void) = 0; // does not return until the loop is paused
     virtual void unpause(void) = 0;
-    
+
     /* simulation frame counter */
-    virtual int simticks(void);
-    
+    virtual int simticks(void) = 0;
+
     /* if the simulation quitted */
-    virtual bool quit(void);
-    
+    virtual bool quit(void) = 0;
+
     /* instrumentation */
     virtual int render_time(void) = 0;
-    virtual int simulate_time(void) = 0; 
+    virtual int simulate_time(void) = 0;
 
 };
 

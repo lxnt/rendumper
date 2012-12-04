@@ -46,17 +46,29 @@ typedef imusicsound * (*getmusicsound_t)(void);
 typedef iplatform * (*getplatform_t)(void);
 typedef imqueue * (*getmqueue_t)(void);
 
-gettextures_t gettextures;
-getsimuloop_t getsimuloop;
-getrenderer_t getrenderer;
-getkeyboard_t getkeyboard;
-getmusicsound_t getmusicsound;
 getplatform_t getplatform;
 getmqueue_t getmqueue;
 
-void load_modules(const char *platform, const char *sound, const char *renderer) {
-    std::string fname(_prefix);
-    fname += "platform_";
+gettextures_t gettextures = NULL;
+getsimuloop_t getsimuloop = NULL;
+getrenderer_t getrenderer = NULL;
+getkeyboard_t getkeyboard = NULL;
+getmusicsound_t getmusicsound = NULL;
+
+void load_modules(const char *modpath, const char *platform, const char *sound, const char *renderer) {
+    if (!modpath) {
+        fprintf(stderr, "Module path is required.\n");
+        exit(1);
+    }
+    if (!platform) {
+        fprintf(stderr, "Platform module is required.\n");
+        exit(1);
+    }
+    std::string prefix(modpath);
+    std::string fname;
+
+    fname = prefix;
+    fname += "/platform_";
     fname += platform;
     fname += _suffix;
 
@@ -70,56 +82,61 @@ void load_modules(const char *platform, const char *sound, const char *renderer)
         fprintf(stderr, "_get_sym(%s): %s\n", "getplatform", _error);
         exit(1);
     }
+    return;
     getmqueue = (getmqueue_t)_get_sym(plat_lib, "getmqueue");
     if (!getmqueue) {
         fprintf(stderr, "_get_sym(%s) %s\n", "getmqueue", _error);
         exit(1);
     }
 
-    fname = _prefix;
-    fname += "sound_";
-    fname += sound;
-    fname += _suffix;
+    if (sound) {
+        fname = modpath;
+        fname += "sound_";
+        fname += sound;
+        fname += _suffix;
 
-    sound_lib = _load_lib(fname.c_str());
-    if (!sound_lib) {
-        fprintf(stderr, "_load_lib(%s): %s\n", fname.c_str(), _error);
-        exit(1);
-    }
-    getmusicsound = (getmusicsound_t)_get_sym(sound_lib, "getmusicsound");
-    if (!getmusicsound) {
-        fprintf(stderr, "_get_sym(%s) %s\n", "getmusicsound", _error);
-        exit(1);
+        sound_lib = _load_lib(fname.c_str());
+        if (!sound_lib) {
+            fprintf(stderr, "_load_lib(%s): %s\n", fname.c_str(), _error);
+            exit(1);
+        }
+        getmusicsound = (getmusicsound_t)_get_sym(sound_lib, "getmusicsound");
+        if (!getmusicsound) {
+            fprintf(stderr, "_get_sym(%s) %s\n", "getmusicsound", _error);
+            exit(1);
+        }
     }
 
-    fname = _prefix;
-    fname += "render_";
-    fname += renderer;
-    fname += _suffix;
+    if (renderer) {
+        fname = _prefix;
+        fname += "render_";
+        fname += renderer;
+        fname += _suffix;
 
-    render_lib = _load_lib(fname.c_str());
-    if (!render_lib) {
-        fprintf(stderr, "_load_lib(%s): %s\n", fname.c_str(), _error);
-        exit(1);
-    }
-    gettextures = (gettextures_t)_get_sym(render_lib, "gettextures");
-    if (!gettextures) {
-        fprintf(stderr, "_get_sym(%s) %s\n", "gettextures", _error);
-        exit(1);
-    }
-    getsimuloop = (getsimuloop_t)_get_sym(render_lib, "getsimuloop");
-    if (!getsimuloop) {
-        fprintf(stderr, "_get_sym(%s) %s\n", "getsimuloop", _error);
-        exit(1);
-    }
-    getrenderer = (getrenderer_t)_get_sym(render_lib, "getrenderer");
-    if (!getrenderer) {
-        fprintf(stderr, "_get_sym(%s) %s\n", "getrenderer", _error);
-        exit(1);
-    }
-    getkeyboard = (getkeyboard_t)_get_sym(render_lib, "getkeyboard");
-    if (!getkeyboard) {
-        fprintf(stderr, "_get_sym(%s) %s\n", "getkeyboard", _error);
-        exit(1);
+        render_lib = _load_lib(fname.c_str());
+        if (!render_lib) {
+            fprintf(stderr, "_load_lib(%s): %s\n", fname.c_str(), _error);
+            exit(1);
+        }
+        gettextures = (gettextures_t)_get_sym(render_lib, "gettextures");
+        if (!gettextures) {
+            fprintf(stderr, "_get_sym(%s) %s\n", "gettextures", _error);
+            exit(1);
+        }
+        getsimuloop = (getsimuloop_t)_get_sym(render_lib, "getsimuloop");
+        if (!getsimuloop) {
+            fprintf(stderr, "_get_sym(%s) %s\n", "getsimuloop", _error);
+            exit(1);
+        }
+        getrenderer = (getrenderer_t)_get_sym(render_lib, "getrenderer");
+        if (!getrenderer) {
+            fprintf(stderr, "_get_sym(%s) %s\n", "getrenderer", _error);
+            exit(1);
+        }
+        getkeyboard = (getkeyboard_t)_get_sym(render_lib, "getkeyboard");
+        if (!getkeyboard) {
+            fprintf(stderr, "_get_sym(%s) %s\n", "getkeyboard", _error);
+            exit(1);
+        }
     }
 }

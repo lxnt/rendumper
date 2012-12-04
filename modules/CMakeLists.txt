@@ -18,6 +18,8 @@ endif()
 
 include(FindPkgConfig)
 
+find_package(Threads)
+
 if (ARCH64)
     option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" OFF)
     if (DF_32BIT_COMPAT)
@@ -132,8 +134,7 @@ if (PLATFORM_NCURSES)
     endif()
     add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp)
     include_directories( ${NCURSES_INCLUDE_DIRS} )
-    target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES})
-
+    target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
     set_target_properties(platform_ncurses PROPERTIES PREFIX "")
     install(TARGETS platform_ncurses LIBRARY DESTINATION libs)
 endif()

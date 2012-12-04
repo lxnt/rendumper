@@ -5,6 +5,11 @@ if (NOT UNIX)
     message(FATAL_ERROR "~")
 endif()
 
+set(CMAKE_CXX_FLAGS "-ggdb3 -fvisibility=hidden -fvisibility-inlines-hidden -pthread")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3 -fvisibility=hidden -fvisibility-inlines-hidden -pthread")
+set(CMAKE_C_FLAGS "-ggdb3 -fvisibility=hidden -fvisibility-inlines-hidden -pthread")
+set(CMAKE_C_FLAGS_DEBUG "-ggdb3 -fvisibility=hidden -fvisibility-inlines-hidden -pthread")
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(ARCH64 TRUE)
 else()

@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <locale.h>
 
@@ -40,6 +39,7 @@ struct implementation : public iplatform {
         performanceCount->QuadPart = SDL_GetPerformanceCounter();
         return TRUE;
     }
+
     BOOL QueryPerformanceFrequency(LARGE_INTEGER* performanceCount) {
         performanceCount->QuadPart = SDL_GetPerformanceFrequency();
         return TRUE;

@@ -1,85 +1,102 @@
 cmake_minimum_required(VERSION 2.8)
 project(dfmodules)
 
-if(UNIX)
-    set(CMAKE_CXX_COMPILER g++-4.5)
-    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
-    set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x -Wall -Wno-sign-compare")
-    set(CMAKE_C_FLAGS_DEBUG "-m32 -g -Wall")
-    set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x -Wno-sign-compare ")
-    set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic")
-
-    set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
-    link_directories(${LIB32_LINK_DIR})
+if (NOT UNIX)
+    message(FATAL_ERROR "~")
 endif()
 
-file(GLOB HEADERS ${dfmodules_SOURCE_DIR}/include/*)
-include_directories(${dfmodules_SOURCE_DIR}/include)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(ARCH64 TRUE)
+else()
+  set(ARCH64 FALSE)
+endif()
+
+include(FindPkgConfig)
+
+if (ARCH64)
+    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" OFF)
+    if (DF_32BIT_COMPAT)
+        set(CMAKE_CXX_COMPILER g++-4.5)
+        set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
+        set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x -Wall -Wno-sign-compare")
+        set(CMAKE_C_FLAGS_DEBUG "-m32 -g -Wall")
+        set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x -Wno-sign-compare ")
+        set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic")
+    endif()
+    set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix")
+else()
+    set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix")
+endif()
+
+include_directories(include)
+set(HEADERS
+    include/ideclspec.h
+    include/glue.h
+    include/iplatform.h
+    include/ikeyboard.h
+    include/imusicsound.h
+    include/itextures.h
+    include/irenderer.h )
 install(FILES ${HEADERS} DESTINATION include)
 
-option(WITH_FMOD "build sound-fmodex module" OFF)
-if (WITH_FMOD)
-    add_library(snd_fmodex SHARED sound-fmodex/module.cpp)
-    target_link_libraries(snd_fmodex fmodex_or_something)
-    install(TARGETS snd_fmodex LIBRARY DESTINATION libs)
+pkg_check_modules(PKG_SDL2 QUIET sdl2)
+pkg_check_modules(PKG_OPENAL QUIET openal)
+pkg_check_modules(PKG_SNDFILE QUIET sndfile)
+if (PKG_OPENAL_FOUND AND PKG_SNDFILE_FOUND)
+    set(OPENAL_DEPS ON)
+else()
+    set(OPENAL_DEPS OFF)
 endif()
 
-option(WITH_OPENAL "build sound-openal module" ON)
-if (WITH_OPENAL)
-    add_library(snd_openal SHARED sound-openal/module.cpp)
-    target_link_libraries(snd_openal sndfile openal)
-    install(TARGETS snd_openal LIBRARY DESTINATION libs)    
+if(PKG_SDL2_FOUND)
+    list(APPEND EXTRA_CFLAGS ${PKG_SDL2_CFLAGS})
+    list(APPEND EXTRA_LIBS ${PKG_SDL2_LIBRARIES})
+    list(APPEND EXTRA_LDFLAGS ${PKG_SDL2_LDFLAGS_OTHER})
+    link_directories(${PKG_SDL2_LIBRARY_DIRS})
+endif(PKG_SDL2_FOUND)
+
+if(PKG_OPENAL_FOUND)
+    list(APPEND EXTRA_CFLAGS ${PKG_OPENAL_CFLAGS})
+    list(APPEND EXTRA_LIBS ${PKG_OPENAL_LIBRARIES})
+    list(APPEND EXTRA_LDFLAGS ${PKG_OPENAL_LDFLAGS_OTHER})
+    link_directories(${PKG_OPENAL_LIBRARY_DIRS})
+endif(PKG_OPENAL_FOUND)
+
+option(SOUND_FMOD "build sound-fmodex module" OFF)
+if (SOUND_FMOD)
+    add_library(sound_fmodex SHARED sound-fmodex/module.cpp)
+    target_link_libraries(sound_fmodex fmodex_or_something)
+    install(TARGETS sound_fmodex LIBRARY DESTINATION libs)
 endif()
 
-option(WITH_SOUNDSTUB "build sound-stub module" ON)
-if (WITH_SOUNDSTUB)
-    add_library(snd_stub SHARED sound-stub/module.cpp)
-    install(TARGETS snd_stub LIBRARY DESTINATION libs)
+option(SOUND_OPENAL "build sound-openal module" ${OPENAL_DEPS})
+if (SOUND_OPENAL)
+    if(NOT OPENAL_DEPS)
+        message(SEND_ERROR "OpenAL or sndfile not found.")
+    endif()
+    add_library(sound_openal SHARED sound-openal/module.cpp)
+    set_property(SOURCE sound-openal/module.cpp APPEND PROPERTY COMPILE_FLAGS ${PKG_OPENAL_CFLAGS})
+    set_property(SOURCE sound-openal/module.cpp APPEND PROPERTY COMPILE_FLAGS ${PKG_SNDFILE_CFLAGS})
+    target_link_libraries(sound_openal ${PKG_OPENAL_LIBRARIES} ${PKG_SNDFILE_LIBRARIES})
+    install(TARGETS sound_openal LIBRARY DESTINATION libs)
 endif()
 
-set(PLAT_OSX_SRC 
-    platform-posix/module.cpp 
-    platform-posix/osx-alert.cpp )
-
-set(PLAT_GTK_SRC
-    platform-posix/module.cpp 
-    platform-posix/gtk-alert.cpp )
-
-set(PLAT_CURSES_SRC
-    platform-posix/module.cpp 
-    platform-posix/curses-alert.cpp )
-
-set(PLAT_WIN32_SRC
-    platform-win32/module.cpp)
-
-if (WIN32)
-    add_library(plat_win32form SHARED ${PLAT_WIN32_SRC})
-    install(TARGETS plat_win32 LIBRARY DESTINATION libs)
+option(SOUND_STUB "build sound-stub module" ON)
+if (SOUND_STUB)
+    add_library(sound_stub SHARED sound-stub/module.cpp)
+    install(TARGETS sound_stub LIBRARY DESTINATION libs)
 endif()
 
-if (UNIX)
-    if (APPLE)
-	add_library(plat_osx SHARED ${PLAT_OSX_SRC} )
-        install(TARGETS plat_osx LIBRARY DESTINATION libs)
+option(PLATFORM_SDL20 "build sdl20 platform module" ${PKG_SDL2_FOUND})
+if (PLATFORM_SDL20)
+    if(NOT PKG_SDL2_FOUND)
+        message(SEND_ERROR "SDL 2.0 not found.")
     endif()
-    
-    option(WITH_GTK "build gtk platform module" ON)
-    option(WITH_OSX "build osx platform module" OFF)
-    option(WITH_CURSES "build curses platform module" ON)
-    if (WITH_OSX)
-	add_library(plat_osx SHARED ${PLAT_OSX_SRC} )
-    endif()
-    if (WITH_GTK)
-	add_library(plat_gtk SHARED ${PLAT_GTK_SRC} )
-	find_package(GTK2 2.10 REQUIRED gtk)
-	include_directories(${GTK2_INCLUDE_DIRS})
-	target_link_libraries(plat_gtk ${GTK2_LIBRARIES})
-        install(TARGETS plat_gtk LIBRARY DESTINATION libs)
-    endif()
-    if (WITH_CURSES)
-	add_library(plat_curses SHARED ${PLAT_CURSES_SRC} )
-        install(TARGETS plat_curses LIBRARY DESTINATION libs)
-    endif()
+    add_library(platform_sdl20 SHARED platform-sdl20/platform.cpp platform-sdl20/mqueue.cpp)
+    include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
+    target_link_libraries(platform_sdl20 ${PKG_SDL2_LIBRARIES})
+
+    install(TARGETS platform_sdl20 LIBRARY DESTINATION libs)
 endif()
 
 add_library(glue glue.cpp)

@@ -1,3 +1,6 @@
+#if defined(DECLSPEC)
+# undef DECLSPEC
+#endif
 #if defined(__WIN32__)
 # if defined(DFMODULE_BUILD)
 #  define DECLSPEC __declspec(dllexport)

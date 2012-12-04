@@ -8,23 +8,21 @@
 #include <unistd.h>
 #include <locale.h>
 
+#include "SDL.h"
+#include "SDL_thread.h"
+#include "SDL_timer.h"
+#include "SDL_messagebox.h"
+
 #define DFMODULE_BUILD
 #include "iplatform.h"
 
-bool osx_alert(const char *text, const char *caption, bool yesno);
-bool gtk_alert(const char *text, const char *caption, bool yesno);
-bool curses_alert(const char *text, const char *caption, bool yesno);
-
 struct implementation : public iplatform {
-    bool gtk_ok;
-    implementation(bool gok) {
-        gtk_ok = gok;
-    }
+    implementation() {}
     void release() {}
-    
+
     BOOL CreateDirectory(const char* pathname, void* unused) {
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
-            if (errno != EEXIST) 
+            if (errno != EEXIST)
                 log_error("mkdir(%s): %s", pathname, strerror(errno));
             return FALSE;
         } else {
@@ -36,50 +34,42 @@ struct implementation : public iplatform {
 
     void ZeroMemory(void* dest, int len) { memset(dest, 0, len); }
 
-    /* Returns milliseconds since 1970
-     * Wraps every 24 days (assuming 32-bit signed dwords)
-     */
-    DWORD GetTickCount() {
-      struct timeval tp;
-      gettimeofday(&tp, NULL);
-      return (tp.tv_sec * 1000) + (tp.tv_usec / 1000);
-    }
+    DWORD GetTickCount() { return SDL_GetTicks(); }
 
-    // Fills performanceCount with microseconds passed since 1970
-    // Wraps in twenty-nine thousand years or so
     BOOL QueryPerformanceCounter(LARGE_INTEGER* performanceCount) {
-        struct timeval tp;
-        gettimeofday(&tp, NULL);
-        performanceCount->QuadPart = ((long long)tp.tv_sec * 1000000) + tp.tv_usec;
+        performanceCount->QuadPart = SDL_GetPerformanceCounter();
         return TRUE;
     }
-
     BOOL QueryPerformanceFrequency(LARGE_INTEGER* performanceCount) {
-        /* A constant, 10^6, as we give microseconds since 1970 in
-        * QueryPerformanceCounter. */
-        performanceCount->QuadPart = 1000000; 
+        performanceCount->QuadPart = SDL_GetPerformanceFrequency();
         return TRUE;
     }
 
     int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type) {
-        bool ret;
-#if defined(__APPLE__)
-        ret = osx_alert(text, caption, type & MB_YESNO);
-#else
-# if defined(HAVE_GTK)
-        if (gtk_ok)
-            ret = gtk_alert(text, caption, type & MB_YESNO);
-        else
-# endif
-# if defined(HAVE_CURSES)
-        ret = curses_alert(text, caption, type & MB_YESNO);
-# else
-        ret = false;
-# endif
+        Uint32 flags = 0;
+#if 0
+    /* this stuff isn't even implemented in SDL yet.
+        I don't know what it's supposed to mean either. */
+        if (type & MB_ICONQUESTION)
+            flags &= SDL_MESSAGEBOX_INFORMATION;
+
+        if (type & MB_ICONEXCLAMATION)
+            flags &= SDL_MESSAGEBOX_ERROR;
 #endif
-        return ret ? IDOK : IDNO;
+        return SDL_ShowSimpleMessageBox(flags, caption, text, NULL);
     }
-    
+
+    thread_t thread_create(thread_foo_t foo, const char *name, void *data) {
+        return (thread_t ) SDL_CreateThread(foo, name, data);
+    }
+
+    void thread_join(thread_t thread, int *retval) {
+        int rv;
+        SDL_WaitThread((SDL_Thread *) thread, &rv);
+        if (retval)
+            *retval = rv;
+    }
+
     void log_error(const char *fmt, ...) {
         va_list ap;
         int rv;
@@ -88,7 +78,7 @@ struct implementation : public iplatform {
         rv = vfprintf(stderr, fmt, ap);
         va_end(ap);
     }
-    
+
     void log_info(const char *fmt, ...) {
         va_list ap;
         int rv;
@@ -103,17 +93,15 @@ static implementation *impl = NULL;
 static bool core_init_done = false;
 
 extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
-    bool gtk_ok = false;
     if (!core_init_done) {
         setlocale(LC_ALL, ""); // why on earth do this?
-#if defined(HAVE_GTK)
-        int argc = 0;
-        char *argv[] = { 0 };
-        gtk_ok = gtk_init_check(&argc, &argv);
-#endif
+        if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0) {
+            fprintf(stderr, "\nUnable to initialize SDL:  %s\n", SDL_GetError());
+            exit(1);
+        }
     }
     if (!impl)
-        impl = new implementation(gtk_ok);
+        impl = new implementation();
     return impl;
 }
 

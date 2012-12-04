@@ -34,7 +34,7 @@ struct the_queue {
     SDL_mutex *writable_mtx;
     bool writable;
 
-    the_queue(const char *_name, int _max_messages, imqd_t _qd) {
+    the_queue(const char *_name, int _max_messages, imqd_t _qd) : messages() {
         name = strdup(_name);
         max_messages = _max_messages;
         qd = _qd;
@@ -60,19 +60,19 @@ struct the_queue {
     int push(the_message what, int timeout);
 };
 
-static int wait_on_cond(bool &what, SDL_cond *cond, SDL_mutex *mutex, int timeout) {
-    int sdl_rv = 0;
+static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeout) {
+    int rv = 0;
 
     SDL_LockMutex(mutex);
-    if (!what) {
+    if (!*what) {
         if (timeout == 0) {
             SDL_UnlockMutex(mutex);
             return IMQ_WOULDBLOCK;
         }
         if (timeout < 1) {
-            while ((!what) && (sdl_rv == 0))
-                sdl_rv = SDL_CondWait(cond, mutex);
-            if ((!what) && (sdl_rv != 0)) {
+            while ((!*what) && (rv == 0))
+                rv = SDL_CondWait(cond, mutex);
+            if ((!*what) && (rv != 0)) {
                 /* man pthread_cond_wait says:
                         Except in the case of [ETIMEDOUT], all these error checks shall act  as
                         if  they  were performed immediately at the beginning of processing for
@@ -88,13 +88,13 @@ static int wait_on_cond(bool &what, SDL_cond *cond, SDL_mutex *mutex, int timeou
         } else {
             /* reimplement pthread_cond_timedwait()'s abstime. dunno why. */
             unsigned abstime = timeout + SDL_GetTicks();
-            while ((!what) && (sdl_rv == 0) && (timeout > 0)) {
-                sdl_rv = SDL_CondWaitTimeout(cond, mutex, timeout);
+            while ((!*what) && (rv == 0) && (timeout > 0)) {
+                rv = SDL_CondWaitTimeout(cond, mutex, timeout);
                 timeout = abstime - SDL_GetTicks();
             }
-            if (!what) {
+            if (!*what) {
                 SDL_UnlockMutex(mutex);
-                if ((timeout < 1) || (sdl_rv == SDL_MUTEX_TIMEDOUT))
+                if ((timeout < 1) || (rv == SDL_MUTEX_TIMEDOUT))
                     return IMQ_TIMEDOUT;
                 /* unknown error */
                 return IMQ_CLOWNS;
@@ -109,7 +109,7 @@ static int wait_on_cond(bool &what, SDL_cond *cond, SDL_mutex *mutex, int timeou
 }
 
 int the_queue::pop(the_message& into, int timeout) {
-    int rv = wait_on_cond(readable, readable_cond, readable_mtx, timeout);
+    int rv = wait_on_cond(&readable, readable_cond, readable_mtx, timeout);
 
     if (rv == IMQ_OK) {
         SDL_LockMutex(messages_mtx); // someone might be sending a message
@@ -130,7 +130,7 @@ int the_queue::pop(the_message& into, int timeout) {
 }
 
 int the_queue::push(the_message what, int timeout) {
-    int rv = wait_on_cond(writable, writable_cond, writable_mtx, timeout);
+    int rv = wait_on_cond(&writable, writable_cond, writable_mtx, timeout);
 
     if (rv == IMQ_OK) {
         SDL_LockMutex(messages_mtx);
@@ -153,8 +153,9 @@ struct implementation : public imqueue {
   private:
     std::vector<the_queue *> queues;
     SDL_mutex *queues_mtx;
+
     ~implementation();
-    implementation(implementation&);
+    //implementation(implementation&);
     the_queue *find_queue(const char *name);
     the_queue *get_queue(imqd_t qd);
 
@@ -298,7 +299,7 @@ static implementation *impl = NULL;
 static int impl_refcount = 0;
 static SDL_SpinLock impl_spinlock = 0;
 
-implementation::implementation() {
+implementation::implementation() : queues() {
     queues_mtx = SDL_CreateMutex();
 }
 

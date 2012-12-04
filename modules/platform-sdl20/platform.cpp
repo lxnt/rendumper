@@ -89,7 +89,7 @@ struct implementation : public iplatform {
     }
 };
 
-static implementation *impl = NULL;
+static implementation impl;
 static bool core_init_done = false;
 
 extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
@@ -100,8 +100,7 @@ extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
             exit(1);
         }
     }
-    if (!impl)
-        impl = new implementation();
-    return impl;
+
+    return &impl;
 }
 

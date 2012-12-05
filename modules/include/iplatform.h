@@ -19,7 +19,7 @@
 # if !defined(TRUE)
 #  define TRUE 1
 # endif
-# include <unistd.h> // ssize_t
+
 enum {
     // NOTE: These probably don't match Windows values.
     MB_OK    = 0x01,

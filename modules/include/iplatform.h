@@ -1,6 +1,7 @@
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
 
+#include <cstddef>
 #include "ideclspec.h"
 
 #if defined(WIN32)
@@ -120,7 +121,7 @@ extern "C" DECLSPEC iplatform * APIENTRY (*getplatform)(void);
 
 /* Interthread message queues */
 
-typedef int imqd_t;
+typedef size_t imqd_t;
 enum mq_errors {
     IMQ_OK               = 0,
     IMQ_EXIST            = -17,    /* open() with maxmsg > 0  and queue already exists. */

@@ -19,7 +19,7 @@ struct implementation : public iplatform {
     implementation() {}
     void release() {}
 
-    BOOL CreateDirectory(const char* pathname, void* unused) {
+    BOOL CreateDirectory(const char* pathname, void* ) {
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
             if (errno != EEXIST)
                 log_error("mkdir(%s): %s", pathname, strerror(errno));
@@ -45,7 +45,7 @@ struct implementation : public iplatform {
         return TRUE;
     }
 
-    int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type) {
+    int MessageBox(HWND *, const char *text, const char *caption, UINT /* type */) {
         Uint32 flags = 0;
 #if 0
     /* this stuff isn't even implemented in SDL yet.
@@ -72,19 +72,17 @@ struct implementation : public iplatform {
 
     void log_error(const char *fmt, ...) {
         va_list ap;
-        int rv;
 
         va_start(ap, fmt);
-        rv = vfprintf(stderr, fmt, ap);
+        vfprintf(stderr, fmt, ap);
         va_end(ap);
     }
 
     void log_info(const char *fmt, ...) {
         va_list ap;
-        int rv;
 
         va_start(ap, fmt);
-        rv = vfprintf(stderr, fmt, ap);
+        vfprintf(stderr, fmt, ap);
         va_end(ap);
     }
 };

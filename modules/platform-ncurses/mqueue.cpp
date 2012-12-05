@@ -21,7 +21,7 @@ struct the_message {
 
 static void mutex_init(pthread_mutex_t *mutex) {
     int rv;
-    if (rv = pthread_mutex_init(mutex, NULL)) {
+    if ((rv = pthread_mutex_init(mutex, NULL))) {
         fprintf(stderr, "pthread_mutex_init(): %s\n", strerror(rv));
         exit(1);
     }
@@ -29,7 +29,7 @@ static void mutex_init(pthread_mutex_t *mutex) {
 
 static void mutex_destroy(pthread_mutex_t *mutex) {
     int rv;
-    if (rv = pthread_mutex_destroy(mutex)) {
+    if ((rv = pthread_mutex_destroy(mutex))) {
         fprintf(stderr, "pthread_mutex_destroy(): %s\n", strerror(rv));
         exit(1);
     }
@@ -45,7 +45,7 @@ static int mutex_unlock(pthread_mutex_t *mutex) {
 
 static void cond_init(pthread_cond_t *cond) {
     int rv;
-    if (rv = pthread_cond_init(cond, NULL)) {
+    if ((rv = pthread_cond_init(cond, NULL))) {
         fprintf(stderr, "pthread_cond_init(): %s\n", strerror(rv));
         exit(1);
     }
@@ -53,7 +53,7 @@ static void cond_init(pthread_cond_t *cond) {
 
 static void cond_destroy(pthread_cond_t *cond) {
     int rv;
-    if (rv = pthread_cond_destroy(cond)) {
+    if ((rv = pthread_cond_destroy(cond))) {
         fprintf(stderr, "pthread_cond_destroy(): %s\n", strerror(rv));
         exit(1);
     }
@@ -61,7 +61,7 @@ static void cond_destroy(pthread_cond_t *cond) {
 
 static void cond_signal(pthread_cond_t *cond) {
     int rv;
-    if (rv = pthread_cond_signal(cond)) {
+    if ((rv = pthread_cond_signal(cond))) {
         fprintf(stderr, "pthread_cond_destroy(): %s\n", strerror(rv));
         exit(1);
     }
@@ -69,7 +69,7 @@ static void cond_signal(pthread_cond_t *cond) {
 
 static int cond_wait(pthread_cond_t *cond, pthread_mutex_t * mutex) {
     int rv;
-    if (rv = pthread_cond_wait(cond, mutex)) {
+    if ((rv = pthread_cond_wait(cond, mutex))) {
         fprintf(stderr, "pthread_cond_wait(): %s\n", strerror(rv));
         exit(1);
     }
@@ -92,7 +92,7 @@ static int cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, struct 
 struct the_queue {
     int refcount;               // protected by implementation::queues_mtx
     bool unlinked;              // protected by implementation::queues_mtx
-    int max_messages;           // read-only
+    size_t max_messages;        // read-only
     char *name;                 // read-only
     imqd_t qd;                  // read-only
 
@@ -107,7 +107,7 @@ struct the_queue {
     pthread_mutex_t writable_mtx;
     bool writable;
 
-    the_queue(const char *_name, int _max_messages, imqd_t _qd) {
+    the_queue(const char *_name, size_t _max_messages, imqd_t _qd) {
         name = strdup(_name);
         max_messages = _max_messages;
         qd = _qd;
@@ -115,7 +115,6 @@ struct the_queue {
         refcount = 1;
 
         mutex_init(&messages_mtx);
-
         mutex_init(&readable_mtx);
         mutex_init(&writable_mtx);
         cond_init(&readable_cond);
@@ -176,7 +175,7 @@ static int wait_on_cond(bool *what, pthread_cond_t *cond, pthread_mutex_t *mutex
                 return IMQ_CLOWNS;
             }
         }
-        /*  'what' is true, but we may have rv != 0. In this case
+        /*  '*what' is true, but we may have rv != 0. In this case
             we proceed as normal, since whatever error that had been reported
             has no bearing on the 'what' state. And we still have to unlock
             the mutex. */
@@ -191,7 +190,7 @@ int the_queue::pop(the_message& into, int timeout) {
         mutex_lock(&messages_mtx); // someone might be sending a message
         if (messages.size() == 0)
             readable = false;
-        if (messages.size() == max_messages - 1) {
+        if (max_messages && (messages.size() == max_messages - 1)) {
             mutex_lock(&writable_mtx);
             writable = true;
             /* man pthread_cond_signal says the mutex be locked
@@ -199,6 +198,8 @@ int the_queue::pop(the_message& into, int timeout) {
             cond_signal(&writable_cond);
             mutex_unlock(&writable_mtx);
         }
+        into = messages.front();
+        messages.pop();
         mutex_unlock(&messages_mtx);
         mutex_unlock(&readable_mtx);
     }
@@ -229,8 +230,8 @@ struct implementation : public imqueue {
   private:
     std::vector<the_queue *> queues;
     pthread_mutex_t queues_mtx;
-    ~implementation();
-    //implementation(implementation&);
+    virtual ~implementation();
+    implementation(implementation&) {};
     the_queue *find_queue(const char *name);
     the_queue *get_queue(imqd_t qd);
 
@@ -248,7 +249,7 @@ struct implementation : public imqueue {
 };
 
 the_queue *implementation::find_queue(const char *name) {
-    for (int i=0; i<queues.size(); i++)
+    for (size_t i=0; i<queues.size(); i++)
         if ((not queues[i]->unlinked) && (0 == strcmp(name, queues[i]->name)))
             return queues[i];
     return NULL;
@@ -282,8 +283,6 @@ imqd_t implementation::open(const char *name, int max_messages) {
 }
 
 int implementation::close(imqd_t qd) {
-    if (qd < 0)
-        return IMQ_BADF;
     mutex_lock(&queues_mtx);
     if (qd >= queues.size()) {
         mutex_unlock(&queues_mtx);
@@ -318,8 +317,6 @@ int implementation::unlink(const char *name) {
 }
 
 the_queue *implementation::get_queue(imqd_t qd) {
-    if (qd < 0)
-        return NULL;
     mutex_lock(&queues_mtx);
     if (qd >= queues.size()) {
         mutex_unlock(&queues_mtx);
@@ -348,6 +345,7 @@ int implementation::copy(imqd_t qd, void *buf, size_t len, int timeout) {
     int rv = send(qd, new_buf, len, timeout);
     if (rv != IMQ_OK)
         free(new_buf);
+    return rv;
 }
 
 int implementation::recv(imqd_t qd, void **buf, size_t *len, int timeout) {
@@ -378,7 +376,7 @@ implementation::implementation() {
 
 implementation::~implementation() {
     mutex_destroy(&queues_mtx);
-    for (int i = 0; i<queues.size(); i++)
+    for (size_t i = 0; i<queues.size(); i++)
         if (queues[i] != NULL)
             delete queues[i];
 }

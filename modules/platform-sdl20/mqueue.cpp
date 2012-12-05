@@ -13,13 +13,14 @@ struct the_message {
     void *buf;
     size_t len;
     the_message() { buf = NULL; len = 0;}
+    the_message(const the_message &o) { buf = o.buf, len = o.len; }
     the_message(void *halla, size_t balla) : buf(halla), len(balla) { }
 };
 
 struct the_queue {
     int refcount;               // protected by implementation::queues_mtx
     bool unlinked;              // protected by implementation::queues_mtx
-    int max_messages;           // read-only
+    size_t max_messages;        // read-only
     char *name;                 // read-only
     imqd_t qd;                  // read-only
 
@@ -34,7 +35,7 @@ struct the_queue {
     SDL_mutex *writable_mtx;
     bool writable;
 
-    the_queue(const char *_name, int _max_messages, imqd_t _qd) : messages() {
+    the_queue(const char *_name, size_t _max_messages, imqd_t _qd) : messages() {
         name = strdup(_name);
         max_messages = _max_messages;
         qd = _qd;
@@ -115,7 +116,7 @@ int the_queue::pop(the_message& into, int timeout) {
         SDL_LockMutex(messages_mtx); // someone might be sending a message
         if (messages.size() == 0)
             readable = false;
-        if (messages.size() == max_messages - 1) {
+        if (max_messages && (messages.size() == max_messages - 1)) {
             SDL_LockMutex(writable_mtx);
             writable = true;
             /* man pthread_cond_signal says the mutex be locked
@@ -123,6 +124,8 @@ int the_queue::pop(the_message& into, int timeout) {
             SDL_CondSignal(writable_cond);
             SDL_UnlockMutex(writable_mtx);
         }
+        into = messages.front();
+        messages.pop();
         SDL_UnlockMutex(messages_mtx);
         SDL_UnlockMutex(readable_mtx);
     }
@@ -154,8 +157,8 @@ struct implementation : public imqueue {
     std::vector<the_queue *> queues;
     SDL_mutex *queues_mtx;
 
-    ~implementation();
-    //implementation(implementation&);
+    virtual ~implementation();
+    implementation(implementation&) {};
     the_queue *find_queue(const char *name);
     the_queue *get_queue(imqd_t qd);
 
@@ -173,7 +176,7 @@ struct implementation : public imqueue {
 };
 
 the_queue *implementation::find_queue(const char *name) {
-    for (int i=0; i<queues.size(); i++)
+    for (size_t i=0; i<queues.size(); i++)
         if ((not queues[i]->unlinked) && (0 == strcmp(name, queues[i]->name)))
             return queues[i];
     return NULL;
@@ -207,8 +210,6 @@ imqd_t implementation::open(const char *name, int max_messages) {
 }
 
 int implementation::close(imqd_t qd) {
-    if (qd < 0)
-        return IMQ_BADF;
     SDL_LockMutex(queues_mtx);
     if (qd >= queues.size()) {
         SDL_UnlockMutex(queues_mtx);
@@ -243,8 +244,6 @@ int implementation::unlink(const char *name) {
 }
 
 the_queue *implementation::get_queue(imqd_t qd) {
-    if (qd < 0)
-        return NULL;
     SDL_LockMutex(queues_mtx);
     if (qd >= queues.size()) {
         SDL_UnlockMutex(queues_mtx);
@@ -273,6 +272,7 @@ int implementation::copy(imqd_t qd, void *buf, size_t len, int timeout) {
     int rv = send(qd, new_buf, len, timeout);
     if (rv != IMQ_OK)
         free(new_buf);
+    return rv;
 }
 
 int implementation::recv(imqd_t qd, void **buf, size_t *len, int timeout) {
@@ -305,7 +305,7 @@ implementation::implementation() : queues() {
 
 implementation::~implementation() {
     SDL_DestroyMutex(queues_mtx);
-    for (int i = 0; i<queues.size(); i++)
+    for (size_t i = 0; i<queues.size(); i++)
         if (queues[i] != NULL)
             delete queues[i];
 }

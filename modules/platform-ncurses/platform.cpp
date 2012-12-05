@@ -19,6 +19,7 @@ struct _thread_info {
     pthread_t thread;
     thread_foo_t foo;
     int rv;
+    char *name;
     void *data;
 };
 
@@ -32,7 +33,7 @@ struct implementation : public iplatform {
     implementation() {}
     void release() {}
 
-    BOOL CreateDirectory(const char* pathname, void* unused) {
+    BOOL CreateDirectory(const char* pathname, void*) {
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
             if (errno != EEXIST)
                 log_error("mkdir(%s): %s", pathname, strerror(errno));
@@ -71,7 +72,7 @@ struct implementation : public iplatform {
         return TRUE;
     }
 
-    int MessageBox(HWND *dummy, const char *text, const char *caption, UINT type) {
+    int MessageBox(HWND *, const char *text, const char *caption, UINT type) {
         bool ret;
         werase(stdscr);
         wattrset(stdscr, A_NORMAL | COLOR_PAIR(1));
@@ -103,10 +104,14 @@ struct implementation : public iplatform {
         return ret ? IDOK : IDNO;
     }
 
-    thread_t thread_create(thread_foo_t foo, const char *name, void *data) {
+    thread_t thread_create(thread_foo_t foo, const char * name, void *data) {
         _thread_info *rv = (_thread_info *)malloc(sizeof(_thread_info));
         rv->foo = foo;
         rv->data = data;
+        if (name)
+            rv->name = strdup(name);
+        else
+            rv->name = NULL;
         if (!pthread_create(&(rv->thread), NULL, run_foo, rv)) {
             fprintf(stderr, "\npthread_create(): %s\n", strerror(errno));
             exit(1);
@@ -122,23 +127,24 @@ struct implementation : public iplatform {
         }
         if (retval)
             *retval = ti->rv;
+        if (ti->name)
+            free(ti->name);
+        free(ti);
     }
 
     void log_error(const char *fmt, ...) {
         va_list ap;
-        int rv;
 
         va_start(ap, fmt);
-        rv = vfprintf(stderr, fmt, ap);
+        vfprintf(stderr, fmt, ap);
         va_end(ap);
     }
 
     void log_info(const char *fmt, ...) {
         va_list ap;
-        int rv;
 
         va_start(ap, fmt);
-        rv = vfprintf(stderr, fmt, ap);
+        vfprintf(stderr, fmt, ap);
         va_end(ap);
     }
 };

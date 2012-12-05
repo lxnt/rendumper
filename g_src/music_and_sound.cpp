@@ -4,6 +4,7 @@
 #include "music_and_sound_g.h"
 #include "imusicsound.h"
 
+musicsoundst musicsound;
 
 static imusicsound *impl = NULL;
 
@@ -67,5 +68,6 @@ void musicsoundst::playsound(int s,int min_channel,int max_channel,int force_cha
     impl->play_sound(s, false);
 }
 void musicsoundst::set_sound_params(int slot,int p1,int vol,int pan,int priority) { }
+
 
 

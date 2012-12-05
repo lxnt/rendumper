@@ -12,7 +12,7 @@
 # if defined(DFMODULE_BUILD) /* building modules */
 #  define DECLSPEC __attribute__((visibility ("default")))
 # else /* building glue or linking directly */
-#  define DECLSPEC
+#  define DECLSPEC __attribute__((visibility ("default")))
 # endif
 # define APIENTRY
 #endif

@@ -10,10 +10,10 @@ include_directories(/usr/include/SDL)
 set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
 
 set ( LIBS 
-    SDL
+    SDL-1.2
     sndfile
-    SDL_image
-    SDL_ttf
+    SDL_image-1.2
+    SDL_ttf-2.0
     GLU
     GLEW
     m

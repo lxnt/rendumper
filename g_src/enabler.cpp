@@ -1,4 +1,6 @@
 #include <cassert>
+#include "glue.h"
+#include "iplatform.h"
 
 #include "platform.h"
 #include "enabler.h"
@@ -725,6 +727,9 @@ int call_loop(void *dummy) {
 }
 
 int main (int argc, char* argv[]) {
+    set_modpath("/home/lxnt/00DFGL/prefix32/lib/dfmodules");
+    load_module("platform_ncurses");
+    load_module("sound_stub");
   // Initialise minimal SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER);
   // Report failure?

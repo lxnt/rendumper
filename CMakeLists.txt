@@ -11,6 +11,20 @@ if(UNIX)
     set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic")
 endif()
 
+option(RENDER_CURSES "Compile curses renderer" ON)
+option(RENDER_2D     "Compile curses renderer" OFF)
+option(RENDER_GL     "Compile curses renderer" OFF)
+
+if(RENDER_CURSES)
+    add_definitions(-DRENDER_CURSES)
+endif()
+if(RENDER_2D)
+    add_definitions(-DRENDER_2D -DRENDER_SDL)
+endif()
+if(RENDER_GL)
+    add_definitions(-DRENDER_GL -DRENDER_SDL)
+endif()
+
 set(LWAPI_HDRS
     enums.h
     bitfields.h

@@ -105,12 +105,15 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
 }
 
 
-#ifdef CURSES
+#if defined(RENDER_CURSES)
 # include "renderer_curses.cpp"
 #endif
+#if defined(RENDER_2D)
 #include "renderer_2d.hpp"
+#endif
+#if defined(RENDER_GL)
 #include "renderer_opengl.hpp"
-
+#endif
 
 enablerst::enablerst() {
   fullscreen = false;
@@ -309,8 +312,10 @@ void enablerst::async_loop() {
           if (flag & ENABLERFLAG_RENDER) {
             total_frames++;
             renderer->swap_arrays();
+#if defined(RENDER_SDL)
             if (total_frames % 1800 == 0)
               ttf_manager.gc();
+#endif
             render_things();
             flag &= ~ENABLERFLAG_RENDER;
             update_gfps();
@@ -398,7 +403,7 @@ void enablerst::do_frame() {
 void fugr_dump(bool);
 void enablerst::eventLoop_SDL()
 {
-  
+#if defined(RENDER_SDL)
   SDL_Event event;
   const SDL_Surface *screen = SDL_GetVideoSurface();
   Uint32 mouse_lastused = 0;
@@ -535,6 +540,7 @@ void enablerst::eventLoop_SDL()
     do_frame();
     musicsound.update();
   }
+#endif
 }
 
 int enablerst::loop(string cmdline) {
@@ -550,14 +556,20 @@ int enablerst::loop(string cmdline) {
   
   // Allocate a renderer
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
-#ifdef CURSES
+#if defined(RENDER_CURSES)
     renderer = new renderer_curses();
 #else
     report_error("PRINT_MODE", "TEXT not supported on windows");
     exit(EXIT_FAILURE);
 #endif
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_2D)) {
+#if defined(RENDER_2D)
     renderer = new renderer_2d();
+#else
+    report_error("PRINT_MODE", "2D not compiled in.");
+    exit(EXIT_FAILURE);
+#endif
+#if defined(RENDER_GL)
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_ACCUM_BUFFER)) {
     renderer = new renderer_accum_buffer();
   } else if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_FRAME_BUFFER)) {
@@ -571,16 +583,22 @@ int enablerst::loop(string cmdline) {
     renderer = new renderer_vbo();
   } else {
     renderer = new renderer_opengl();
+#else
+    report_error("PRINT_MODE", "OpenGL support not compiled in.");
+    exit(EXIT_FAILURE);
+#endif
   }
 
   // At this point we should have a window that is setup to render DF.
   if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
-#ifdef CURSES
+#if defined(RENDER_CURSES)
     eventLoop_ncurses();
 #endif
   } else {
+#if defined(RENDER_SDL)
     SDL_EnableUNICODE(1);
     eventLoop_SDL();
+#endif
   }
 
   endroutine();

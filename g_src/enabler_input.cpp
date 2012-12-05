@@ -438,6 +438,7 @@ void enabler_inputst::save_keybindings() {
 }
 
 void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
+#if defined(RENDER_SDL)
   // Before we can use this input, there are some issues to deal with:
   // - SDL provides unicode translations only for key-press events, not
   //   releases. We need to keep track of pressed keys, and generate
@@ -532,13 +533,14 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     // And pass the event on deeper.
     add_input_refined(lit->first, now, lit->second);
   }
+#endif
 }
 
 // Input encoding:
 // 1 and up are ncurses symbols, as returned by getch.
 // -1 and down are unicode values.
 // esc is true if this key was part of an escape sequence.
-#ifdef CURSES
+#if defined(RENDER_CURSES)
 void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
   

@@ -141,7 +141,7 @@ void initst::begin()
                                                     token2 = "2D";
                                                 }
                                         if(token2=="TEXT") {
-#ifdef CURSES
+#if defined(RENDER_CURSES)
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_TEXT);
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                           display.partial_print_count=0;

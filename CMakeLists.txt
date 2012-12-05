@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
+add_subdirectory(modules)
+
 set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
 if(UNIX)
     set(CMAKE_CXX_COMPILER g++-4.5)

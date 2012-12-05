@@ -82,6 +82,6 @@ set( HEADERS
 )
 link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
-target_link_libraries(graphics ${LIBS})
+target_link_libraries(graphics glue ${LIBS})
 install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
 

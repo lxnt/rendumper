@@ -8,7 +8,7 @@
 #  define DECLSPEC __declspec(dllimport)
 # endif
 # define APIENTRY __stdcall
-#else /* GCC is implied */
+#else /* GCC 4+ is implied. -fvisibility=hidden is implied. */
 # if defined(DFMODULE_BUILD) /* building modules */
 #  define DECLSPEC __attribute__((visibility ("default")))
 # else /* building glue or linking directly */

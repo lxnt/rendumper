@@ -134,18 +134,24 @@ struct implementation : public iplatform {
 
     void log_error(const char *fmt, ...) {
         va_list ap;
-
-        va_start(ap, fmt);
-        vfprintf(stderr, fmt, ap);
-        va_end(ap);
+        FILE *fp;
+        if ((fp = fopen("error.log", "a"))) {
+            va_start(ap, fmt);
+            vfprintf(fp, fmt, ap);
+            va_end(ap);
+            fclose(fp);
+        }
     }
 
     void log_info(const char *fmt, ...) {
         va_list ap;
-
-        va_start(ap, fmt);
-        vfprintf(stderr, fmt, ap);
-        va_end(ap);
+        FILE *fp;
+        if ((fp = fopen("error.log", "a"))) {
+            va_start(ap, fmt);
+            vfprintf(fp, fmt, ap);
+            va_end(ap);
+            fclose(fp);
+        }
     }
 };
 

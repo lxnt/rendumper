@@ -1,3 +1,6 @@
+#if !defined(IPLATFORM_H)
+#define IPLATFORM_H
+
 /* for the time being, use SDL's begin_code.h for the DECLSPEC (DFAPI here)
    which defines necessary dllimport/export stuff */
 
@@ -170,4 +173,6 @@ struct imqueue {
 extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void);
 #else // using glue and runtime loading.
 extern "C" DECLSPEC imqueue * APIENTRY (*getmqueue)(void);
+#endif
+
 #endif

@@ -1,3 +1,6 @@
+#if !defined(IMUSICSOUND_H)
+#define IMUSICSOUND_H
+
 /* musicsound interface 
     typedef std::pair<bool,int> slot; has been converted to int slot, bool is_song.
     std::string &filename has been converted to const char *.
@@ -22,4 +25,6 @@ struct imusicsound {
 extern "C" DECLSPEC imusicsound * APIENTRY getmusicsound(void);
 #else // using glue and runtime loading.
 extern "C" DECLSPEC imusicsound * APIENTRY (*getmusicsound)(void);
+#endif
+
 #endif

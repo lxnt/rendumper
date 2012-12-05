@@ -1,3 +1,6 @@
+#if !defined(IDECLSPEC_H)
+#define IDECLSPEC_H
+
 #if defined(DECLSPEC)
 # undef DECLSPEC
 #endif
@@ -15,4 +18,6 @@
 #  define DECLSPEC __attribute__((visibility ("default")))
 # endif
 # define APIENTRY
+#endif
+
 #endif

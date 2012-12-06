@@ -652,7 +652,9 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // rest of this function.
   if (key_registering && !e.release) {
     stored_keys.push_back(e.match);
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
+    Event e;
+    e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
+    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
     timeline.insert(e);
     return;
   }

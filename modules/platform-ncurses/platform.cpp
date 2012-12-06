@@ -130,11 +130,7 @@ struct implementation : public iplatform {
             fprintf(stderr, "\npthread_create(): %s\n", strerror(rv));
             exit(1);
         }
-/*
-        if ((rv = pthread_mutex_trylock(&_thread_list_mutex))) {
-            log_error("thread_create: _thread_list_mutex: %s\n", strerror(rv));
-        }
-        */
+
         pthread_mutex_lock(&_thread_list_mutex);
         _thread_list.push_back(ti);
         pthread_mutex_unlock(&_thread_list_mutex);
@@ -168,7 +164,7 @@ struct implementation : public iplatform {
                     return (thread_t) (_thread_list[i]);
                 }
         pthread_mutex_unlock(&_thread_list_mutex);
-        return NULL; // like, main or some foreign thread.
+        return NULL; // like, some foreign thread.
     }
 
     void log_error(const char *fmt, ...) {

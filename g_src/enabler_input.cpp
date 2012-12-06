@@ -234,6 +234,8 @@ static void update_modstate(const SDL_Event &e) {
     case SDLK_LALT:
       modState &= ~4;
       break;
+    default:
+      break;
     }
   } else if (e.type == SDL_KEYDOWN) {
     switch (e.key.keysym.sym) {
@@ -248,6 +250,8 @@ static void update_modstate(const SDL_Event &e) {
     case SDLK_RALT:
     case SDLK_LALT:
       modState |= 4;
+      break;
+    default:
       break;
     }
   }

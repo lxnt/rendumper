@@ -43,7 +43,7 @@ typedef HANDLE HDC;
 typedef HANDLE HGLRC;
 typedef int BOOL;
 typedef unsigned short WORD;
-typedef unsigned long DWORD;
+typedef uint32_t DWORD;
 typedef unsigned int UINT;
 typedef short SHORT;
 typedef long LONG;

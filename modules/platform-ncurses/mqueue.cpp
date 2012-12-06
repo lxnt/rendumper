@@ -141,7 +141,7 @@ static int wait_on_cond(bool *what, pthread_cond_t *cond, pthread_mutex_t *mutex
     if (!*what) {
         if (timeout == 0) {
             mutex_unlock(mutex);
-            return IMQ_WOULDBLOCK;
+            return IMQ_TIMEDOUT;
         }
         if (timeout < 1) {
             while ((!*what) && (rv == 0))
@@ -188,18 +188,23 @@ int the_queue::pop(the_message& into, int timeout) {
 
     if (rv == IMQ_OK) {
         mutex_lock(&messages_mtx); // someone might be sending a message
-        if (messages.size() == 0)
+        if (messages.size() > 0) {
+            if (max_messages && (messages.size() == max_messages - 1)) {
+                mutex_lock(&writable_mtx);
+                writable = true;
+                /* man pthread_cond_signal says the mutex be locked
+                   if predictable scheduling is to be hoped for. */
+                cond_signal(&writable_cond);
+                mutex_unlock(&writable_mtx);
+            }
+            into = messages.front();
+            messages.pop();
+            if (messages.size() == 0)
+                readable = false;
+        } else {
             readable = false;
-        if (max_messages && (messages.size() == max_messages - 1)) {
-            mutex_lock(&writable_mtx);
-            writable = true;
-            /* man pthread_cond_signal says the mutex be locked
-               if predictable scheduling is to be hoped for. */
-            cond_signal(&writable_cond);
-            mutex_unlock(&writable_mtx);
+            rv = IMQ_TIMEDOUT;
         }
-        into = messages.front();
-        messages.pop();
         mutex_unlock(&messages_mtx);
         mutex_unlock(&readable_mtx);
     }

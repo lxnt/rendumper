@@ -130,8 +130,7 @@ enum mq_errors {
     IMQ_OK               = 0,
     IMQ_EXIST            = -17,    /* open() with maxmsg > 0  and queue already exists. */
     IMQ_NOENT            = -2,     /* open() with maxmsg == 0  and queue doesn't exist. */
-    IMQ_WOULDBLOCK       = -11,    /* EWOULDBLOCK timeout == 0 and no messages/no space in q. */
-    IMQ_TIMEDOUT         = -110,   /* ETIMEDOUT */
+    IMQ_TIMEDOUT         = -110,   /* ETIMEDOUT or timeout == 0 and no messages/no space in q. */
     IMQ_BADF             = -8,     /* EBADF bogus imqd supplied. */
     IMQ_INVAL            = -22,    /* EINVAL : null name, null buf or zero len */
     IMQ_CLOWNS           = -100500 /* unknown error, most likely from the implementation's backend */

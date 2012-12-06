@@ -14,13 +14,16 @@ set ( LIBS
     sndfile
     SDL_image-1.2
     SDL_ttf-2.0
-    GLU
-    GLEW
     m
     png12
     rt
     openal
     lwapi
+)
+
+set ( GL_LIBS
+    GLU
+    GLEW
 )
 
 # find_files.cpp excluded ; it refers to headers missing
@@ -83,5 +86,9 @@ set( HEADERS
 link_directories( ${LIB32_LINK_DIR} )
 add_library( graphics SHARED ${SOURCE} )
 target_link_libraries(graphics glue ${LIBS})
+if(RENDER_GL)
+    target_link_libraries(graphics glue ${LIBS})
+endif()
+
 install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
 

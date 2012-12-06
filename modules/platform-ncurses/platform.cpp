@@ -11,23 +11,32 @@
 #include <curses.h>
 #include <pthread.h>
 
+#include <vector>
+
 #define DFMODULE_BUILD
 #include "iplatform.h"
 
-
 struct _thread_info {
     pthread_t thread;
+    pthread_mutex_t run_mutex;
     thread_foo_t foo;
     int rv;
     char *name;
     void *data;
+    bool dead;
 };
 
 static void * run_foo(void *data) {
     _thread_info *ti = (_thread_info *)data;
+    pthread_mutex_lock(&ti->run_mutex);
     ti->rv = ti->foo(ti->data);
+    ti->dead = true;
+    pthread_mutex_unlock(&ti->run_mutex);
     return data;
 }
+
+static std::vector<_thread_info *> _thread_list;
+static pthread_mutex_t _thread_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct implementation : public iplatform {
     implementation() {}
@@ -105,31 +114,61 @@ struct implementation : public iplatform {
     }
 
     thread_t thread_create(thread_foo_t foo, const char * name, void *data) {
-        _thread_info *rv = (_thread_info *)malloc(sizeof(_thread_info));
-        rv->foo = foo;
-        rv->data = data;
+        int rv;
+        _thread_info *ti = (_thread_info *)malloc(sizeof(_thread_info));
+
+        ti->foo = foo;
+        ti->data = data;
+        ti->dead = false;
         if (name)
-            rv->name = strdup(name);
+            ti->name = strdup(name);
         else
-            rv->name = NULL;
-        if (!pthread_create(&(rv->thread), NULL, run_foo, rv)) {
-            fprintf(stderr, "\npthread_create(): %s\n", strerror(errno));
+            ti->name = NULL;
+        pthread_mutex_init(&ti->run_mutex, NULL);
+        pthread_mutex_lock(&ti->run_mutex); // that is to avoid races vs thread_id()
+        if ((rv = pthread_create(&(ti->thread), NULL, run_foo, ti))) {
+            fprintf(stderr, "\npthread_create(): %s\n", strerror(rv));
             exit(1);
         }
-        return (thread_t) rv;
+/*
+        if ((rv = pthread_mutex_trylock(&_thread_list_mutex))) {
+            log_error("thread_create: _thread_list_mutex: %s\n", strerror(rv));
+        }
+        */
+        pthread_mutex_lock(&_thread_list_mutex);
+        _thread_list.push_back(ti);
+        pthread_mutex_unlock(&_thread_list_mutex);
+        pthread_mutex_unlock(&ti->run_mutex); // let it run
+        return (thread_t) ti;
     }
 
     void thread_join(thread_t thread, int *retval) {
+        int rv;
         _thread_info *ti = (_thread_info *) thread;
-        if (!pthread_join(ti->thread, NULL)) {
-            fprintf(stderr, "\npthread_join(): %s\n", strerror(errno));
+        if ((rv = pthread_join(ti->thread, NULL))) {
+            fprintf(stderr, "\npthread_join(): %s\n", strerror(rv));
             exit(1);
         }
         if (retval)
             *retval = ti->rv;
-        if (ti->name)
-            free(ti->name);
-        free(ti);
+    }
+
+    thread_t thread_id(void) {
+        /* also sprach pthread_self(3):
+            variables of type pthread_t can't portably be compared
+            using the C equality  operator (==);
+            use pthread_equal(3) instead. */
+
+        pthread_t this_thread = pthread_self();
+        pthread_mutex_lock(&_thread_list_mutex);
+        for(size_t i = 0 ; i< _thread_list.size() ; i++)
+            if (!_thread_list[i]->dead)
+                if (pthread_equal(this_thread, _thread_list[i]->thread)) {
+                    pthread_mutex_unlock(&_thread_list_mutex);
+                    return (thread_t) (_thread_list[i]);
+                }
+        pthread_mutex_unlock(&_thread_list_mutex);
+        return NULL; // like, main or some foreign thread.
     }
 
     void log_error(const char *fmt, ...) {
@@ -157,11 +196,23 @@ struct implementation : public iplatform {
 
 static implementation impl;
 static bool core_init_done = false;
+static char _main_name[] = "main()";
 
 static void ncurses_fini(void) { endwin(); }
 
 extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
     if (!core_init_done) {
+        int rv = pthread_mutex_lock(&_thread_list_mutex);
+        _thread_info *mt = new _thread_info();
+        mt->thread = pthread_self();
+        mt->foo = NULL;
+        mt->rv = 0;
+        mt->name = _main_name;
+        mt->data = NULL;
+        mt->dead = false;
+        _thread_list.push_back(mt);
+        rv = pthread_mutex_unlock(&_thread_list_mutex);
+
         core_init_done = true;
         setlocale(LC_ALL, "");
         WINDOW *new_window = initscr();
@@ -187,4 +238,3 @@ extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
 
     return &impl;
 }
-

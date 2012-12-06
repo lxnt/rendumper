@@ -109,6 +109,7 @@ struct iplatform {
     /* Minimal amount of stuff needed for thread control. */
     virtual thread_t thread_create(thread_foo_t foo, const char *name, void *data) = 0;
     virtual void thread_join(thread_t thread, int *rv) = 0;
+    virtual thread_t thread_id(void) = 0;
 
     /* Logging ended up here too. */
     virtual void log_error(const char *, ...) = 0;

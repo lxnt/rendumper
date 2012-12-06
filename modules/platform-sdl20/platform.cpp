@@ -70,6 +70,10 @@ struct implementation : public iplatform {
             *retval = rv;
     }
 
+    thread_t thread_id(void) {
+        return (thread_t ) SDL_ThreadID();
+    }
+
     void log_error(const char *fmt, ...) {
         va_list ap;
 

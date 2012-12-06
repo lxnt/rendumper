@@ -733,8 +733,7 @@ int main (int argc, char* argv[]) {
     set_modpath("/home/lxnt/00DFGL/prefix32/lib/dfmodules");
     if (!load_module("platform_ncurses"))
         return 1;
-    if (!load_module("sound_stub"))
-        return 1;
+    load_module("sound_stub")
 
     platform = getplatform();
     mqueue = getmqueue();

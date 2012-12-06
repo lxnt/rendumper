@@ -10,7 +10,9 @@ static imusicsound *impl = NULL;
 
 musicsoundst::musicsoundst() { }
 musicsoundst::~musicsoundst() { }
-bool musicsoundst::initsound() { 
+bool musicsoundst::initsound() {
+    if (!getmusicsound) // no module loaded
+        return false;
     if (!impl) 
 	impl = getmusicsound();
     if (!impl)  // it failed.

@@ -618,7 +618,8 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     if (sdl.key) {
       stored_keys.push_back(sdl);
     }
-    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial; e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
+    Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
+    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
     timeline.insert(e);
     key_registering = false;
     return;

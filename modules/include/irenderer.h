@@ -171,8 +171,8 @@ struct irenderer {
     virtual void release_grid_size(void) = 0;
     virtual int mouse_state(int *mx, int *my) = 0; // ala sdl2's one.
 
-    virtual df_buffer_t *get_buffer(void) = 0;
-    virtual void release_buffer(df_buffer_t *buf) = 0;
+    virtual df_buffer_t *get_buffer(const unsigned w, const unsigned h) = 0;
+    virtual void submit_buffer(df_buffer_t *buf) = 0;
 
     /* this is what kicks off the loop (see pseudocode above)
        must be called from other than the simulation thread. */

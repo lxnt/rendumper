@@ -104,9 +104,7 @@ class interfacest
 		int supermovie_delayrate;
 		int supermovie_delaystep;
 		stringvectst supermovie_sound;
-#ifndef NO_FMOD
 		int supermovie_sound_time[200][SOUND_CHANNELNUM];
-#endif
 		unsigned char supermoviebuffer[MOVIEBUFFSIZE];
 		unsigned char supermoviebuffer_comp[COMPMOVIEBUFFSIZE];
 		int currentblocksize;

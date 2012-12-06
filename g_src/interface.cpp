@@ -68,9 +68,6 @@ extern interfacest gview;
 extern enablerst enabler;
 extern graphicst gps;
 extern initst init;
-#ifndef NO_FMOD
-extern musicsoundst musicsound;
-#endif
 
 extern GameMode gamemode;
 extern GameType gametype;
@@ -152,7 +149,6 @@ void viewscreen_movieplayerst::logic()
 			{
 			int half_frame_size=init.display.grid_x*init.display.grid_y;
 
-#ifndef NO_FMOD
 			//PLAY ANY RELEVANT SOUNDS
 			if(gview.supermovie_delaystep==gview.supermovie_delayrate)
 				{
@@ -170,7 +166,6 @@ void viewscreen_movieplayerst::logic()
 						}
 					}
 				}
-#endif
 
 			//PRINT THE NEXT FRAME AND ADVANCE POSITION
 			short x2,y2;
@@ -427,10 +422,7 @@ void viewscreen_movieplayerst::feed(std::set<InterfaceKey> &events)
 			gview.nextfilepos=0;
 			gview.supermovie_pos=0;
 			maxmoviepos=0;
-
-#ifndef NO_FMOD
 			musicsound.stop_sound();
-#endif
 			}
 		else if(saving)saving=0;
 		else if(loading)loading=0;
@@ -753,13 +745,11 @@ viewscreen_movieplayerst::viewscreen_movieplayerst()
 	editing_selected_sound=0;
 	end_frame_pos=0;
 	gview.supermovie_sound.clean();
-#ifndef NO_FMOD
 	int i,c;
 	for(i=0;i<200;i++)
 		{
 		for(c=0;c<SOUND_CHANNELNUM;c++)gview.supermovie_sound_time[i][c]=-1;
 		}
-#endif
 }
 
 interfacest::interfacest()
@@ -1145,11 +1135,7 @@ int interfacest::write_movie_chunk()
 					{
 					for(i2=0;i2<SOUND_CHANNELNUM;i2++)
 						{
-#ifndef NO_FMOD
 						swp_l=byteswap(gview.supermovie_sound_time[i1][i2]);
-#else
-                        swp_l=-1;
-#endif
 						f.write((const char *)&swp_l,sizeof(int));
 						}
 					}
@@ -1241,9 +1227,7 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 						for(i2=0;i2<SOUND_CHANNELNUM;i2++)
 							{
 							f.read((char *)&swp_l,sizeof(int));
-#ifndef NO_FMOD
 							gview.supermovie_sound_time[i1][i2]=byteswap(swp_l);
-#endif
 							}
 						}
 
@@ -1251,18 +1235,15 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 					}
 				else
 					{
-#ifndef NO_FMOD
 					int i,c;
 					for(i=0;i<200;i++)
 						{
 						for(c=0;c<SOUND_CHANNELNUM;c++)gview.supermovie_sound_time[i][c]=-1;
 						}
-#endif
 					}
 
 				gview.nextfilepos+=sizeof(int)+sizeof(cursesmovie_headerst);
 
-#ifndef NO_FMOD
 				//HANDLE SOUND LOADING
 				int s;
 				for(s=0;s<gview.supermovie_sound.str.size();s++)
@@ -1273,7 +1254,6 @@ void interfacest::read_movie_chunk(int &maxmoviepos,char &is_playing)
 					
 					musicsound.set_sound(filename,s);
 					}
-#endif
 				}
 
 			if(!fail)

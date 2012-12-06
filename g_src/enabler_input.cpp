@@ -15,7 +15,6 @@ extern initst init;
 #include "files.h"
 #include "find_files.h"
 #include "svector.h"
-#include "curses.h"
 
 // The timeline events we actually pass back from get_input. Well, no,
 // that's just k, but..
@@ -541,6 +540,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 // -1 and down are unicode values.
 // esc is true if this key was part of an escape sequence.
 #if defined(RENDER_CURSES)
+#include <ncursesw/curses.h>
+
 void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
   

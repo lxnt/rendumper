@@ -1,4 +1,4 @@
-
+#include <ncursesw/curses.h>
 WINDOW **stdscr_p;
 
 class renderer_curses : public renderer {

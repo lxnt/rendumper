@@ -62,8 +62,6 @@ typedef int32_t Ordinal;
 
 #include "interface.h"
 
-#include "curses.h"
-
 using namespace std;
 
 

@@ -8,7 +8,6 @@
 
 #include "ViewBase.h"
 #include "keybindings.h"
-#include "curses.h"
 
 typedef Uint32 Time;
 

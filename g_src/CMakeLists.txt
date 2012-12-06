@@ -1,6 +1,5 @@
 
-add_definitions(-Dlinux) # music_and_sound_fmodex.cpp music_and_sound_g.h
-add_definitions(-Dunix)  # curses.h enabler.cpp KeybindingScreen.cpp win32_compat.cpp
+add_definitions(-Dunix)  # enabler.cpp KeybindingScreen.cpp
 add_definitions(-DCURSES) # enabler.cpp
  
 include_directories(${rendumper_SOURCE_DIR}/modules/include)
@@ -54,7 +53,6 @@ set( HEADERS
     basics.h
     bimap.h
     command_line.h
-    curses.h
     enabler.h
     enabler_input.h
     endian.h

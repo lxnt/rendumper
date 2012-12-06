@@ -15,10 +15,8 @@
 using namespace std;
 
 static iplatform *platform = NULL;
-static imqueue *mqueue = NULL;
 
 enablerst enabler;
-
 
 // For the printGLError macro
 int glerrorcount = 0;
@@ -740,7 +738,6 @@ int main (int argc, char* argv[]) {
     load_module("sound_stub");
 
     platform = getplatform();
-    mqueue = getmqueue();
 
   // Initialise minimal SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER);

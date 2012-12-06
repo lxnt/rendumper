@@ -3,6 +3,7 @@
 #include "enabler.h"
 #include "init.h"
 
+#if defined(RENDER_GL)
 // Used to sort textures
 struct vsize_pos {
   int h, w;
@@ -33,9 +34,10 @@ bool testTextureSize(GLuint texnum, int w, int h) {
   if (gpu_width == w) return true;
   return false;
 }
-
+#endif
 // Texture catalog implementation
 void textures::upload_textures() {
+#if defined(RENDER_GL)
   if (uploaded) return; // Don't bother
   if (!enabler.uses_opengl()) return; // No uploading
   glEnable(GL_TEXTURE_2D);
@@ -218,12 +220,15 @@ void textures::upload_textures() {
   // And that's that. Locked, loaded and ready for texturing.
   printGLError();
   uploaded=true;
+#endif
 }
 
 void textures::remove_uploaded_textures() {
+#if defined(RENDER_GL)
   if (!uploaded) return; // Nothing to do
   glDeleteTextures(1, &gl_catalog);
   uploaded=false;
+#endif
 }
 
 SDL_Surface *textures::get_texture_data(long pos) {

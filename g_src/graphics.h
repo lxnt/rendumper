@@ -6,7 +6,9 @@
 #include <cassert>
 using std::string;
 
+#if defined(RENDER_GL)
 #include "GL/glew.h"
+#endif
 #include "g_basics.h"
 #include "platform.h"
 #include "basics.h"

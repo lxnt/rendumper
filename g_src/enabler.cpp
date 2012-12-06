@@ -381,8 +381,12 @@ void enablerst::do_frame() {
   enabler.clock = SDL_GetTicks();
 
   // If it's time to render..
-  if (outstanding_gframes >= 1 &&
-      (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)) {
+  if (outstanding_gframes >= 1
+#if defined(RENDER_GL)
+     && (!sync || glClientWaitSync(sync, 0, 0) == GL_ALREADY_SIGNALED)
+#endif
+    ) {
+
     // Get the async-loop to render_things
     async_cmd cmd(async_cmd::render);
     async_tobox.write(cmd);

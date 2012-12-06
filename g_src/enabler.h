@@ -16,7 +16,13 @@
 # include <SDL/SDL_image.h>
 #endif
 
+#if defined(RENDER_GL)
 #include "GL/glew.h"
+#else
+typedef void * GLsync;
+typedef uint32_t GLuint;
+typedef float GLfloat;
+#endif
 
 #include <map>
 #include <vector>

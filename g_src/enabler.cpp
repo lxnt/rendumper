@@ -14,6 +14,9 @@
 
 using namespace std;
 
+static iplatform *platform = NULL;
+static imqueue *mqueue = NULL;
+
 enablerst enabler;
 
 
@@ -610,7 +613,7 @@ int enablerst::loop(string cmdline) {
 }
 
 void enablerst::override_grid_size(int x, int y) {
-  if (SDL_ThreadID() != renderer_threadid) {
+  if (platform->thread_id() != (thread_t)renderer_threadid) {
     // Ask the renderer to do it
     async_msg m(async_msg::push_resize);
     m.x = x; m.y = y;
@@ -624,7 +627,7 @@ void enablerst::override_grid_size(int x, int y) {
 }
 
 void enablerst::release_grid_size() {
-  if (SDL_ThreadID() != renderer_threadid) {
+  if (platform->thread_id() != (thread_t)renderer_threadid) {
     async_frombox.write(async_msg(async_msg::pop_resize));
     async_fromcomplete.read();
   } else {
@@ -688,7 +691,7 @@ void enablerst::update_gfps() {
 }
 
 void enablerst::set_fps(int fps) {
-  if (SDL_ThreadID() != renderer_threadid) {
+  if (platform->thread_id() != (thread_t)renderer_threadid) {
     async_msg m(async_msg::set_fps);
     m.fps = fps;
     async_paused = true;
@@ -708,7 +711,7 @@ void enablerst::set_fps(int fps) {
 }
 
 void enablerst::set_gfps(int gfps) {
-  if (SDL_ThreadID() != renderer_threadid) {
+  if (platform->thread_id() != (thread_t)renderer_threadid) {
     async_msg m(async_msg::set_gfps);
     m.fps = gfps;
     async_frombox.write(m);
@@ -728,8 +731,14 @@ int call_loop(void *dummy) {
 
 int main (int argc, char* argv[]) {
     set_modpath("/home/lxnt/00DFGL/prefix32/lib/dfmodules");
-    load_module("platform_ncurses");
-    load_module("sound_stub");
+    if (!load_module("platform_ncurses"))
+        return 1;
+    if (!load_module("sound_stub"))
+        return 1;
+
+    platform = getplatform();
+    mqueue = getmqueue();
+
   // Initialise minimal SDL subsystems.
   int retval = SDL_Init(SDL_INIT_TIMER);
   // Report failure?
@@ -737,10 +746,11 @@ int main (int argc, char* argv[]) {
     report_error("SDL initialization failure", SDL_GetError());
     return false;
   }
-  enabler.renderer_threadid = SDL_ThreadID();
+  enabler.renderer_threadid = (Uint32) platform->thread_id();
 
   // Spawn simulation thread
-  SDL_CreateThread(call_loop, NULL);
+  //SDL_CreateThread(call_loop, NULL);
+  platform->thread_create(call_loop, NULL, NULL);
 
   init.begin(); // Load init.txt settings
 #if 0 // rework this to use renderer init failure instead.

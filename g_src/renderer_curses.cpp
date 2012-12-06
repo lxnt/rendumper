@@ -154,7 +154,7 @@ void enablerst::eventLoop_ncurses() {
     }
     
     // Deal with input
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = GetTickCount();
     // Read keyboard input, if any, and transform to artificial SDL
     // events for enabler_input.
     int key;

@@ -354,7 +354,7 @@ void enablerst::async_loop() {
 
 void enablerst::do_frame() {
   // Check how long it's been, exactly
-  const Uint32 now = SDL_GetTicks();
+  const Uint32 now = GetTickCount();
   const Uint32 interval = CLAMP(now - last_tick, 0, 1000); // Anything above a second doesn't count
   // cout << last_tick << " + " << interval << " = " << now << endl;
   last_tick = now;
@@ -376,7 +376,7 @@ void enablerst::do_frame() {
   }
 
   // Store the current time, for things that are fine with approximations
-  enabler.clock = SDL_GetTicks();
+  enabler.clock = GetTickCount();
 
   // If it's time to render..
   if (outstanding_gframes >= 1
@@ -420,7 +420,7 @@ void enablerst::eventLoop_SDL()
   renderer->resize(screen->w, screen->h);
 
   while (loopvar) {
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = GetTickCount();
     bool paused_loop = false;
 
     // Check for zoom commands
@@ -667,7 +667,7 @@ void enablerst::do_update_fps(queue<int> &q, int &sum, int &last, int &calc) {
     sum -= q.front();
     q.pop();
   }
-  const int now = SDL_GetTicks();
+  const int now = GetTickCount();
   const int interval = now - last;
   q.push(interval);
   sum += interval;
@@ -680,7 +680,7 @@ void enablerst::clear_fps() {
   while (frame_timings.size())
     frame_timings.pop();
   frame_sum = 0;
-  frame_last = SDL_GetTicks();
+  frame_last = GetTickCount();
   calculated_fps = get_fps();
 }
 

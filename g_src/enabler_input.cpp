@@ -853,7 +853,7 @@ bool enabler_inputst::is_recording() {
 }
 
 void enabler_inputst::play_macro() {
-  Time now = SDL_GetTicks();
+  Time now = GetTickCount();
   for_each(timeline.begin(), timeline.end(), [&](Event e){
       now = MAX(now, e.time);
     });
@@ -870,7 +870,7 @@ void enabler_inputst::play_macro() {
 }
 
 bool enabler_inputst::is_macro_playing() {
-  return SDL_GetTicks() <= macro_end;
+  return GetTickCount() <= macro_end;
 }
 
 // Replaces any illegal letters.

@@ -858,7 +858,7 @@ char interfacest::loop() {
 		handlemovie(0);
 		}
 
-    const Time now = SDL_GetTicks();
+    const Time now = GetTickCount();
     // Process as much input as possible. Some screens can't handle multiple input events
     // per logic call (retain_nonzero_input, and any alteration to the window setup
     // requires us to stop until the next logic call.

@@ -5,6 +5,7 @@
    which defines necessary dllimport/export stuff */
 
 #include <cstddef>
+#include <cstdint>
 #include "ideclspec.h"
 
 #if defined(WIN32)

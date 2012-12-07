@@ -16,6 +16,8 @@
 #define DFMODULE_BUILD
 #include "iplatform.h"
 
+namespace {
+
 struct _thread_info {
     pthread_t thread;
     pthread_mutex_t run_mutex;
@@ -195,6 +197,8 @@ static bool core_init_done = false;
 static char _main_name[] = "main()";
 
 static void ncurses_fini(void) { endwin(); }
+
+}
 
 extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
     if (!core_init_done) {

@@ -11,6 +11,7 @@
 #define DFMODULE_BUILD
 #include "iplatform.h"
 
+namespace {
 
 struct the_message {
     void *buf;
@@ -395,7 +396,7 @@ void implementation::release() {
     }
     mutex_unlock(&impl_spinlock);
 }
-
+}
 extern "C" DECLSPEC imqueue * APIENTRY   getmqueue(void) {
     mutex_lock(&impl_spinlock);
     if (!impl)

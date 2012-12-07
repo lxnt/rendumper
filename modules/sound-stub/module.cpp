@@ -3,6 +3,7 @@
 #define DFMODULE_BUILD
 #include "imusicsound.h"
 
+namespace {
 
 struct implementation : public imusicsound {
     void release();
@@ -47,6 +48,8 @@ void implementation::release(void) {
     plat->log_info("stub_sound: release()\n");
 }
 static implementation the_stub;
+
+}
 
 extern "C" DECLSPEC imusicsound * APIENTRY getmusicsound(void) {
     plat = getplatform();

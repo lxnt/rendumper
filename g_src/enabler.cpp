@@ -118,26 +118,26 @@ enablerst::enablerst() {
   last_tick = 0;
 }
 
-void renderer::display() { DFM_STUB(renderer::display); }
-void renderer::cleanup_arrays() { DFM_STUB(renderer::cleanup_arrays); }
-void renderer::gps_allocate(int, int) { DFM_STUB(renderer::gps_allocate); }
-void renderer::swap_arrays() { DFM_STUB(renderer::swap_arrays); }
-void enablerst::pause_async_loop()  { DFM_STUB(enablerst::pause_async_loop); }
-void enablerst::async_wait() { DFM_STUB(enablerst::async_wait); }
-void enablerst::async_loop() { DFM_STUB(enablerst::async_loop); }
-void enablerst::do_frame() { DFM_STUB(enablerst::do_frame); }
-void enablerst::eventLoop_SDL() { DFM_STUB(enablerst::eventLoop_SDL); }
-int enablerst::calculate_fps() { DFM_STUB(enablerst::calculate_fps); return 0; }
-int enablerst::calculate_gfps() { DFM_STUB(enablerst::calculate_gfps);  return 0; }
+void renderer::display()                { DFM_STUB(renderer::display); }
+void renderer::cleanup_arrays()         { DFM_STUB(renderer::cleanup_arrays); }
+void renderer::gps_allocate(int, int)   { DFM_STUB(renderer::gps_allocate); }
+void renderer::swap_arrays()            { DFM_STUB(renderer::swap_arrays); }
+void enablerst::pause_async_loop()      { DFM_STUB(enablerst::pause_async_loop); }
+void enablerst::async_wait()            { DFM_STUB(enablerst::async_wait); }
+void enablerst::async_loop()            { DFM_STUB(enablerst::async_loop); }
+void enablerst::do_frame()              { DFM_STUB(enablerst::do_frame); }
+void enablerst::eventLoop_SDL()         { DFM_STUB(enablerst::eventLoop_SDL); }
 void enablerst::do_update_fps(queue<int> &, int &, int &, int &) { DFM_STUB(enablerst::do_update_fps); }
-void enablerst::clear_fps() { DFM_STUB(enablerst::clear_fps); }
-void enablerst::update_fps() { DFM_STUB(enablerst::update_fps); }
-void enablerst::update_gfps() { DFM_STUB(enablerst::update_gfps); }
-int call_loop(void *) {  DFM_STUB(call_loop); return 0; }
-int enablerst::loop(string) { DFM_STUB(enablerst::loop); return 0; }
+void enablerst::clear_fps()             { DFM_STUB(enablerst::clear_fps); }
+void enablerst::update_fps()            { DFM_STUB(enablerst::update_fps); }
+void enablerst::update_gfps()           { DFM_STUB(enablerst::update_gfps); }
+int call_loop(void *)                   { DFM_STUB(call_loop); return 0; }
+int enablerst::loop(string)             { DFM_STUB(enablerst::loop); return 0; }
 
+int enablerst::calculate_fps()          { return getsimuloop()->get_actual_sfps(); }
+int enablerst::calculate_gfps()         { return getsimuloop()->get_actual_rfps(); }
 void enablerst::override_grid_size(int x, int y) { getrenderer()->override_grid_size(x, y); }
-void enablerst::release_grid_size() { getrenderer()->release_grid_size(); }
+void enablerst::release_grid_size()     { getrenderer()->release_grid_size(); }
 void enablerst::zoom_display(zoom_commands command) {
     irenderer *r = getrenderer();
     switch (command) {

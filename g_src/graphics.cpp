@@ -554,7 +554,14 @@ void render_things()
   }
   if (gps.display_frames) {
     ostringstream fps_stream;
-    fps_stream << "FPS: " << setw(3) << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
+    if (true)
+      {
+          char boof[1024];
+          sprintf(boof, "fps=%12d gfps=%12d", enabler.calculate_fps(), enabler.calculate_gfps());
+          fps_stream << std::string(boof);
+      }
+    else
+        fps_stream << "FPS: " << setw(3) << enabler.calculate_fps() << " (" << enabler.calculate_gfps() << ")";
     string fps = fps_stream.str();
     gps.changecolor(7,3,1);
     static gps_locator fps_locator(0, 25);

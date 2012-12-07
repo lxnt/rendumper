@@ -5,13 +5,19 @@
 #include <stdint.h>
 #endif //WIN32
 
+#if defined(__GNUC__)
+#define UNUSED __attribute__((unused))
+#else
+#define UNUSED
+#endif
+
 #define MT_BUFFER_NUM 10
 #define MT_LEN 624
 
 
 void mt_init();
 uint32_t mt_trandom();
-static int32_t trandom(uint32_t max=2147483647LU)
+static UNUSED int32_t trandom(uint32_t max=2147483647LU)
 	{
 	if(max<=1)return 0;
 	uint32_t seed=mt_trandom();
@@ -20,7 +26,7 @@ static int32_t trandom(uint32_t max=2147483647LU)
 
 	return((int32_t)seed);
 	}
-static int32_t loadtrandom(uint32_t max=2147483647LU)
+static UNUSED int32_t loadtrandom(uint32_t max=2147483647LU)
 	{
 	uint32_t seed=mt_trandom();
 	seed=seed%max;

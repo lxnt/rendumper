@@ -64,9 +64,13 @@ typedef int32_t Ordinal;
 
 using namespace std;
 
-
+#if defined(__GNUC__)
+#define UNUSED __attribute__((unused))
+#else
+#define UNUSED
 #pragma comment( lib, "opengl32.lib" )			// Search For OpenGL32.lib While Linking
 #pragma comment( lib, "glu32.lib" )				// Search For GLu32.lib While Linking
+#endif
 
 extern enablerst enabler;
 extern texture_handlerst texture;
@@ -78,7 +82,7 @@ extern string errorlog_prefix;
 void process_object_lines(textlinesst &lines,string &chktype,string &graphics_dir);
 
 // Add, then increment to the (possible) PBO alignment requirement
-static void align(size_t &sz, off_t inc) {
+static UNUSED void align(size_t &sz, off_t inc) {
   sz += inc;
   while (sz%64) sz++; // So.. tired.. FIXME.
 }

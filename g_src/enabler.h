@@ -669,7 +669,7 @@ namespace std {
       return hash<string>()(val.text) + val.fg + (val.bg << 4) + (val.bold << 8);
     }
   };
-};
+}
 
 // Being a texture catalog interface, with opengl, sdl and truetype capability
 class textures
@@ -789,7 +789,7 @@ class renderer {
   virtual void update_all() = 0;
   virtual void render() = 0;
   virtual void set_fullscreen() {} // Should read from enabler.is_fullscreen()
-  virtual void zoom(zoom_commands cmd) {};
+  virtual void zoom(zoom_commands) {};
   virtual void resize(int w, int h) = 0;
   virtual void grid_resize(int w, int h) = 0;
   void swap_arrays();

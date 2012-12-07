@@ -177,7 +177,8 @@ static void add_input_ncurses(int key, uint32_t now) {
 }
 
 int main (int argc, char* argv[]) {
-    set_modpath("/home/lxnt/00DFGL/prefix32/lib/dfmodules");
+    set_modpath("libs/");
+    /* here decide what platform to load, without init.txt. somehow. */
     if (!load_module("platform_ncurses"))
         return 1;
     load_module("sound_stub");

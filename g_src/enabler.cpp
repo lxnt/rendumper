@@ -1,6 +1,8 @@
 #include <cassert>
 #include "glue.h"
 #include "iplatform.h"
+#include "irenderer.h"
+#include "isimuloop.h"
 
 #include "platform.h"
 #include "enabler.h"
@@ -189,57 +191,57 @@ int main (int argc, char* argv[]) {
     report_error("SDL initialization failure", SDL_GetError());
     return false;
   }
-  enabler.renderer_threadid = (Uint32) platform->thread_id();
 
-  // Spawn simulation thread
-  //SDL_CreateThread(call_loop, NULL);
-  platform->thread_create(call_loop, NULL, NULL);
-
-  init.begin(); // Load init.txt settings
-#if 0 // rework this to use renderer init failure instead.
-#if !defined(__APPLE__) && defined(unix)
-  if (!gtk_ok && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
-    puts("Display not found and PRINT_MODE not set to TEXT, aborting.");
-    exit(EXIT_FAILURE);
-  }
-#endif
-#endif
-  if (init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) &&
-      init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS)) {
-    puts("Graphical tiles are not compatible with text output, sorry");
-    exit(EXIT_FAILURE);
-  }
-
-  // Initialize video, if we /use/ video
-  retval = SDL_InitSubSystem(init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT) ? 0 : SDL_INIT_VIDEO);
-  if (retval != 0) {
-    report_error("SDL initialization failure", SDL_GetError());
-    return false;
-  }
-  
-  if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
-    // Initialize OpenAL
-    if (!musicsound.initsound()) {
-      puts("Initializing sound failed, no sound will be played");
-      init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
+    if (!load_module("renderer_ncurses")) {
+        report_error("renderer load failed.", "");
+        return 1;
     }
-  }
 
-  // Load keyboard map
-  keybinding_init();
-  enabler.load_keybindings("data/init/interface.txt");
+    if (!load_module("simuloop")) {
+        report_error("simuloop load failed.", "");
+        return 1;
+    }
 
-  string cmdLine;
-  for (int i = 1; i < argc; ++i) { 
-    char *option = argv[i];
-    cmdLine += option;
-    cmdLine += " ";
-  }
-  int result = enabler.loop(cmdLine);
+    irenderer *renderer = getrenderer();
+    isimuloop *simuloop = getsimuloop();
 
-  SDL_Quit();
- 
-  return result;
+    simuloop->set_callbacks(mainloop,
+                            render_things,
+                            assimilate_buffer,
+                            add_input_ncurses);
+
+
+    init.begin(); // Load init.txt settings
+
+    if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF))
+        if (!musicsound.initsound()) {
+            report_error("Initializing sound failed, no sound will be played", "");
+            init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
+        }
+
+    // Load keyboard map
+    keybinding_init();
+    enabler.load_keybindings("data/init/interface.txt");
+
+    for (int i = 1; i < argc; ++i) {
+        char *option = argv[i];
+        enabler.command_line += option;
+        enabler.command_line += " ";
+    }
+
+    if (beginroutine()) { // TODO: think of moving to simuloop.
+        renderer->start();
+        simuloop->start();
+
+        renderer->join();
+
+        endroutine();
+    } else {
+        report_error("beginroutine()", "failed");
+    }
+
+    SDL_Quit();
+    return 0;
 }
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum)

@@ -287,6 +287,8 @@ private:
     case zoom_resetgrid:
       compute_forced_zoom();
       break;
+    default:
+      break;
     }
     pair<int,int> after = compute_zoom(true);
     if (after == before && (cmd == zoom_in || cmd == zoom_out))

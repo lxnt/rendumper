@@ -94,11 +94,14 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       }
       break;
     case mode_keyR:
-      keyR_selector sel = keyR.get_selection();
-      if (sel.sel == sel_event) {
-        enabler.remove_key(keyL.get_selection(), sel.event);
-        reset_keyR();
+      {
+        keyR_selector sel = keyR.get_selection();
+        if (sel.sel == sel_event) {
+          enabler.remove_key(keyL.get_selection(), sel.event);
+          reset_keyR();
+        }
       }
+    default:
       break;
     }
   } else if (input.count(INTERFACEKEY_SELECT)) {
@@ -135,6 +138,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       case sel_rep_fast:
         enabler.key_repeat(key, REPEAT_FAST);
         reset_keyR();
+      default:
         break;
       }}
       break;
@@ -142,6 +146,7 @@ void KeybindingScreen::feed(set<InterfaceKey> &input) {
       enabler.bindRegisteredKey(keyRegister.get_selection(), keyL.get_selection());
       mode = mode_keyR;
       reset_keyR();
+    default:
       break;
     }
   } else if (input.count(INTERFACEKEY_LEAVESCREEN) || input.count(INTERFACEKEY_OPTIONS)) {

@@ -79,7 +79,6 @@ struct implementation : public isimuloop {
                        {
         platform = getplatform();
         mqueue = getmqueue();
-        renderer = getrenderer();
     }
 };
 
@@ -158,6 +157,8 @@ uint32_t implementation::get_actual_rfps() { return render_things_period_ms.get(
     also need to get rid of render message. it is not needed.
 */
 void implementation::simulation_thread() {
+    renderer = getrenderer();
+
     q_request  = mqueue->open("request", 1<<10);
     q_response = mqueue->open("response", 1<<10);
 

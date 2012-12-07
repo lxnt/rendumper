@@ -340,14 +340,12 @@ void implementation::renderer_thread(void) {
     }
 }
 
-}
-
-static implementation *impl = NULL;
-
 void implementation::release(void) { }
 
+static implementation *impl = NULL;
 extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void) {
     if (!impl)
         impl = new implementation();
     return impl;
 }
+} /* ns */

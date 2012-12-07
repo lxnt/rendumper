@@ -285,12 +285,10 @@ void implementation::simulation_thread() {
 
 void implementation::release() { }
 
-}
-
 static implementation *impl = NULL;
-
 extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void) {
     if (!impl)
         impl = new implementation();
     return impl;
 }
+} /* ns */

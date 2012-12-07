@@ -1,6 +1,7 @@
 #include <cstdarg>
 
 #include "iplatform.h"
+#include "imqueue.h"
 #include "irenderer.h"
 #include "emafilter.h"
 

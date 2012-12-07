@@ -33,6 +33,7 @@ const std::string _so_suffix(".so");
 #undef DFMODULE_BUILD
 #include "ideclspec.h"
 #include "iplatform.h"
+#include "imqueue.h"
 #include "irenderer.h"
 #include "isimuloop.h"
 #include "ikeyboard.h"

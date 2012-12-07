@@ -7,9 +7,9 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-
-#define DFMODULE_BUILD
 #include "iplatform.h"
+#define DFMODULE_BUILD
+#include "imqueue.h"
 
 namespace {
 
@@ -22,71 +22,72 @@ struct the_message {
 
 static void mutex_init(pthread_mutex_t *mutex) {
     int rv;
-    if ((rv = pthread_mutex_init(mutex, NULL))) {
-        fprintf(stderr, "pthread_mutex_init(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_mutex_init(mutex, NULL)))
+        getplatform()->fatal("pthread_mutex_init(): %s\n", strerror(rv));
 }
 
 static void mutex_destroy(pthread_mutex_t *mutex) {
     int rv;
-    if ((rv = pthread_mutex_destroy(mutex))) {
-        fprintf(stderr, "pthread_mutex_destroy(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_mutex_destroy(mutex)))
+        getplatform()->fatal("pthread_mutex_destroy(): %s\n", strerror(rv));
 }
 
 static int mutex_lock(pthread_mutex_t *mutex) {
-    return pthread_mutex_lock(mutex);
+    int rv;
+    if ((rv = pthread_mutex_lock(mutex)))
+        getplatform()->fatal("pthread_mutex_unlock(%p): %s\n", mutex, strerror(rv));
+    return rv;
 }
 
 static int mutex_unlock(pthread_mutex_t *mutex) {
-    return pthread_mutex_unlock(mutex);
+    int rv;
+    if ((rv = pthread_mutex_unlock(mutex)))
+        getplatform()->fatal("pthread_mutex_unlock(%p): %s\n", mutex, strerror(rv));
+    return rv;
 }
 
 static void cond_init(pthread_cond_t *cond) {
     int rv;
-    if ((rv = pthread_cond_init(cond, NULL))) {
-        fprintf(stderr, "pthread_cond_init(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_cond_init(cond, NULL)))
+        getplatform()->fatal("pthread_cond_init(): %s\n", strerror(rv));
 }
 
 static void cond_destroy(pthread_cond_t *cond) {
     int rv;
-    if ((rv = pthread_cond_destroy(cond))) {
-        fprintf(stderr, "pthread_cond_destroy(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_cond_destroy(cond)))
+        getplatform()->fatal("pthread_cond_destroy(): %s\n", strerror(rv));
 }
 
 static void cond_signal(pthread_cond_t *cond) {
     int rv;
-    if ((rv = pthread_cond_signal(cond))) {
-        fprintf(stderr, "pthread_cond_destroy(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_cond_signal(cond)))
+        getplatform()->fatal("pthread_cond_destroy(): %s\n", strerror(rv));
 }
 
 static int cond_wait(pthread_cond_t *cond, pthread_mutex_t * mutex) {
     int rv;
-    if ((rv = pthread_cond_wait(cond, mutex))) {
-        fprintf(stderr, "pthread_cond_wait(): %s\n", strerror(rv));
-        exit(1);
-    }
+    if ((rv = pthread_cond_wait(cond, mutex)))
+        getplatform()->fatal("pthread_cond_wait(): %s\n", strerror(rv));
     return 0;
 }
 
-static int cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, struct timeval& abstime) {
-    struct timespec abstime_ns;
-    abstime_ns.tv_sec = abstime.tv_sec;
-    abstime_ns.tv_nsec = abstime.tv_usec * 1000;
+static int cond_timedwait(pthread_cond_t *cond, pthread_mutex_t * mutex, int timeout) {
+    /* abstime calculation snippet snipped from SDL2 */
+    struct timeval delta;
+    struct timespec abstime;
 
-    int rv = pthread_cond_timedwait(cond, mutex, &abstime_ns);
-    if ((rv != 0 ) && (rv != ETIMEDOUT)) {
-        fprintf(stderr, "pthread_cond_timewait(): %s\n", strerror(rv));
-        exit(1);
+    gettimeofday(&delta, NULL);
+
+    abstime.tv_sec = delta.tv_sec + (timeout / 1000);
+    abstime.tv_nsec = (delta.tv_usec + (timeout % 1000) * 1000) * 1000;
+    if (abstime.tv_nsec > 1000000000) {
+        abstime.tv_sec += 1;
+        abstime.tv_nsec -= 1000000000;
     }
+
+    int rv = pthread_cond_timedwait(cond, mutex, &abstime);
+    if ((rv != 0 ) && (rv != ETIMEDOUT))
+        getplatform()->fatal("pthread_cond_timewait(): %s\n", strerror(rv));
     return rv;
 }
 
@@ -161,13 +162,8 @@ static int wait_on_cond(bool *what, pthread_cond_t *cond, pthread_mutex_t *mutex
                 return IMQ_CLOWNS;
             }
         } else {
-            /* reimplement pthread_cond_timedwait()'s abstime. dunno why. */
-            struct timeval abstime;
-            gettimeofday(&abstime, NULL);
-            abstime.tv_sec += timeout / 1000;
-            abstime.tv_usec += 1000 * (timeout % 1000);
             while ((!*what) && (rv == 0))
-                rv = cond_timedwait(cond, mutex, abstime);
+                rv = cond_timedwait(cond, mutex, timeout);
             if (!*what) {
                 mutex_unlock(mutex);
                 if ((timeout < 1) || (rv == ETIMEDOUT))
@@ -396,8 +392,8 @@ void implementation::release() {
     }
     mutex_unlock(&impl_spinlock);
 }
-}
-extern "C" DECLSPEC imqueue * APIENTRY   getmqueue(void) {
+
+extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void) {
     mutex_lock(&impl_spinlock);
     if (!impl)
         impl = new implementation();
@@ -405,3 +401,4 @@ extern "C" DECLSPEC imqueue * APIENTRY   getmqueue(void) {
     mutex_unlock(&impl_spinlock);
     return impl;
 }
+} /* ns */

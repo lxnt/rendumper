@@ -3,6 +3,7 @@
 
 #include "ncurses.h"
 #include "iplatform.h"
+#include "imqueue.h"
 #include "isimuloop.h"
 
 #define DFMODULE_BUILD

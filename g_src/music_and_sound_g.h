@@ -3,10 +3,13 @@
 
 #define SOUND_CHANNELNUM 16
 
+#include "imusicsound.h"
+
 // If the bool is false, a sound; otherwise a song
 typedef std::pair<bool,int> slot;
 
 class musicsoundst {
+  imusicsound *impl;
  public:
   bool initsound(); // Returns false if it failed
   void update();
@@ -31,7 +34,7 @@ class musicsoundst {
   void playsound(int s,int min_channel,int max_channel,int force_channel);
   void set_sound_params(int slot,int p1,int vol,int pan,int priority);
 
-  musicsoundst();
+  musicsoundst() : impl(NULL) {}
 
   ~musicsoundst();
 };

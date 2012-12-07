@@ -120,7 +120,7 @@ enablerst::enablerst() {
 
 void renderer::display() { DFM_STUB(renderer::display); }
 void renderer::cleanup_arrays() { DFM_STUB(renderer::cleanup_arrays); }
-void renderer::gps_allocate(int x, int y) { DFM_STUB(renderer::gps_allocate); }
+void renderer::gps_allocate(int, int) { DFM_STUB(renderer::gps_allocate); }
 void renderer::swap_arrays() { DFM_STUB(renderer::swap_arrays); }
 void enablerst::pause_async_loop()  { DFM_STUB(enablerst::pause_async_loop); }
 void enablerst::async_wait() { DFM_STUB(enablerst::async_wait); }
@@ -129,12 +129,12 @@ void enablerst::do_frame() { DFM_STUB(enablerst::do_frame); }
 void enablerst::eventLoop_SDL() { DFM_STUB(enablerst::eventLoop_SDL); }
 int enablerst::calculate_fps() { DFM_STUB(enablerst::calculate_fps); return 0; }
 int enablerst::calculate_gfps() { DFM_STUB(enablerst::calculate_gfps);  return 0; }
-void enablerst::do_update_fps(queue<int> &q, int &sum, int &last, int &calc) { DFM_STUB(enablerst::do_update_fps); }
+void enablerst::do_update_fps(queue<int> &, int &, int &, int &) { DFM_STUB(enablerst::do_update_fps); }
 void enablerst::clear_fps() { DFM_STUB(enablerst::clear_fps); }
 void enablerst::update_fps() { DFM_STUB(enablerst::update_fps); }
 void enablerst::update_gfps() { DFM_STUB(enablerst::update_gfps); }
-int call_loop(void *dummy) {  DFM_STUB(call_loop); return 0; }
-int enablerst::loop(string cmdline) { DFM_STUB(enablerst::loop); return 0; }
+int call_loop(void *) {  DFM_STUB(call_loop); return 0; }
+int enablerst::loop(string) { DFM_STUB(enablerst::loop); return 0; }
 
 void enablerst::override_grid_size(int x, int y) { getrenderer()->override_grid_size(x, y); }
 void enablerst::release_grid_size() { getrenderer()->release_grid_size(); }
@@ -375,7 +375,7 @@ void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
 
 	//ADD EACH OF THE STRINGS ON IN TURN
 	string curstr;
-	long s,pos;
+	size_t s,pos;
 	for(s=0;s<src.str.size();s++)
 		{
 		//GRAB EACH WORD, AND SEE IF IT FITS, IF NOT START A NEW LINE
@@ -395,7 +395,7 @@ void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
 				{
 				long opos=pos;
 
-				long minus=0;
+				size_t minus=0;
 				do
 					{
 					pos--;

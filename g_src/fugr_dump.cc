@@ -1,10 +1,10 @@
 /*
-    fugr_dump -> dump a portion of the map for 
+    fugr_dump -> dump a portion of the map for
     the testbed to work on.
 */
 
-#include <string.h>
-#include <stdlib.h> // getenv
+#include <cstring>
+#include <cstdlib> // getenv
 
 #include <set>
 #include <map>
@@ -27,7 +27,7 @@ map_block::designation : tile_designation[16][16]
 
 map_block::region_offset : uint8_t[9]
 
-so 
+so
     region_offset[biome] points to a region
     while geolayer_index points to a layer within that region.
 
@@ -36,13 +36,13 @@ This complicates caching. Crap.
 world->map.region_{xy} : coordinates of ? in embark squares(?). Most likely of the embark spot.
 dfhack holds that:
     a region is 16x16 embark squares.
-    
+
 
 world->world_data->region_map[] - 2d map of regions in the world:
       int32_t region_id;
       int32_t landmass_id;
       int16_t geo_index;
-    
+
 world->world_data->region_details - region_details objects:
     int8_t biome[17][17];
     int16_t elevation[17][17];
@@ -62,7 +62,7 @@ struct _bicache_item { // should be indices if we ever go 64bit, but...
     std::vector<df::unit *> units;
     std::vector<df::construction *> constructions;
     bool has_something;
-    
+
     _bicache_item(): buildings(), items(), units(), constructions()  { has_something = false; }
 };
 
@@ -71,13 +71,13 @@ struct _bicache {
     std::vector<_bicache_item> head;
     df::coord origin;
     df::coord size;
-    
+
     _bicache() : head() {
         origin = { 0, 0 ,0 };
         size = { 0, 0 ,0 };
     }
     ~_bicache() { head.clear(); }
-    
+
     bool whine_unit_pos(df::unit *unit) {
         df::coord pos = unit->pos/16;
         if (not pos.in(size)) {
@@ -94,15 +94,15 @@ struct _bicache {
         }
 
         head.assign(size.x*size.y*size.z, _bicache_item());
-        
-        for ( int i=0; i < df::global::world->items.all.size(); i++ ) {
+
+        for ( unsigned i=0; i < df::global::world->items.all.size(); i++ ) {
             df::item *item  = df::global::world->items.all[i];
             if (item->pos.valid()) {
                 at(item->pos/16).items.push_back(item);
                 at(item->pos/16).has_something = true;
             }
         }
-        for ( int i=0; i < df::global::world->buildings.all.size(); i++ ) {
+        for ( unsigned i=0; i < df::global::world->buildings.all.size(); i++ ) {
             df::building& bu = *df::global::world->buildings.all[i];
             int sbx = bu.x1>>4, sby = bu.y1>>4;
             int ebx = bu.x2>>4, eby = bu.y2>>4;
@@ -113,7 +113,7 @@ struct _bicache {
                     at(pos/16).has_something = true;
                 }
         }
-        for (int i=0; i<df::global::world->units.all.size(); i++ ) {
+        for (unsigned i=0; i<df::global::world->units.all.size(); i++ ) {
             df::unit *unit = df::global::world->units.all[i];
             if (unit->pos.valid()) {
                 if (whine_unit_pos(unit)) continue;
@@ -121,7 +121,7 @@ struct _bicache {
                 at(unit->pos/16).has_something = true;
             }
         }
-        for (int i=0; i < df::global::world->constructions.size() ; i ++) {
+        for (unsigned i=0; i < df::global::world->constructions.size() ; i ++) {
             df::construction *c = df::global::world->constructions[i];
             at(c->pos/16).constructions.push_back(c);
             at(c->pos/16).has_something = true;
@@ -136,11 +136,17 @@ struct _bicache {
 };
 
 struct _mat {
-    enum { BUILTIN, INORGANIC, PLANT }  klass;
-    uint16_t num; 
-    int16_t type; 
-    int32_t index; 
+    enum _mat_klass { BUILTIN, INORGANIC, PLANT }  klass;
+    uint16_t num;
+    int16_t type;
+    int32_t index;
     std::string id;
+
+    _mat() {};
+    _mat( _mat_klass k, uint16_t n, int16_t t, int32_t i, const char* d):
+        klass(k), num(n), type(t), index(i), id(d) { }
+    _mat( _mat_klass k, uint16_t n, int16_t t, int32_t i, const std::string& d):
+        klass(k), num(n), type(t), index(i), id(d) { }
 };
 static const char *_mat_klassname[] = { "BUILTIN", "INORGANIC", "PLANT", NULL };
 static std::vector<_mat> mats_list;
@@ -184,17 +190,17 @@ static uint16_t _list_mat(_mat mat) {
 }
 
 static void matstats(FILE *fp) {
-    fprintf(fp, "matstats: %d mats listed\n", mats_list.size()); 
-    fprintf(fp, "matstats: %d soap pairs\n",  soap_set.size()); 
-    fprintf(fp, "matstats: %d mapped pairs\n",  mats_map.size()); 
+    fprintf(fp, "matstats: %d mats listed\n", mats_list.size());
+    fprintf(fp, "matstats: %d soap pairs\n",  soap_set.size());
+    fprintf(fp, "matstats: %d mapped pairs\n",  mats_map.size());
 }
 static void fputmat(const struct _mat& m, FILE *fp) {
-    fprintf(fp, "%hu type=%hd index=%d klass=%s id=%s\n", m.num, 
+    fprintf(fp, "%hu type=%hd index=%d klass=%s id=%s\n", m.num,
             m.type, m.index, _mat_klassname[m.klass], m.id.c_str());
 }
 static void dump_materials(FILE *fp) {
     fputs("section:materials\n", fp);
-    for (int i=0; i < mats_list.size(); i++)
+    for (unsigned i=0; i < mats_list.size(); i++)
         fputmat(mats_list[i], fp);
     matstats(stderr);
 }
@@ -202,48 +208,44 @@ static void init_materials(void) {
     std::vector<df::creature_raw*>& creas = df::creature_raw::get_vector();
     std::vector<df::inorganic_raw*>& inorgs = df::inorganic_raw::get_vector();
     std::vector<df::plant_raw*>& plants = df::plant_raw::get_vector();
-    const int builtin_mats = 
+    const unsigned builtin_mats =
         sizeof(df::global::world->raws.mat_table.builtin)/sizeof(df::material*);
     df::material **builtins = df::global::world->raws.mat_table.builtin;
-    
+
     // add nonmat rec
-    _mat nonmat = { _mat::BUILTIN, NONEMAT_NO, -1, -1, "NONEMAT" };
+    _mat nonmat(_mat::BUILTIN, NONEMAT_NO, -1, -1, "NONEMAT");
     uint16_t matnum = _list_mat(nonmat);
-    
+
     // skipmat - stub for those mats that shouldn't have tiles made of them
     _mat skipmat = { _mat::BUILTIN, matnum, -1, -1, "SKIPMAT" };
     matnum = _list_mat(skipmat);
-    
+
     // soapmat - stub for all kinds of soap.
     _mat soapmat = { _mat::BUILTIN, matnum, -1, -1, "SOAP" };
     matnum = _list_mat(soapmat);
-    
-    int16_t type;
-    int32_t index;
+
     std::string bina = "none";
-    type = 0;
-    for (index = 0; index < inorgs.size(); index ++) {
-        _mat inomat = { _mat::INORGANIC, matnum, type, index, inorgs[index]->id };
+    for (unsigned index = 0; index < inorgs.size(); index ++) {
+        _mat inomat(_mat::INORGANIC, matnum, 0, index, inorgs[index]->id);
         matnum = _list_mat(inomat);
     }
 
-    index = -1;
-    for (type = 0; type < builtin_mats; type ++) {
+    for (uint16_t type = 0; type < builtin_mats; type ++) {
         if (type == 7) {
-            _mat coke = { _mat::BUILTIN, matnum, type, 0, "COKE" };
+            _mat coke(_mat::BUILTIN, matnum, type, 0, "COKE");
             matnum = _list_mat(coke);
-            _mat charcoal = { _mat::BUILTIN, matnum, type, 1, "CHARCOAL" };
+            _mat charcoal(_mat::BUILTIN, matnum, type, 1, "CHARCOAL");
             matnum = _list_mat(charcoal);
         }
         if (builtins[type]) {
-            _mat bimat = { _mat::BUILTIN, matnum, type, index, builtins[type]->id };
+            _mat bimat = { _mat::BUILTIN, matnum, type, -1, builtins[type]->id };
             matnum = _list_mat(bimat);
         }
     }
-    
-    for (index = 0; index < creas.size(); index ++) 
-        for (int16_t subtype = 0; subtype < creas[index]->material.size(); subtype ++) {
-            int16_t type = subtype + 19;
+
+    for (unsigned index = 0; index < creas.size(); index ++)
+        for (unsigned subtype = 0; subtype < creas[index]->material.size(); subtype ++) {
+            unsigned type = subtype + 19;
             std::string& subid = creas[index]->material[subtype]->id;
             if ( subid == "SOAP")
                 _add_mat(soapmat, type, index);
@@ -252,11 +254,11 @@ static void init_materials(void) {
         }
 
     std::vector<df::historical_figure*>& histfigs = df::historical_figure::get_vector();
-    for (index = 0; index < histfigs.size(); index ++) {
+    for (unsigned index = 0; index < histfigs.size(); index ++) {
         if (histfigs[index]->race != -1) {
             df::creature_raw *crea = df::creature_raw::get_vector()[histfigs[index]->race];
-            for (int subtype = 0; subtype < crea->material.size(); subtype ++) {
-                int16_t type = subtype + 219;
+            for (unsigned subtype = 0; subtype < crea->material.size(); subtype ++) {
+                unsigned type = subtype + 219;
                 std::string& subid = crea->material[subtype]->id;
                 if ( subid == "SOAP")
                     _add_mat(soapmat, type, index);
@@ -266,8 +268,8 @@ static void init_materials(void) {
         }
     }
 
-    for (index = 0; index < plants.size(); index ++)
-        for (int16_t subtype = 0; subtype < plants[index]->material.size(); subtype ++) {
+    for (unsigned index = 0; index < plants.size(); index ++)
+        for (unsigned subtype = 0; subtype < plants[index]->material.size(); subtype ++) {
             int16_t type = subtype + 419;
             std::string& subid = plants[index]->material[subtype]->id;
             if ( subid == "SOAP" ) {
@@ -278,8 +280,8 @@ static void init_materials(void) {
                 id += " subklass=";
                 id += subid;
                 if (getenv("FGD_PLANT_MATS"))
-                fprintf(stderr, "id=%s subid=%s val=%d subval=%d\n", id.c_str(), subid.c_str(), 
-                           plants[index]->value, plants[index]->material[subtype]-> material_value); 
+                fprintf(stderr, "id=%s subid=%s val=%d subval=%d\n", id.c_str(), subid.c_str(),
+                           plants[index]->value, plants[index]->material[subtype]-> material_value);
                 _mat plamat = { _mat::PLANT, matnum, type, index, id };
                 matnum = _list_mat(plamat);
             }
@@ -288,25 +290,25 @@ static void init_materials(void) {
 
 static void dump_constructions(FILE *fp) {
     fputs("section:constructions\n", fp);
-    for (int i=0; i < df::global::world->constructions.size() ; i ++) {
+    for (unsigned i=0; i < df::global::world->constructions.size() ; i ++) {
         df::construction& c = *df::global::world->constructions[i];
         fprintf(fp, "%hd,%hd,%hd item_type=%hd item_subtype=%hd mat=(%hd, %d) matnum=%hd orig_tile=%hd\n",
-            c.pos.x, c.pos.y, c.pos.z, c.item_type, c.item_subtype, c.mat_type, c.mat_index, 
+            c.pos.x, c.pos.y, c.pos.z, c.item_type, c.item_subtype, c.mat_type, c.mat_index,
             _map_mat(c.mat_type, c.mat_index), c.original_tile);
     }
 }
 
 static void dump_buildings(FILE *fp) {
     fputs("section:buildings\n", fp);
-    
-    for ( int i=0; i < df::global::world->buildings.all.size(); i++ ) {
+
+    for ( unsigned i=0; i < df::global::world->buildings.all.size(); i++ ) {
         df::building& b = *df::global::world->buildings.all[i];
-        fprintf(fp, 
+        fprintf(fp,
             "%d:%d:%d %d:%d:%d %d:%d:%d "
             "id=%d type=%s subtype=%d custype=%d "
             "mat=(%hd, %d) matnum=%d\n",
-            b.x1, b.y1, b.z, 
-            b.x2, b.y2, b.z, 
+            b.x1, b.y1, b.z,
+            b.x2, b.y2, b.z,
             b.centerx, b.centery, b.z,
             b.id, df::enums::building_type::key(b.getType()),
             b.getSubtype(), b.getCustomType(),
@@ -316,20 +318,20 @@ static void dump_buildings(FILE *fp) {
 
 static void dump_items(FILE *fp) {
     fputs("section:items\n", fp);
-    
+
     std::string desc;
-    for ( int i=0; i < df::global::world->items.all.size(); i++ ) {
+    for ( unsigned i=0; i < df::global::world->items.all.size(); i++ ) {
         df::item& it = *df::global::world->items.all[i];
         if (it.pos.x + it.pos.y + it.pos.z < 0)
             continue;
         desc.clear();
-        it.getItemDescription(&desc, 255);
+        it.getItemDescription(&desc, 0); /* whatever. dunno what's modes 1 and 2 are */
         fprintf(fp, "%hd:%hd:%hd id=%d "
                     "type=%s subtype=%hd "
                     "mat=(%hd, %d) matnum=%hd actmat=(%hd, %d) actmatnum=%hd "
-                    "desc=%s\n", 
-            it.pos.x, it.pos.y, it.pos.z, it.id, 
-            df::enums::item_type::key(it.getType()), 
+                    "desc=%s\n",
+            it.pos.x, it.pos.y, it.pos.z, it.id,
+            df::enums::item_type::key(it.getType()),
             it.getSubtype(), it.getMaterial(), it.getMaterialIndex(),
             _map_mat(it.getMaterial(), it.getMaterialIndex()),
             it.getActualMaterial(), it.getActualMaterialIndex(),
@@ -339,36 +341,36 @@ static void dump_items(FILE *fp) {
 
 static void dump_units(FILE *fp) {
     fputs("section:units\n", fp);
-    
-    for (int i=0; i<df::global::world->units.all.size(); i++ ) {
+
+    for (unsigned i=0; i<df::global::world->units.all.size(); i++ ) {
         df::unit& u = *df::global::world->units.all[i];
         fprintf(fp, "%hd:%hd:%hd "
             "id=%d name='%s' nickname='%s' "
             "prof=%hd,%hd custom_prof='%s' "
-            "race=%d sex=%hhd caste=%hd\n",  
-            u.pos.x, u.pos.y, u.pos.z, 
-            u.id, u.name.first_name.c_str(), u.name.nickname.c_str(), 
-            u.profession, u.profession2, u.custom_profession.c_str(), 
-            u.race, u.sex, u.caste);
+            "race=%d sex=%d caste=%hd\n",
+            u.pos.x, u.pos.y, u.pos.z,
+            u.id, u.name.first_name.c_str(), u.name.nickname.c_str(),
+            u.profession, u.profession2, u.custom_profession.c_str(),
+            u.race, (int) u.sex, u.caste);
     }
 }
 
 static void dump_building_defs(FILE *fp) {
     fputs("section:building_defs\n", fp);
-    
+
     df::world_raws& raws = df::global::world->raws;
-    
-    for (int i=0; i < raws.buildings.all.size() ; i ++) {
+
+    for (unsigned i=0; i < raws.buildings.all.size() ; i ++) {
         df::building_def& def = *raws.buildings.all[i];
         fprintf(fp, "id=%d name=%s name_color=%hd,%hd,%hd,%hd build_key=%d "
                     "dim=%d:%d workloc=%d:%d build_stages=%d\n",
-                def.id, def.name.c_str(), 
+                def.id, def.name.c_str(),
                 def.name_color[0],
                 def.name_color[1],
                 def.name_color[2],
                 def.name_color[3],
                 def.build_key,
-                def.dim_x, def.dim_y, 
+                def.dim_x, def.dim_y,
                 def.workloc_x, def.workloc_y,
                 def.build_stages );
     }
@@ -382,15 +384,15 @@ struct layer_materials_cache {
         // it's quite suspicious.
 	return mtab[regoff[des.bits.biome] << 4 | des.bits.geolayer_index ];
     }
-    
+
     layer_materials_cache() { // ala ReadGeology. Requires init_materials() having been run.
 
 	int xmax = df::global::world->world_data->world_width - 1;
 	int ymax = df::global::world->world_data->world_height - 1;
-	
+
 	for (int i = 0; i < 256; i++)
 	    mtab[i] = NONEMAT_NO;
-	
+
 	for (int i = 0; i < 9; i++)
 	{
 	    // check against worldmap boundaries, fix if needed
@@ -399,20 +401,20 @@ struct layer_materials_cache {
 	    // i provides -1 .. +1 offset from the current region
 	    int rx = df::global::world->map.region_x / 16 + ((i % 3) - 1);
 	    int ry = df::global::world->map.region_y / 16 + ((i / 3) - 1);
-	    
+
 	    rx =  rx < 0 ? 0 : ( rx > xmax ? xmax : rx);
 	    ry =  ry < 0 ? 0 : ( ry > ymax ? ymax : ry);
-	    
+
 	    uint16_t geo_index = df::global::world->world_data->region_map[rx][ry].geo_index;
 
 	    df::world_geo_biome *geo_biome = df::world_geo_biome::get_vector()[geo_index];
 	    if (!geo_biome)
 		continue;
-	    
+
 	    // this requires no more than 16 layers per biome or data corruption will ensue
 	    // and no more that 256 layers per biome or segfault becomes imminent.
             // layer stone, being stone is always type=0
-	    for (int g = 0; g < geo_biome->layers.size(); g++ ) {
+	    for (unsigned g = 0; g < geo_biome->layers.size(); g++ ) {
 		mtab[ i<<4 | g] =  _map_mat(0, geo_biome->layers[g]->mat_index);
 	    }
 	}
@@ -484,44 +486,44 @@ struct block_row {
     uint32_t *row;
     long size;
     int hrsize;
-    
+
     block_row(int width) {
         hrsize = width;
         size = sizeof(uint32_t) * 4 * width * 256;
         row = static_cast<uint32_t *>(calloc(size, 1));
     }
     ~block_row() { free(row); }
-    
+
     void write(long& offset, FILE *fp) {
         fseek(fp, offset, SEEK_SET);
         fwrite(row, size, 1, fp);
         offset += size;
         memset(row, 0, size);
     }
-    inline void set(int x, int t_x, int t_y, 
-                    uint16_t stone, uint16_t tiletype, 
-                    uint16_t bmat, uint16_t building, 
-                    uint16_t grass, int8_t grass_amount, 
+    inline void set(int x, int t_x, int t_y,
+                    uint16_t stone, uint16_t tiletype,
+                    uint16_t bmat, uint16_t building,
+                    uint16_t grass, int8_t grass_amount,
                     uint32_t designation) {
         uint32_t *p = row + (hrsize*t_y*16 + x*16 + t_x)*4;
         *(p + 0) = ( (stone & 0xffff) << 16 ) | (tiletype & 0xffff);
         *(p + 1) = ( (bmat  & 0xffff) << 16 ) | (building & 0xffff);
         *(p + 2) =   (grass_amount << 16 )    | (   grass & 0xffff);
         *(p + 3) = designation;
-    }    
+    }
 };
 void fugr_dump(bool die) {
     if (!df::global::world || !df::global::world->world_data) {
-        fprintf(stderr, "World data is not available.: %p\n", df::global::world);
+        fprintf(stderr, "World data is not available.: %p\n", (void *)df::global::world);
         return;
     }
     init_enumtabs();
     init_materials();
     layer_materials_cache lmc;
-     
+
     std::vector<df::map_block* > map_blocks = df::global::world->map.map_blocks;
     df::map_block**** block_index = df::global::world->map.block_index;
-    
+
     int32_t x_count_block = df::global::world->map.x_count_block;
     int32_t y_count_block =  df::global::world->map.y_count_block;
     int32_t z_count_block =  df::global::world->map.z_count_block;
@@ -530,10 +532,10 @@ void fugr_dump(bool die) {
     df::coord end( x_count_block, y_count_block, z_count_block);
     _bicache beecee;
     beecee.update(start, end);
-    
+
     long map_offset, flow_offset;
     block_row row(end.x - start.x);
-    
+
     FILE *fp = fopen("fugr.dump", "w");
     {
         {   /* reserve space for the header, keeping it human-readable. */
@@ -551,14 +553,14 @@ void fugr_dump(bool die) {
         dump_items(fp);
         dump_units(fp);
 
-        // 64K-align map data posn, calc other offsets        
+        // 64K-align map data posn, calc other offsets
 #define ALIGN64K(val) ( ( ((val)>>16) + 1 ) << 16 )
         fprintf(stderr, "row.size=%ld data_size=%ld\n", row.size, row.size * (end.y - start.y) * (end.z - start.z));
         const long data_size = ALIGN64K(row.size * (end.y - start.y) * (end.z - start.z));
         map_offset = ALIGN64K(ftell(fp));
         flow_offset = map_offset + data_size;
 #undef ALIGN64K
-        
+
         // write header
         fseek(fp, 0, SEEK_SET);
         fprintf(fp, "origin:%d:%d:%d\n", start.x, start.y, start.z);
@@ -581,12 +583,12 @@ void fugr_dump(bool die) {
     memset(building_mats, 0, 512);
     memset(building_tiles, 0, 512);
     bool buildings_clean = true;
-    
+
     uint16_t plant_mats[256];
     memset(plant_mats, 0, 512);
     bool plants_clean = true;
     std::vector<df::plant_raw*>& plant_raws = df::plant_raw::get_vector();
-    
+
     for(int z = start.z; z < end.z; z++)
         for(int y = start.y; y < end.y; y++) {
             for(int x = start.x; x < end.x; x++) {
@@ -595,14 +597,14 @@ void fugr_dump(bool die) {
                     if (not plants_clean) {
                         memset(plant_mats, 0, 512);
                         plants_clean = true;
-                    }                    
+                    }
                     if (not buildings_clean) {
                         memset(building_mats, 0, 512);
-                        memset(building_tiles, 0, 512);                        
+                        memset(building_tiles, 0, 512);
                         buildings_clean = true;
                     }
                     /* index block-local plant materials */
-                    for (int pi = 0; pi < b->plants.size(); pi ++) {
+                    for (unsigned pi = 0; pi < b->plants.size(); pi ++) {
                         plants_clean = false;
                         df::coord2d pc = b->plants[pi]->pos % 16;
                         /* this is an index straight into plant_raws */
@@ -612,30 +614,30 @@ void fugr_dump(bool die) {
                             plant_raws[material]->material_defs.type_basic_mat,
                             plant_raws[material]->material_defs.idx_basic_mat );
                         if (getenv("FGD_PLANT_MAT_MAP"))
-                            fprintf(stderr, "%hd basic %hd:%d maps to %hd\n", material, 
+                            fprintf(stderr, "%hd basic %hd:%d maps to %hd\n", material,
                                 plant_raws[material]->material_defs.type_basic_mat,
                                 plant_raws[material]->material_defs.idx_basic_mat,
                                 _map_mat(
                                 plant_raws[material]->material_defs.type_basic_mat,
-                                plant_raws[material]->material_defs.idx_basic_mat )                        
+                                plant_raws[material]->material_defs.idx_basic_mat )
                             );
                     }
                     /* look if we've got buildings here */
                     _bicache_item& bi = beecee.at(x,y,z);
-                    for (int i=0; i < bi.buildings.size(); i++) {
+                    for (unsigned i=0; i < bi.buildings.size(); i++) {
                         buildings_clean = false;
                         building_tiles[i] = bi.buildings[i]->getType() + 768; // trees, walls and other shit are <768.
                         building_mats[i] = _map_mat(bi.buildings[i]->mat_type, bi.buildings[i]->mat_index);
                     }
-                    
+
                     /* dump effects which are now 'flows' */
-                    for (int i=0; i< b->flows.size(); i++) {
+                    for (unsigned i=0; i< b->flows.size(); i++) {
                         df::flow_info &e = *b->flows[i];
                         fseek(fp, flow_offset, SEEK_SET);
                         flow_offset += fprintf(fp, "%hd,%hd,%hd flow type=%s mat=(%hd, %d) density=%hd\n",
                             e.x, e.y, e.z, df::enums::flow_type::key(e.type), e.mat_type, e.mat_index, e.density);
                     }
-                    
+
                     for (int ti = 0; ti < 256; ti++) {
                         int t_x = ti % 16;
                         int t_y = ti / 16;
@@ -649,7 +651,7 @@ void fugr_dump(bool die) {
                         uint16_t building_mat = 0;
                         uint16_t worldconstr_mat = 0;
                         /* gather materials */
-                        for (int i = 0; i < b->block_events.size(); i++)
+                        for (unsigned i = 0; i < b->block_events.size(); i++)
                             switch (b->block_events[i]->getType()) {
                                 case df::block_square_event_type::mineral:
                                 {
@@ -664,7 +666,7 @@ void fugr_dump(bool die) {
                                     if ( e->tile_bitmask.bits[t_y] & ( 1 << t_x  ) ) {
                                         worldconstr_mat = e->inorganic_mat;
                                     }
-                                    fprintf(stderr,"wconstr at %hd %hd %hd %d mat=(0, %d)\n", pos.x, pos.y, pos.z, 
+                                    fprintf(stderr,"wconstr at %hd %hd %hd %d mat=(0, %d)\n", pos.x, pos.y, pos.z,
                                         e->tile_bitmask.bits[t_y] & ( 1 << t_x  ), e->inorganic_mat);
                                     break;
                                 }
@@ -695,10 +697,10 @@ void fugr_dump(bool die) {
                                 default:
                                     break;
                             }
-                        
+
                         if (constructed_tiles[tiletype]) {
                             bool done = false;
-                            for (int i = 0; i < bi.constructions.size(); i++) {
+                            for (unsigned i = 0; i < bi.constructions.size(); i++) {
                                 df::construction& suspect = *bi.constructions[i];
                                 if (pos == suspect.pos) {
                                     building_mat = _map_mat(suspect.mat_type, suspect.mat_index);
@@ -721,10 +723,10 @@ void fugr_dump(bool die) {
                             building_mat = building_mats[ti];
                             building_tile = building_tiles[ti];;
                         }
-                        
-                        row.set(x, t_x, t_y, 
-                                tile_mat, tiletype, 
-                                building_mat, building_tile, 
+
+                        row.set(x, t_x, t_y,
+                                tile_mat, tiletype,
+                                building_mat, building_tile,
                                 grass_mat, grass_amt,
                                 b->designation[t_x][t_y].whole);
                     }

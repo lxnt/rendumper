@@ -19,20 +19,19 @@ include(FindPkgConfig)
 find_package(Threads)
 
 if (ARCH64)
-    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" OFF)
+    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
     if (DF_32BIT_COMPAT)
         set(CMAKE_CXX_COMPILER g++-4.5)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
-        set(CMAKE_C_FLAGS "${32} ${CMAKE_C_FLAGS}")
+        set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
     endif()
     set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
 else()
     set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
 endif()
 
-set(DFMOD_DESTDIR lib/dfmodules CACHE PATH "df module install path")
-
+set(DFMOD_DESTDIR ${LIBG_DESTINATION} CACHE PATH "df module install path")
 
 include_directories(include)
 set(HEADERS

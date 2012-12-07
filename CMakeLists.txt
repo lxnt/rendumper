@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
+set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
+
 add_subdirectory(modules)
 
-set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
 if(UNIX)
     set(CMAKE_CXX_COMPILER g++-4.5)
     set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)

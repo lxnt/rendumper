@@ -9,7 +9,7 @@
 
     On the other side, they come out as set<InterfaceKey> out of 
     enabler_inputst::add_input(). InterfaceKey is typedef long, just 
-    an enum. enabler_inputst does the mapping and macro expansion.
+    an enum. enabler_inputst does the mapping, repeat and macro expansion.
     
     at the very least, we need a method to return a sequence of input events,
     so that they can be fed into enabler_inputst::add_input_refined() when 
@@ -18,14 +18,29 @@
     hmm. There is that "static multimap<EventMatch,InterfaceKey> keymap;".
     struct EventMatch holds SDLKey key. 
     an input event is (complicately) translated into an EventMatch 
-    
-    1. enabler_inputst::add_input() gets an SDL key event.
-        a bunch of KeyEvents maybe pushed into   list<pair<KeyEvent, int serial> > synthetics;
-        event itself is transformed into a KeyEvent.
-        the synthetics list gets forwarded into enabler_inputst::add_input_refined()
-    2. enabler_inputst::add_input_refined()
-       bah. it's complicated.
-       
+
+    SDL version:
+        1. enabler_inputst::add_input() gets an SDL key event.
+            a bunch of KeyEvents maybe pushed into list<pair<KeyEvent, int serial> > synthetics;
+            event itself is transformed into a KeyEvent.
+            the synthetics list gets forwarded into enabler_inputst::add_input_refined()
+        2. enabler_inputst::add_input_refined()
+           bah. it's complicated.
+
+    ncurses version:
+        enabler_inputst::add_input_ncurses() gets 'int key'
+            - generate an EventMatch sdl:
+                - map some negative constants to SDLK_* in sdl.key, char*
+                - map uppercase to lowercase + shift.
+                - map keypad and F-keys to SDLK_*
+            - do something arcane if in register-macro mode
+            - get a set of InterfaceKey-s from key_translation()
+            - insert them into the timeline.
+
+    for the time being we, we ...
+    we just do nothing with this. Think about all this after rendering works.
+
+
     Anyway, we replace sdl and keysyms with our own. Note how numeric values are not defined
     anywhere. This is possible because the game maps keys either by unicode value, 
     or by the sym names. This gives us much needed possibility to not depend on any one 

@@ -28,32 +28,36 @@ struct implementation : public irenderer {
     df_buffer_t *get_buffer();
     void submit_buffer(df_buffer_t *buf);
 
+    void acknowledge(const itc_message_t&) {}
+
     void start();
     void join();
-
+    void simuloop_quit() { not_done = false; }
     bool started;
 
     iplatform *platform;
     imqueue *mqueue;
     isimuloop *simuloop;
 
-    imqd_t buffer_q;
-    imqd_t request_q;
+    imqd_t incoming_q;
 
     implementation();
 
     unsigned dimx, dimy;
+    unsigned dropped_frames;
+    bool not_done;
     void renderer_thread();
     thread_t thread_id;
 };
 
 implementation::implementation() {
     started = false;
+    not_done = true;
+    dropped_frames = 0;
     platform = getplatform();
     simuloop = getsimuloop();
     mqueue = getmqueue();
-    buffer_q = mqueue->open("buffer_q", 1<<10);
-    request_q = mqueue->open("request_q", 1<<10);
+    incoming_q = mqueue->open("renderer", 1<<10);
 
     /* don't care what init.txt says */
     int x, y;
@@ -120,11 +124,19 @@ df_buffer_t *implementation::get_buffer(void) {
     return rv;
 }
 
+static void free_buffer(df_buffer_t *buf) {
+    free(buf->screen);
+    free(buf);
+}
+
 /*  This is called from the simulation thread.
     Since this is a simplest possible implementation,
     just add the buffer to the internal render queue. */
 void implementation::submit_buffer(df_buffer_t *buf) {
-    mqueue->send(buffer_q, buf, sizeof(df_buffer_t), -1);
+    itc_message_t msg;
+    msg.t = itc_message_t::render_buffer;
+    msg.d.buffer = buf;
+    mqueue->copy(incoming_q, &msg, sizeof(itc_message_t), -1);
 }
 
 /* stub for iplatform::create_thread() */
@@ -265,14 +277,14 @@ static const int charmap[256] = {
 void implementation::renderer_thread(void) {
     /* pseudocode:
         - see if simulation thread died; exit if so.
-        - get a frame from the buffer_q
+        - get a frame from the incoming_q
         - render it, observing g_fps clamp
         - look for input
         - send any input to the simulation thread
         - rejoice
     */
 
-    while(true) {
+    while(not_done) {
         int x, y;
         getmaxyx(stdscr, y, x);
         this->set_gridsize(x, y);
@@ -280,34 +292,67 @@ void implementation::renderer_thread(void) {
         /* slurp all input there is and stuff it into
            simuloop's message queue. Don't pause simuloop,
            and absolutely don't wait until it gets paused. */
+
         uint32_t now = platform->GetTickCount();
         do {
-            int what;
             wint_t key;
+            int what = get_wch(&key);
 
-            switch (what = get_wch(&key)) {
+            //if (what != -1)
+            //    platform->log_info("get_wch(): what=%d key=%u.", what, key);
+            switch (what) {
                 case ERR:
                     break;
+
+                /* Emulate the following (enabler_input.cpp):
+                    // Input encoding:
+                    // 1 and up are ncurses symbols, as returned by getch.
+                    // -1 and down are unicode values.   */
+                case OK:
+                    simuloop->add_input_ncurses(-key, now);
+                    continue;
                 case KEY_CODE_YES:
                     simuloop->add_input_ncurses(key, now);
                     continue;
                 default:
-                    platform->log_info("get_wch(): what=%d key=%u\n", what, key);
+                    platform->log_info("get_wch(): what=%d key=%u defaulted to add.", what, key);
                     simuloop->add_input_ncurses(key, now);
                     continue;
             }
         } while(false);
 
-        /* wait for a buffer to render */
-        void *vbuf; size_t vlen;
-        int rv = mqueue->recv(buffer_q, &vbuf, &vlen, -1);
+        /* wait for a buffer to render or simuloop to quit */
+        /* todo: drop any extra frames, render only the last one. */
+        df_buffer_t *buf = NULL;
+        unsigned read_timeout_ms = 10; // this clamps gfps to 100.
+        while (true) {
+            void *vbuf; size_t vlen;
+            int rv = mqueue->recv(incoming_q, &vbuf, &vlen, read_timeout_ms);
+            read_timeout_ms = 0; // reset timeout so we don't wait second time.
 
-        if (rv == IMQ_TIMEDOUT)
-            continue;
+            if (rv == IMQ_TIMEDOUT)
+                break;
 
-        if (rv == 0) {
-            df_buffer_t *buf = (df_buffer_t *)vbuf;
+            if (rv != 0)
+                platform->fatal("render_thread(): %d from mqueue->recv().");
 
+            itc_message_t *msg = (itc_message_t *)vbuf;
+
+            switch (msg->t) {
+                case itc_message_t::render_buffer:
+                    if (buf) {
+                        dropped_frames ++;
+                        free_buffer(buf);
+                    }
+                    buf = msg->d.buffer;
+                    mqueue->free(msg);
+                    break;
+                default:
+                    platform->log_error("render_thread(): unknown message type %d", msg->t);
+                    break;
+            }
+        }
+        if (buf) {
             for (int x = 0; x < buf->dimx; x++)
                 for (int y = 0; y < buf->dimy; y++) {
                     const int ch   = buf->screen[x*buf->dimy*4 + y*4 + 0];
@@ -332,11 +377,8 @@ void implementation::renderer_thread(void) {
                         mvwaddwstr(stdscr, y, x, chs);
                     }
                 }
-
+            free_buffer(buf);
             refresh();
-
-        } else {
-            platform->log_error("renderer: %d from mq->recv(bufq)\n", rv);
         }
     }
 }

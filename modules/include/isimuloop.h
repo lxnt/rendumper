@@ -9,7 +9,7 @@ typedef void (*render_things_foo_t)();
 typedef void (*assimilate_buffer_foo_t)(df_buffer_t *);
 typedef void (*add_input_ncurses_foo_t)(int32_t, uint32_t);
 
-struct isimuloop {
+struct isimuloop : public imessagesender {
     virtual void release() = 0;
     
     virtual void set_callbacks(mainloop_foo_t, 

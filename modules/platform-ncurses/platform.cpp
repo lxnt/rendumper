@@ -169,36 +169,49 @@ struct implementation : public iplatform {
         return NULL; // like, some foreign thread.
     }
 
-    void log_error(const char *fmt, ...) {
-        va_list ap;
-        FILE *fp;
-        if ((fp = fopen("error.log", "a"))) {
-            va_start(ap, fmt);
-            vfprintf(fp, fmt, ap);
-            va_end(ap);
-            fclose(fp);
-        }
-    }
-
-    void log_info(const char *fmt, ...) {
-        va_list ap;
-        FILE *fp;
-        if ((fp = fopen("error.log", "a"))) {
-            va_start(ap, fmt);
-            vfprintf(fp, fmt, ap);
-            va_end(ap);
-            fclose(fp);
-        }
-    }
+    void log_info(const char *fmt, ...);
+    void log_error(const char *fmt, ...);
+    NORETURN void fatal(const char *fmt, ...);
 };
+
+static void log_sumthin(const char *fname, const char *prefix, const char *fmt, va_list ap) {
+    FILE *fp;
+    if ((fp = fopen(fname, "a"))) {
+        fputs(prefix, fp);
+        fputc(' ', fp);
+        vfprintf(fp, fmt, ap);
+        fputc('\n', fp);
+        fclose(fp);
+    }
+}
+
+void implementation::log_info(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    log_sumthin("dfm.log", "INFO", fmt, ap);
+    va_end(ap);
+}
+
+void implementation::log_error(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    log_sumthin("dfm.log", "ERROR", fmt, ap);
+    va_end(ap);
+}
+
+NORETURN void implementation::fatal(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    log_sumthin("dfm.log", "FATAL", fmt, ap);
+    va_end(ap);
+    exit(1);
+}
 
 static implementation impl;
 static bool core_init_done = false;
 static char _main_name[] = "main()";
 
 static void ncurses_fini(void) { endwin(); }
-
-}
 
 extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
     if (!core_init_done) {
@@ -238,3 +251,4 @@ extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
 
     return &impl;
 }
+} /* ns */

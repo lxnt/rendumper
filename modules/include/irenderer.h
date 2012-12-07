@@ -148,7 +148,7 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 #include "itypes.h"
 
-struct irenderer {
+struct irenderer : public imessagesender {
     virtual void release(void) = 0;
 
     /* this is the interface used from the simulation thread
@@ -171,6 +171,9 @@ struct irenderer {
     /* starts the renderer thread. */
     virtual void start() = 0;
     virtual void join() = 0;
+
+    /* notifies of */
+    virtual void simuloop_quit() = 0;
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)

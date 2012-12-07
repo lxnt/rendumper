@@ -34,6 +34,7 @@ const std::string _so_suffix(".so");
 #include "ideclspec.h"
 #include "iplatform.h"
 #include "irenderer.h"
+#include "isimuloop.h"
 #include "ikeyboard.h"
 #include "itextures.h"
 #include "imusicsound.h"

@@ -143,19 +143,10 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 */
 
-#include "ideclspec.h"
+#if !defined (IRENDERER_H)
+#define IRENDERER_H
 
-struct df_buffer_t {
-    int dimx, dimy;
-
-    unsigned char *screen;     // uchar[4] in fact.
-    long *texpos;
-    char *addcolor;
-    unsigned char *grayscale;
-    unsigned char *cf;
-    unsigned char *cbr;
-};
-
+#include "itypes.h"
 
 struct irenderer {
     virtual void release(void) = 0;
@@ -163,21 +154,23 @@ struct irenderer {
     /* this is the interface used from the simulation thread
        via enablerst/enabler_inputst methods. */
 
-    virtual void zoom_in(void) = 0;
-    virtual void zoom_out(void) = 0;
-    virtual void zoom_reset(void) = 0;
-    virtual void toggle_fullscreen(void) = 0;
-    virtual void override_grid_size(void) = 0;
-    virtual void release_grid_size(void) = 0;
+    virtual void zoom_in() = 0;
+    virtual void zoom_out() = 0;
+    virtual void zoom_reset() = 0;
+    virtual void toggle_fullscreen() = 0;
+    virtual void override_grid_size(unsigned, unsigned) = 0;
+    virtual void release_grid_size() = 0;
     virtual int mouse_state(int *mx, int *my) = 0; // ala sdl2's one.
 
-    virtual df_buffer_t *get_buffer(const unsigned w, const unsigned h) = 0;
+    virtual uint32_t get_gridsize() = 0;
+    virtual void set_gridsize(unsigned _w, unsigned _h) = 0;
+
+    virtual df_buffer_t *get_buffer() = 0;
     virtual void submit_buffer(df_buffer_t *buf) = 0;
 
-    /* this is what kicks off the loop (see pseudocode above)
-       must be called from other than the simulation thread. */
-    virtual void loop(void) = 0;
-
+    /* starts the renderer thread. */
+    virtual void start() = 0;
+    virtual void join() = 0;
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
@@ -186,42 +179,4 @@ extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void);
 extern "C" DECLSPEC irenderer * APIENTRY (*getrenderer)(void);
 #endif
 
-typedef void (*vvfunc_t)(void);
-typedef void (*viifunc_t)(int, int);
-
-/* interface used to control the simulation loop */
-struct isimuloop {
-    virtual void release(void) = 0;
-
-    /* supplies the gps, render_things() and mainloop()
-       to the simulation loop object/thread implementation. */
-    virtual void set_callbacks(vvfunc_t render_things, vvfunc_t mainloop, viifunc_t gps_resize) = 0;
-
-    /* fps control used for movies */
-    virtual int  get_fps(void) = 0; // returns actual calculated value (ema).
-    virtual void set_fps(int fps) = 0;
-
-    /* execution control for the direct access to the memory
-       has non-recursive lock semantics */
-    virtual void pause(void) = 0; // does not return until the loop is paused
-    virtual void unpause(void) = 0;
-
-    /* simulation frame counter */
-    virtual int simticks(void) = 0;
-
-    /* if the simulation quitted */
-    virtual bool quit(void) = 0;
-
-    /* instrumentation */
-    virtual int render_time(void) = 0;
-    virtual int simulate_time(void) = 0;
-
-};
-
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void);
-#else // using glue and runtime loading.
-extern "C" DECLSPEC isimuloop * APIENTRY (*getsimuloop)(void);
 #endif
-
-

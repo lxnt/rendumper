@@ -374,7 +374,6 @@ void curses_text_boxst::add_paragraph(stringvectst &src,int32_t para_width)
 
 	//ADD EACH OF THE STRINGS ON IN TURN
 	string curstr;
-	long strlength=0;
 	long s,pos;
 	for(s=0;s<src.str.size();s++)
 		{

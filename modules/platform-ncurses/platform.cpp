@@ -175,7 +175,7 @@ struct implementation : public iplatform {
     NORETURN void fatal(const char *fmt, ...);
     const char * const *glob(const char* pattern, const char* const exceptions[],
                         const bool include_dirs, const bool include_files);
-    void gfree(const char **);
+    void gfree(const char * const *);
 };
 
 static void log_sumthin(const char *fname, const char *prefix, const char *fmt, va_list ap) {
@@ -218,18 +218,18 @@ static int glob_errfunc(const char *epath, int err) {
     return 0;
 }
 
-const char * const *glob(const char* pattern, const char * const exceptions[],
+const char * const *implementation::glob(const char* pattern, const char * const exceptions[],
                     const bool include_dirs, const bool include_files) {
 
     glob_t g;
-    size_t allocd = 0;
+    size_t allocd = sizeof(char *) * 1024;
     size_t used = 0;
-    char **rv = NULL;
+    char **rv = (char **) calloc(2*allocd, sizeof(char *));
 
-    if (!glob(pattern, 0, glob_errfunc, &g))
+    if (!::glob(pattern, 0, glob_errfunc, &g))
         for (size_t i = 0; i < g.gl_pathc; i++) {
-            if (used == allocd) {
-                char **xv = (char **)calloc(2*allocd, sizeof(char *));
+            if (used == allocd - 1) {
+                char **xv = (char **) calloc(2*allocd, sizeof(char *));
                 if (rv) {
                     memmove(xv, rv, sizeof(char *) * allocd);
                     free(rv);
@@ -260,12 +260,11 @@ const char * const *glob(const char* pattern, const char * const exceptions[],
     return rv;
 }
 
-void gfree(char ** rv) {
-    if (rv) {
-        while (*rv)
-            free(*(rv++));
-        free(rv);
-    }
+void implementation::gfree(const char * const * rv) {
+    const char * const *whoa = rv;
+    while (*whoa)
+        free((void *) *(whoa++));
+    free((void *)rv);
 }
 
 static bool core_init_done = false;

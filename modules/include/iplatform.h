@@ -126,15 +126,14 @@ struct iplatform {
 
         return value:
             A pointer to a NULL-terminated array of matching paths.
-            A NULL if no path matched or an error occured.
-            Errors are not reported.
+            Errors are not reported. NULLs are never returned.
 
             Always use the gfree method to free the return value. */
     virtual const char * const *glob(const char* pattern, const char* const exceptions[],
                         const bool include_dirs, const bool include_files) = 0;
 
     /* Use this to free the return value. ignores NULLs*/
-    virtual void gfree(const char **) = 0;
+    virtual void gfree(const char * const *) = 0;
 };
 
 

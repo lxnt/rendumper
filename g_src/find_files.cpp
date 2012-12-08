@@ -1,180 +1,73 @@
-#include "../game_g.h"
-#include "../game_extv.h"
+#include "svector.h"
+#include "stringvecst.h"
 
-void find_files_by_pattern(const char* pattern, svector<char *>& filenames)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
-	char *c;
+#include "iplatform.h"
 
-	h=FindFirstFile(pattern,&finddata);
+void find_files_by_pattern(const char* pattern, svector<char *>& filenames) {
+    const char * const *glob = getplatform()->glob(pattern, NULL, false, true);
+    const char * const *whoa = glob;
 
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-			{
-			if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-				{
-				c=new char[strlen(finddata.cFileName)+1];
-					strcpy(c,finddata.cFileName);
-				filenames.push_back(c);
-				}
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-				{
-				if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-					{
-					c=new char[strlen(finddata.cFileName)+1];
-						strcpy(c,finddata.cFileName);
-					filenames.push_back(c);
-					}
-				}
-			}
-		
-		FindClose(h);
-		}
+    while (*whoa) {
+        char *c = new char[strlen(*whoa) + 1];
+        strcpy(c, *whoa);
+        filenames.push_back(c);
+        whoa++;
+    }
+    getplatform()->gfree(glob);
 }
 
-void find_files_by_pattern_with_exception(const char* pattern, svector<char *>& filenames,const char *exception)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
-	char *c;
+void find_files_by_pattern_with_exception(const char* pattern, svector<char *>& filenames, const char *exception) {
+    const char * const exclude[2] = { exception, NULL };
+    const char * const *glob = getplatform()->glob(pattern, exclude, false, true);
+    const char * const *whoa = glob;
 
-	h=FindFirstFile(pattern,&finddata);
-
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-			{
-			if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-				{
-				c=new char[strlen(finddata.cFileName)+1];
-					strcpy(c,finddata.cFileName);
-				filenames.push_back(c);
-				}
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-				{
-				if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-					{
-					c=new char[strlen(finddata.cFileName)+1];
-						strcpy(c,finddata.cFileName);
-					filenames.push_back(c);
-					}
-				}
-			}
-		
-		FindClose(h);
-		}
+    while (*whoa) {
+        char *c = new char[strlen(*whoa) + 1];
+        strcpy(c, *whoa);
+        filenames.push_back(c);
+        whoa++;
+    }
+    getplatform()->gfree(glob);
 }
 
-void find_files_by_pattern(const char* pattern, stringvectst &filenames)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
+void find_files_by_pattern(const char* pattern, stringvectst &filenames) {
+    const char * const *glob = getplatform()->glob(pattern, NULL, false, true);
+    const char * const *whoa = glob;
 
-	h=FindFirstFile(pattern,&finddata);
+    while (*whoa)
+        filenames.add_string(*(whoa++));
 
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-			{
-			if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))filenames.add_string(finddata.cFileName);
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-				{
-				if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))filenames.add_string(finddata.cFileName);
-				}
-			}
-		
-		FindClose(h);
-		}
+    getplatform()->gfree(glob);
 }
 
-void find_files_by_pattern_with_exception(const char* pattern, stringvectst &filenames,const char *exception)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
+void find_files_by_pattern_with_exception(const char* pattern, stringvectst &filenames, const char *exception) {
+    const char * const exclude[2] = { exception, NULL };
+    const char * const *glob = getplatform()->glob(pattern, exclude, false, true);
+    const char * const *whoa = glob;
 
-	h=FindFirstFile(pattern,&finddata);
+    while (*whoa)
+        filenames.add_string(*(whoa++));
 
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-			{
-			if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))filenames.add_string(finddata.cFileName);
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-				{
-				if(!(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))filenames.add_string(finddata.cFileName);
-				}
-			}
-		
-		FindClose(h);
-		}
+    getplatform()->gfree(glob);
 }
 
-void find_directories_by_pattern(const char* pattern, stringvectst &filenames)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
+void find_directories_by_pattern(const char* pattern, stringvectst &filenames) {
+    const char * const *glob = getplatform()->glob(pattern, NULL, true, false);
+    const char * const *whoa = glob;
 
-	h=FindFirstFile(pattern,&finddata);
+    while (*whoa)
+        filenames.add_string(*(whoa++));
 
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-			{
-			if(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)filenames.add_string(finddata.cFileName);
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,".."))
-				{
-				if(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)filenames.add_string(finddata.cFileName);
-				}
-			}
-		
-		FindClose(h);
-		}
+    getplatform()->gfree(glob);
 }
 
-void find_directories_by_pattern_with_exception(const char* pattern, stringvectst &filenames,const char *exception)
-{
-	HANDLE h;
-	WIN32_FIND_DATA finddata;
+void find_directories_by_pattern_with_exception(const char* pattern, stringvectst &filenames, const char *exception) {
+    const char * const exclude[2] = { exception, NULL };
+    const char * const *glob = getplatform()->glob(pattern, exclude, true, false);
+    const char * const *whoa = glob;
 
-	h=FindFirstFile(pattern,&finddata);
+    while (*whoa)
+        filenames.add_string(*(whoa++));
 
-	if(h!=INVALID_HANDLE_VALUE)
-		{
-		if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-			{
-			if(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)filenames.add_string(finddata.cFileName);
-			}
-
-		while(FindNextFile(h,&finddata))
-			{
-			if(strcmp(finddata.cFileName,".")&&strcmp(finddata.cFileName,"..")&&strcmp(finddata.cFileName,exception))
-				{
-				if(finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)filenames.add_string(finddata.cFileName);
-				}
-			}
-		
-		FindClose(h);
-		}
+    getplatform()->gfree(glob);
 }

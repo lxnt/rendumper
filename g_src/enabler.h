@@ -137,7 +137,7 @@ class stringvectst
 			{
 			pstringst *newp=new pstringst;
 				newp->dat=st;
-			if(str.size()>k)str.insert(k,newp);
+			if(str.size() - k > 0)str.insert(k,newp);
 			else str.push_back(newp);
 			}
 
@@ -469,7 +469,7 @@ class text_infost
 
   string get_string(int e)
   {
-    if(e<0||e>=element.size())
+    if(e<0||e >= element.size())
       {
 	string empty;
 	return empty;

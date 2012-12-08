@@ -16,14 +16,13 @@ if(FG_DUMPER)
     set(FGD_SOURCE fugr_dump.cc)
 endif()
 
-# find_files.cpp excluded ; it refers to headers missing
 set( SOURCE
     basics.cpp
     command_line.cpp
     enabler.cpp
     enabler_input.cpp
     files.cpp
-    find_files_posix.cpp
+    find_files.cpp
     graphics.cpp
     init.cpp
     interface.cpp

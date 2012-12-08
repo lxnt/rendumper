@@ -53,7 +53,7 @@ void dwarf_option_screen();
 void drawborder(const char *str,char style,const char *colorstr);
 
 
-inline void CHECK_ERR(int err, const char* msg)
+inline void CHECK_ERR(int err, const char* /*msg*/)
 {
 	if (err != Z_OK)
 		{

@@ -107,16 +107,16 @@ static void update_keydisplay(InterfaceKey binding, string display) {
   }
 }
 
-static void assertgood(ifstream &s) {
-  if (s.eof())
-    MessageBox(NULL, "EOF while parsing keyboard bindings", 0, 0);
-  else if (!s.good())
-    MessageBox(NULL, "I/O error while parsing keyboard bindings", 0, 0);
-  else
-    return;
-  abort();
-}
+/* TODO: switch to http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ */
 
+// Returns the length of an utf-8 sequence, based on its first byte
+static int decode_utf8_predict_length(char byte) {
+  if ((byte & 0x80) == 0) return 1;
+  if ((byte & 0xe0) == 0xc0) return 2;
+  if ((byte & 0xf0) == 0xe0) return 3;
+  if ((byte & 0xf8) == 0xf0) return 4;
+  return 0; // Invalid start byte
+}
 // Decodes an UTF-8 encoded string into a /single/ UTF-8 character,
 // discarding any overflow. Returns 0 on parse error.
 int decode_utf8(const string &s) {
@@ -140,15 +140,6 @@ int decode_utf8(const string &s) {
   return unicode;
 }
 
-// Returns the length of an utf-8 sequence, based on its first byte
-int decode_utf8_predict_length(char byte) {
-  if ((byte & 0x80) == 0) return 1;
-  if ((byte & 0xe0) == 0xc0) return 2;
-  if ((byte & 0xf0) == 0xe0) return 3;
-  if ((byte & 0xf8) == 0xf0) return 4;
-  return 0; // Invalid start byte
-}
-
 // Encode an arbitrary unicode value as a string. Returns an empty
 // string if the value is out of range.
 string encode_utf8(int unicode) {
@@ -163,7 +154,7 @@ string encode_utf8(int unicode) {
     s[0] = 0xc0;
   }
   else if (unicode <= 0xffff) { // 3-byte utf-8
-    s.resize(3, 0);
+   s.resize(3, 0);
     s[0] = 0xe0;
   }
   else { // 4-byte utf-8
@@ -218,6 +209,7 @@ static string translate_repeat(Repeat r) {
   }
 }
 
+#if defined(RENDER_SDL)
 // Update the modstate, since SDL_getModState doesn't /work/ for alt
 static void update_modstate(const SDL_Event &e) {
   if (e.type == SDL_KEYUP) {
@@ -256,6 +248,7 @@ static void update_modstate(const SDL_Event &e) {
     }
   }
 }
+#endif
 
 // Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
 Uint8 getModState() {
@@ -266,7 +259,6 @@ Uint8 getModState() {
 static bool parse_line(const string &line, const string &regex, vector<string> &parts) {
   parts.clear();
   parts.push_back(line);
-  int bytes;
   for (int l = 0, r = 0; r < regex.length();) {
     switch (regex[r]) {
     case '*': // Read until ], : or the end of the line, but at least one character.
@@ -355,7 +347,6 @@ void enabler_inputst::load_keybindings(const string &file) {
               if (matcher.unicode < 256) {
                 // This unicode key is part of the latin-1 mapped portion of unicode, so we can
                 // actually display it. Nice.
-                char c[2] = {char(matcher.unicode), 0};
                 update_keydisplay(binding, display(matcher));
               }
             } else {
@@ -440,8 +431,10 @@ void enabler_inputst::save_keybindings() {
   save_keybindings(interfacefile);
 }
 
+#if !defined(RENDER_SDL)
+void enabler_inputst::add_input(SDL_Event &, Uint32) {
+#else
 void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
-#if defined(RENDER_SDL)
   // Before we can use this input, there are some issues to deal with:
   // - SDL provides unicode translations only for key-press events, not
   //   releases. We need to keep track of pressed keys, and generate
@@ -694,7 +687,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
-      Event e = {key_repeat(*k), *k, 0, serial, now, enabler.simticks.read()};
+      Event e = {key_repeat(*k), *k, 0, serial, now, enabler.simticks.read(), false};
       timeline.insert(e);
     }
     // if (cancel_ok) {

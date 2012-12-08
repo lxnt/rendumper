@@ -41,7 +41,7 @@ class graphicst
   int lookup_pair(std::pair<int,int> color);
   long calculate_old_fps();
 	public:
-		long screenx,screeny;
+		unsigned long screenx,screeny;
 		char screenf,screenb;
 		char screenbright;
 
@@ -55,7 +55,7 @@ class graphicst
                 // Calling this is not enough in itself. You also need to call swap_front/back.
                 void resize(int x, int y);
                                 
-		long clipx[2],clipy[2];
+		unsigned long clipx[2],clipy[2];
 		long tex_pos[TEXTURENUM];
 
 		long rect_id;

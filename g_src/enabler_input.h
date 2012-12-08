@@ -22,7 +22,6 @@ enum MatchType { type_unicode, type_key, type_button };
 Uint8 getModState();
 std::string translate_mod(Uint8 mod);
 int decode_utf8(const std::string &s);
-int decode_utf8_predict_length(char byte);
 std::string encode_utf8(int unicode);
 
 #define DFMOD_SHIFT 1

@@ -155,7 +155,7 @@ class stringvectst
 				}
 			}
 
-		void read_file(file_compressorst &filecomp,long loadversion)
+		void read_file(file_compressorst &filecomp,long /*loadversion*/)
 			{
 			long dummy;
 			filecomp.read_file(dummy);
@@ -322,7 +322,7 @@ class flagarrayst
 				}
 			}
 
-		void read_file(file_compressorst &filecomp,long loadversion)
+		void read_file(file_compressorst &filecomp,long /*loadversion*/)
 			{
 			long newsl;
 			filecomp.read_file(newsl);
@@ -851,8 +851,8 @@ class enablerst : public enabler_inputst
       int fps; // set_fps, set_gfps
       struct { // push_resize
         int x, y;
-      };
-    };
+      } a;
+    } b;
     async_msg() {}
     async_msg(msg_t m) { msg = m; }
   };

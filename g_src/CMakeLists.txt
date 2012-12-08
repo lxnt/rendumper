@@ -30,11 +30,9 @@ set( SOURCE
     keybindings.cpp
     KeybindingScreen.cpp
     random.cpp
-    renderer_offscreen.cpp
     resize++.cpp
     textlines.cpp
     textures.cpp
-    ttf_manager.cpp
     ViewBase.cpp
     
     platform.cpp

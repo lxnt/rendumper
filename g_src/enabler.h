@@ -7,13 +7,13 @@
 
 #include "platform.h"
 #include <SDL/SDL.h>
-#include <SDL/SDL_thread.h>
+
+#if defined(TTF_SUPPORT)
 #ifdef __APPLE__
 # include <SDL_ttf/SDL_ttf.h>
-# include <SDL_image/SDL_image.h>
 #else
 # include <SDL/SDL_ttf.h>
-# include <SDL/SDL_image.h>
+#endif
 #endif
 
 #if !defined(GLsync)
@@ -638,6 +638,7 @@ class curses_text_boxst
 #define ENABLERFLAG_RENDER BIT1
 #define ENABLERFLAG_MAXFPS BIT2
 
+#if defined(TTF_SUPPORT)
 // Covers every allowed permutation of text
 struct ttf_id {
   std::string text;
@@ -663,7 +664,7 @@ namespace std {
     }
   };
 }
-
+#endif
 // Being a texture catalog interface, with opengl, sdl and truetype capability
 class textures
 {

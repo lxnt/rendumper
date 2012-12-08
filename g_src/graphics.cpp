@@ -15,7 +15,10 @@
 #include <cassert>
 
 #include "svector.h"
+
+#if defined(TTF_SUPPORT)
 #include "ttf_manager.hpp"
+#endif
 
 #ifdef WIN32
 
@@ -114,7 +117,9 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
     }
 }
 
+#if TTF_SUPPORT
 static list<ttf_id> ttfstr;
+#endif
 
 static void abbreviate_string_helper_hackaroundmissingcode(string &str, int len) {
        if(str.length()>=2)
@@ -186,11 +191,14 @@ static void abbreviate_string_helper_hackaroundmissingcode(string &str, int len)
 
 static void abbreviate_string_hackaroundmissingcode(string &str, int32_t len)
 {
+#if defined(TTF_SUPPORT)
   if (ttf_manager.ttf_active()) {
     // We'll need to use TTF-aware text shrinking.
     while (ttf_manager.size_text(str) > len)
       abbreviate_string_helper_hackaroundmissingcode(str, str.length() - 1);
-  } else if(str.length()>len){
+  } else
+#endif
+  if(str.length()>len) {
     // 1 letter = 1 tile.
     abbreviate_string_helper_hackaroundmissingcode(str, len);
   }
@@ -204,7 +212,9 @@ void graphicst::addst(const string &str_orig, justification just, int space)
   string str = str_orig;
   if (space)
     abbreviate_string_hackaroundmissingcode(str, space);
+#if defined(TTF_SUPPORT)
   if (just == not_truetype || !ttf_manager.ttf_active()) {
+#endif
     int s;
     for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
       {
@@ -217,6 +227,7 @@ void graphicst::addst(const string &str_orig, justification just, int space)
         
         addchar(str[s]);
       }
+#if defined(TTF_SUPPORT)
   } else {
     // Truetype
     if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
@@ -251,6 +262,7 @@ void graphicst::addst(const string &str_orig, justification just, int space)
     screenx = ourx + width;
     ttfstr.clear();
   }
+#endif
 }
 
 void graphicst::erasescreen_clip()

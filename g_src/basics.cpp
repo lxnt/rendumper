@@ -37,7 +37,10 @@ typedef int32_t Ordinal;
 
 #endif
 
+#if defined(TTF_SUPPORT)
 #include "ttf_manager.hpp"
+#endif
+
 #include "init.h"
 #include "basics.h"
 
@@ -544,11 +547,14 @@ static void abbreviate_string_helper(string &str, int len) {
 
 void abbreviate_string(string &str, int32_t len)
 {
+#if defined(TTF_SUPPORT)
   if (ttf_manager.ttf_active()) {
     // We'll need to use TTF-aware text shrinking.
     while (ttf_manager.size_text(str) > len)
       abbreviate_string_helper(str, str.length() - 1);
-  } else if(str.length()>len){
+  } else
+#endif
+ if(str.length()>len){
     // 1 letter = 1 tile.
     abbreviate_string_helper(str, len);
   }

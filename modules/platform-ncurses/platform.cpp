@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <locale.h>
+#include <glob.h>
 
 #include <curses.h>
 #include <pthread.h>
@@ -172,6 +173,9 @@ struct implementation : public iplatform {
     void log_info(const char *fmt, ...);
     void log_error(const char *fmt, ...);
     NORETURN void fatal(const char *fmt, ...);
+    const char * const *glob(const char* pattern, const char* const exceptions[],
+                        const bool include_dirs, const bool include_files);
+    void gfree(const char **);
 };
 
 static void log_sumthin(const char *fname, const char *prefix, const char *fmt, va_list ap) {
@@ -208,6 +212,62 @@ NORETURN void implementation::fatal(const char *fmt, ...) {
 }
 
 static implementation impl;
+
+static int glob_errfunc(const char *epath, int err) {
+    impl.log_error("glob(): \"%s\": \"%s\"", epath, strerror(err));
+    return 0;
+}
+
+const char * const *glob(const char* pattern, const char * const exceptions[],
+                    const bool include_dirs, const bool include_files) {
+
+    glob_t g;
+    size_t allocd = 0;
+    size_t used = 0;
+    char **rv = NULL;
+
+    if (!glob(pattern, 0, glob_errfunc, &g))
+        for (size_t i = 0; i < g.gl_pathc; i++) {
+            if (used == allocd) {
+                char **xv = (char **)calloc(2*allocd, sizeof(char *));
+                if (rv) {
+                    memmove(xv, rv, sizeof(char *) * allocd);
+                    free(rv);
+                }
+                rv = xv;
+            }
+
+            struct stat cstat;
+
+            stat(g.gl_pathv[i],&cstat);
+
+            if (S_ISREG(cstat.st_mode) && !include_files)
+                continue;
+
+            if (S_ISDIR(cstat.st_mode) && !include_dirs)
+                continue;
+
+            char *src = strrchr(g.gl_pathv[i], '/');
+
+            if (src && exceptions)
+                for (const char * const *e = exceptions; *e != NULL; e++)
+                    if (!strcmp(src + 1, *e))
+                        continue;
+
+            rv[used++] = strdup(g.gl_pathv[i]);
+        }
+    globfree(&g);
+    return rv;
+}
+
+void gfree(char ** rv) {
+    if (rv) {
+        while (*rv)
+            free(*(rv++));
+        free(rv);
+    }
+}
+
 static bool core_init_done = false;
 static char _main_name[] = "main()";
 

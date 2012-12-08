@@ -104,53 +104,63 @@ int load_module(const char *soname) {
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
+        getplatform()->log_info("%s provides iplatform", soname);
     }
 
     if ((sym = _get_sym(lib, "getmqueue"))) {
         rv |= DFMOD_EP_MQUEUE; getmqueue = (getmqueue_t) sym;
+        getplatform()->log_info("%s provides imqueue", soname);
     }
 
     if ((sym = _get_sym(lib, "gettextures"))) {
         rv |= DFMOD_EP_TEXTURES; gettextures = (gettextures_t) sym;
+        getplatform()->log_info("%s provides itextures", soname);
     }
 
     if ((sym = _get_sym(lib, "getsimuloop"))) {
         rv |= DFMOD_EP_SIMULOOP; getsimuloop = (getsimuloop_t) sym;
+        getplatform()->log_info("%s provides isimuloop", soname);
     }
 
     if ((sym = _get_sym(lib, "getrenderer"))) {
         rv |= DFMOD_EP_RENDERER; getrenderer = (getrenderer_t) sym;
+        getplatform()->log_info("%s provides irenderer", soname);
     }
 
     if ((sym = _get_sym(lib, "getkeyboard"))) {
         rv |= DFMOD_EP_KEYBOARD; getkeyboard = (getkeyboard_t) sym;
+        getplatform()->log_info("%s provides ikeyboard", soname);
     }
 
     if ((sym = _get_sym(lib, "getmusicsound"))) {
         rv |= DFMOD_EP_MUSICSOUND; getmusicsound = (getmusicsound_t) sym;
+        getplatform()->log_info("%s provides imusicsound", soname);
     }
     return rv;
 }
 
-void load_modules(const char *modpath, const char *platform, const char *sound, const char *renderer) {
+bool load_platform(const char *platname, const char *modpath) {
     if (modpath)
         set_modpath(modpath);
 
-    if (!platform) {
-        fprintf(stderr, "Platform module is required.\n");
-        exit(1);
+    std::string soname("platform_");
+    soname += platname;
+
+    if (!load_module(soname.c_str())) {
+        fprintf(stderr, "Failed to load platform module '%s'", soname.c_str());
+        return false;
     }
 
-    if (! (load_module(platform) & (DFMOD_EP_PLATFORM|DFMOD_EP_MQUEUE)) ) {
-        fprintf(stderr, "Fatal: Plaform module '%s' does not contain required entry points.\n", platform);
-        exit(1);
+    if (!load_module("common_code")) {
+        getplatform()->log_error("Failed to load common_code");
+        return false;
     }
-    if (sound && (!(load_module(sound) &  DFMOD_EP_MUSICSOUND)) ) {
-        getplatform()->log_error("Sound module '%s' does not contain required entry points.\n", sound);
-        exit(1);
+
+    soname = "renderer_";
+    soname += platname;
+    if (!load_module(soname.c_str())) {
+        getplatform()->log_error("Failed to load renderer module %s", soname.c_str());
+        return false;
     }
-    if (renderer && (!(load_module(renderer) & (DFMOD_EP_TEXTURES|DFMOD_EP_SIMULOOP|DFMOD_EP_RENDERER|DFMOD_EP_KEYBOARD)))) {
-        getplatform()->log_error("Renderer module '%s' does not contain required entry points.\n", renderer);
-        exit(1);
-    }
+    return true;
 }

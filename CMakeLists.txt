@@ -1,76 +1,58 @@
 cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
-set(LIBG_DESTINATION "/home/lxnt/00DFGL/df34/libs" CACHE STRING "kekeke")
+set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE PATH "what it says")
+set(DF_LINUX_DIR "/home/lxnt/00DFGL/df3411v" CACHE STRING "df_linux")
+set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "build type" FORCE)
 
+set(CONFIGURING_RENDUMPER TRUE)
 add_subdirectory(modules)
+include_directories(modules/include)
 
-if(UNIX)
+if(NOT UNIX)
+    message(FATAL_ERROR "~")
+else()
     set(CMAKE_CXX_COMPILER g++-4.5)
     set(BRING_EM_ON "-Wall -Wextra -pedantic")
-    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
+    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu ${LIB32_LINK_DIR})
     set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x ${BRING_EM_ON}")
     set(CMAKE_C_FLAGS_DEBUG "-m32 -g ${BRING_EM_ON}")
     set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x  ${BRING_EM_ON}")
     set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic ${BRING_EM_ON}")
 endif()
 
-option(RENDER_CURSES "Compile curses renderer" ON)
-option(RENDER_2D     "Compile curses renderer" OFF)
-option(RENDER_GL     "Compile curses renderer" OFF)
 
-if(RENDER_CURSES)
-    add_definitions(-DRENDER_CURSES)
-endif()
-if(RENDER_2D)
-    add_definitions(-DRENDER_2D -DRENDER_SDL)
-endif()
-if(RENDER_GL)
-    add_definitions(-DRENDER_GL -DRENDER_SDL)
-endif()
+option(FG_DUMPER "Build FG dumper code" OFF)
+if(FG_DUMPER)
+    set(LWAPI_HDRS
+        enums.h
+        bitfields.h
+        structs.h
+        globals.h
+    )
 
-set(LWAPI_HDRS
-    enums.h
-    bitfields.h
-    structs.h
-    globals.h
-)
-# Generation
-set_source_files_properties(${lwapi_hdrs} properties header_file_only true generated true)
+    # Generation
+    set_source_files_properties(${lwapi_hdrs} properties header_file_only true generated true)
 
-file(GLOB generate_input_xmls ${rendumper_source_dir}/df-structures/*.xml)
+    file(GLOB generate_input_xmls ${rendumper_source_dir}/df-structures/*.xml)
 
-set(lwapi_dir ${rendumper_SOURCE_DIR}/lwapi)
-set(dfstr_dir ${rendumper_SOURCE_DIR}/df-structures)
+    set(lwapi_dir ${rendumper_SOURCE_DIR}/lwapi)
+    set(dfstr_dir ${rendumper_SOURCE_DIR}/df-structures)
 
-file(GLOB api_xml ${dfstr_dir}/*.xml)
-add_custom_command(
-    OUTPUT ${lwapi_dir}/globals.cc
-    COMMAND ${dfstr_dir}/codegen.py -dst ${lwapi_dir}
-    WORKING_DIRECTORY ${dfstr_dir}
-    MAIN_DEPENDENCY ${dfstr_dir}/codegen.py
-    DEPENDS ${dfstr_dir}/static.py ${api_xml}
-)
+    file(GLOB api_xml ${dfstr_dir}/*.xml)
+    add_custom_command(
+        OUTPUT ${lwapi_dir}/globals.cc
+        COMMAND ${dfstr_dir}/codegen.py -dst ${lwapi_dir}
+        WORKING_DIRECTORY ${dfstr_dir}
+        MAIN_DEPENDENCY ${dfstr_dir}/codegen.py
+        DEPENDS ${dfstr_dir}/static.py ${api_xml}
+    )
 
-add_custom_target(generate_code)
-add_library(lwapi ${lwapi_dir}/globals.cc )
-add_dependencies(lwapi generate_code)
+    add_custom_target(generate_code)
+    add_library(lwapi ${lwapi_dir}/globals.cc )
+    add_dependencies(lwapi generate_code)
 
-include_directories(${rendumper_SOURCE_DIR}/lwapi)
-#link_directories(${rendumper_SOURCE_DIR}/lwapi)
-link_directories(/usr/lib/i386-linux-gnu /usr/lib32)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-DDEBUG=8)
+    include_directories(${rendumper_SOURCE_DIR}/lwapi)
 endif()
 
-add_definitions( -D_GNU_SOURCE=1 -D_REENTRANT )
 add_subdirectory(g_src)
-
-set(CPACK_GENERATOR TBZ2)
-set(CPACK_PACKAGE_NAME "rendumper")
-set(CPACK_PACKAGE_VENDOR "lxnt") 
-set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "stock libgraphics.so with fgdumper")
-include(CPack)
-

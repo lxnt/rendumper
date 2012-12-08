@@ -176,32 +176,11 @@ static void add_input_ncurses(int key, uint32_t now) {
 }
 
 int main (int argc, char* argv[]) {
-    set_modpath("libs/");
     /* here decide what platform to load, without init.txt. somehow. */
-    if (!load_module("platform_ncurses"))
+    if (!load_platform("ncurses", "libs/"))
         return 1;
-    load_module("sound_stub");
 
     platform = getplatform();
-
-  // Initialise minimal SDL subsystems.
-  int retval = SDL_Init(SDL_INIT_TIMER);
-  // Report failure?
-  if (retval != 0) {
-    report_error("SDL initialization failure", SDL_GetError());
-    return false;
-  }
-
-    if (!load_module("renderer_ncurses")) {
-        report_error("renderer load failed.", "");
-        return 1;
-    }
-
-    if (!load_module("simuloop")) {
-        report_error("simuloop load failed.", "");
-        return 1;
-    }
-
     irenderer *renderer = getrenderer();
     isimuloop *simuloop = getsimuloop();
 
@@ -210,12 +189,12 @@ int main (int argc, char* argv[]) {
                             assimilate_buffer,
                             add_input_ncurses);
 
-
     init.begin(); // Load init.txt settings
 
     if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF))
         if (!musicsound.initsound()) {
             report_error("Initializing sound failed, no sound will be played", "");
+            platform->log_info("Initializing sound failed, no sound will be played");
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
 
@@ -228,6 +207,14 @@ int main (int argc, char* argv[]) {
         enabler.command_line += option;
         enabler.command_line += " ";
     }
+
+  // Initialise minimal SDL subsystems.
+  int retval = SDL_Init(SDL_INIT_TIMER);
+  // Report failure?
+  if (retval != 0) {
+    report_error("SDL initialization failure", SDL_GetError());
+    return false;
+  }
 
     if (beginroutine()) { // TODO: think of moving to simuloop.
         renderer->start();

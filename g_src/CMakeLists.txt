@@ -1,12 +1,6 @@
-
-add_definitions(-Dunix)  # enabler.cpp KeybindingScreen.cpp
-add_definitions(-DCURSES) # enabler.cpp
- 
-include_directories(${rendumper_SOURCE_DIR}/modules/include)
-include_directories(/usr/include/SDL)
-
-
-set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE STRING "ekekek")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG=8)
+endif()
 
 set ( LIBS 
     SDL-1.2
@@ -15,13 +9,12 @@ set ( LIBS
     m
     png12
     rt
-    lwapi
-)
+    )
 
-set ( GL_LIBS
-    GLU
-    GLEW
-)
+if(FG_DUMPER)
+    set(FGD_LIBS lwapi)
+    set(FGD_SOURCE fugr_dump.cc)
+endif()
 
 # find_files.cpp excluded ; it refers to headers missing
 set( SOURCE
@@ -31,7 +24,6 @@ set( SOURCE
     enabler_input.cpp
     files.cpp
     find_files_posix.cpp
-    fugr_dump.cc
     graphics.cpp
     init.cpp
     interface.cpp
@@ -79,12 +71,8 @@ set( HEADERS
     ttf_manager.hpp
     ViewBase.h
 )
-link_directories( ${LIB32_LINK_DIR} )
-add_library( graphics SHARED ${SOURCE} )
-target_link_libraries(graphics glue ${LIBS})
-if(RENDER_GL)
-    target_link_libraries(graphics glue ${LIBS})
-endif()
-
-install(TARGETS graphics LIBRARY DESTINATION ${LIBG_DESTINATION})
+link_directories(${LIB32_LINK_DIR})
+add_library( graphics SHARED ${SOURCE} ${FGD_SOURCE})
+target_link_libraries(graphics glue ${LIBS} ${FGD_LIBS})
+install(TARGETS graphics LIBRARY DESTINATION ${DF_LINUX_DIR}/libs)
 

@@ -19,19 +19,27 @@ include(FindPkgConfig)
 find_package(Threads)
 
 if (ARCH64)
-    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
+    if(NOT CONFIGURING_RENDUMPER)
+        option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
+    else()
+        set(DF_32BIT_COMPAT TRUE)
+    endif()
     if (DF_32BIT_COMPAT)
         set(CMAKE_CXX_COMPILER g++-4.5)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
         set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
+        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
     endif()
-    set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
 else()
     set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
 endif()
 
-set(DFMOD_DESTDIR ${LIBG_DESTINATION} CACHE PATH "df module install path")
+if(DF_LINUX_DIR)
+    set(DFMOD_DESTDIR ${DF_LINUX_DIR}/libs)
+else()
+    set(DFMOD_DESTDIR lib/dfmodules)
+endif()
 
 include_directories(include)
 set(HEADERS
@@ -93,13 +101,6 @@ if (SOUND_OPENAL)
     install(TARGETS sound_openal LIBRARY DESTINATION ${DFMOD_DESTDIR})
 endif()
 
-option(SOUND_STUB "build sound-stub module" ON)
-if (SOUND_STUB)
-    add_library(sound_stub SHARED sound-stub/module.cpp)
-    set_target_properties(sound_stub PROPERTIES PREFIX "")
-    install(TARGETS sound_stub LIBRARY DESTINATION ${DFMOD_DESTDIR})
-endif()
-
 option(PLATFORM_SDL20 "build sdl20 platform module" ${PKG_SDL2_FOUND})
 if (PLATFORM_SDL20)
     if(NOT PKG_SDL2_FOUND)
@@ -137,16 +138,25 @@ if (PLATFORM_NCURSES)
     install(TARGETS platform_ncurses LIBRARY DESTINATION ${DFMOD_DESTDIR})
 endif()
 
-add_library(simuloop SHARED simuloop/module.cpp)
-set_target_properties(simuloop PROPERTIES PREFIX "")
-install(TARGETS simuloop LIBRARY DESTINATION ${DFMOD_DESTDIR})
+# common code and stubs collection
+set(COMMON_SRC
+    common/simuloop.cpp
+    common/sound-stub.cpp
+    common/textures-stub.cpp
+    )
+add_library(common_code SHARED ${COMMON_SRC})
+set_target_properties(common_code PROPERTIES PREFIX "")
+install(TARGETS common_code LIBRARY DESTINATION ${DFMOD_DESTDIR})
 
+# the glue
 add_library(glue glue.cpp)
 install(TARGETS glue ARCHIVE DESTINATION lib)
 
+# tests
 add_executable(test-alert tests/alert.cpp)
-target_link_libraries(test-alert glue dl pthread)
+target_link_libraries(test-alert glue dl ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-alert RUNTIME DESTINATION bin)
 
-
-
+#add_executable(life tests/life.cpp)
+#target_link_libraries(life glue dl ${CMAKE_THREAD_LIBS_INIT})
+#install(TARGETS life RUNTIME DESTINATION bin)

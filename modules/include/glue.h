@@ -13,6 +13,6 @@ void set_modpath(const char *modpath);
 
 int load_module(const char *soname);
 
-void load_modules(const char *modpath, const char *platform, const char *sound, const char *renderer);
+bool load_platform(const char *platname, const char *modpath);
 
 #endif

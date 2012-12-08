@@ -11,7 +11,7 @@ void textures::upload_textures() {
 void textures::remove_uploaded_textures() {
     DFM_STUB(textures::upload_textures);
 }
-void *textures::get_texture_data(long pos) {
+void *textures::get_texture_data(long) {
     DFM_STUB(textures::get_texture_data);
     return NULL;
 }

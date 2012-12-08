@@ -212,9 +212,11 @@ void graphicst::addst(const string &str_orig, justification just, int space)
   string str = str_orig;
   if (space)
     abbreviate_string_hackaroundmissingcode(str, space);
+  if (just == not_truetype || true
 #if defined(TTF_SUPPORT)
-  if (just == not_truetype || !ttf_manager.ttf_active()) {
+        || !ttf_manager.ttf_active()
 #endif
+        ) {
     int s;
     for(s=0;s<str.length()&&screenx<init.display.grid_x;s++)
       {
@@ -227,8 +229,9 @@ void graphicst::addst(const string &str_orig, justification just, int space)
         
         addchar(str[s]);
       }
+    }
 #if defined(TTF_SUPPORT)
-  } else {
+  else {
     // Truetype
     if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
       str[1] = '\t'; // EVIL HACK

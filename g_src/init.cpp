@@ -141,14 +141,9 @@ void initst::begin()
                                                     token2 = "2D";
                                                 }
                                         if(token2=="TEXT") {
-#if defined(RENDER_CURSES)
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_TEXT);
                                           display.flag.add_flag(INIT_DISPLAY_FLAG_PARTIAL_PRINT);
                                           display.partial_print_count=0;
-#else
-                                          MessageBox(NULL, "Text mode not supported on your platform, using 2D", 0, 0);
-                                          token2 = "2D";
-#endif
                                         }
 					if(token2=="FRAME_BUFFER")
 						{

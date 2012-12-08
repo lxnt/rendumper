@@ -827,9 +827,7 @@ class enablerst : public enabler_inputst
 
   class renderer *renderer;
   void eventLoop_SDL();
-#ifdef CURSES
   void eventLoop_ncurses();
-#endif
   
   // Framerate calculations
   int calculated_fps, calculated_gfps;

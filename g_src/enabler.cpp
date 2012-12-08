@@ -10,10 +10,6 @@
 #include "init.h"
 #include "music_and_sound_g.h"
 
-#ifdef unix
-# include <locale.h>
-#endif
-
 #define DFM_STUB(foo) getplatform()->log_error("Stub '%s' called.\n", #foo)
 
 using namespace std;

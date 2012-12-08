@@ -543,7 +543,6 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
 // 1 and up are ncurses symbols, as returned by getch.
 // -1 and down are unicode values.
 // esc is true if this key was part of an escape sequence.
-#if defined(RENDER_CURSES)
 #include <ncursesw/curses.h>
 
 void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
@@ -650,7 +649,6 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     }
   }
 }
-#endif
 
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // We may be registering a new mapping, in which case we skip the

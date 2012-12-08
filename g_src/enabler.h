@@ -16,9 +16,7 @@
 # include <SDL/SDL_image.h>
 #endif
 
-#if defined(RENDER_GL)
-#include "GL/glew.h"
-#else
+#if !defined(GLsync)
 typedef void * GLsync;
 typedef uint32_t GLuint;
 typedef float GLfloat;
@@ -640,11 +638,6 @@ class curses_text_boxst
 #define ENABLERFLAG_RENDER BIT1
 #define ENABLERFLAG_MAXFPS BIT2
 
-// GL texture positions
-struct gl_texpos {
-  GLfloat left, right, top, bottom;
-};
-
 // Covers every allowed permutation of text
 struct ttf_id {
   std::string text;
@@ -677,25 +670,20 @@ class textures
   friend class enablerst;
   friend class renderer_opengl;
  private:
-  vector<SDL_Surface *> raws;
+  vector<void *> raws;
   bool uploaded;
-  long add_texture(SDL_Surface*);
+  long add_texture(void*);
  protected:
-  GLuint gl_catalog; // texture catalog gennum
-  struct gl_texpos *gl_texpos; // Texture positions in the GL catalog, if any
+  uint32_t gl_catalog; // texture catalog gennum
+  void *gl_texpos; // Texture positions in the GL catalog, if any
  public:
   // Initialize state variables
   textures() {
     uploaded = false;
     gl_texpos = NULL;
   }
-  ~textures() {
-  	for (auto it = raws.cbegin(); it != raws.cend(); ++it)
-		SDL_FreeSurface(*it);
-}
-  int textureCount() {
-    return raws.size();
-  }
+  ~textures() { }
+  int textureCount();
   // Upload in-memory textures to the GPU
   // When textures are uploaded, any alteration to a texture
   // is automatically reflected in the uploaded copy - eg. it's replaced.
@@ -705,7 +693,7 @@ class textures
   // deleting a window, in case of driver memory leaks.
   void remove_uploaded_textures();
   // Returns the most recent texture data
-  SDL_Surface *get_texture_data(long pos);
+  void *get_texture_data(long pos);
   // Clone a texture
   long clone_texture(long src);
   // Remove all color, but not transparency

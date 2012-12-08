@@ -104,37 +104,37 @@ int load_module(const char *soname) {
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
-        getplatform()->log_info("%s provides iplatform", soname);
+        getplatform()->log_info("%s provides iplatform", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "getmqueue"))) {
         rv |= DFMOD_EP_MQUEUE; getmqueue = (getmqueue_t) sym;
-        getplatform()->log_info("%s provides imqueue", soname);
+        getplatform()->log_info("%s provides imqueue", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "gettextures"))) {
         rv |= DFMOD_EP_TEXTURES; gettextures = (gettextures_t) sym;
-        getplatform()->log_info("%s provides itextures", soname);
+        getplatform()->log_info("%s provides itextures", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "getsimuloop"))) {
         rv |= DFMOD_EP_SIMULOOP; getsimuloop = (getsimuloop_t) sym;
-        getplatform()->log_info("%s provides isimuloop", soname);
+        getplatform()->log_info("%s provides isimuloop", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "getrenderer"))) {
         rv |= DFMOD_EP_RENDERER; getrenderer = (getrenderer_t) sym;
-        getplatform()->log_info("%s provides irenderer", soname);
+        getplatform()->log_info("%s provides irenderer", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "getkeyboard"))) {
         rv |= DFMOD_EP_KEYBOARD; getkeyboard = (getkeyboard_t) sym;
-        getplatform()->log_info("%s provides ikeyboard", soname);
+        getplatform()->log_info("%s provides ikeyboard", fname.c_str());
     }
 
     if ((sym = _get_sym(lib, "getmusicsound"))) {
         rv |= DFMOD_EP_MUSICSOUND; getmusicsound = (getmusicsound_t) sym;
-        getplatform()->log_info("%s provides imusicsound", soname);
+        getplatform()->log_info("%s provides imusicsound", fname.c_str());
     }
     return rv;
 }

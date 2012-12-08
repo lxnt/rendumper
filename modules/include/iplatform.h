@@ -116,6 +116,25 @@ struct iplatform {
     virtual void log_info(const char *, ...) = 0;
     virtual void log_error(const char *, ...) = 0;
     virtual NORETURN void fatal(const char *, ...) = 0;
+
+    /* File/directory finder.
+        parameters:
+            pattern - a glob(3) pattern
+            exceptions - NULL-terminated array of basenames to ignore.
+            include_files - include S_IFREGs in results (sys/stat.h).
+            include_dirs  - include S_IFDIRs in results.
+
+        return value:
+            A pointer to a NULL-terminated array of matching paths.
+            A NULL if no path matched or an error occured.
+            Errors are not reported.
+
+            Always use the gfree method to free the return value. */
+    virtual const char * const *glob(const char* pattern, const char* const exceptions[],
+                        const bool include_dirs, const bool include_files) = 0;
+
+    /* Use this to free the return value. ignores NULLs*/
+    virtual void gfree(const char **) = 0;
 };
 
 

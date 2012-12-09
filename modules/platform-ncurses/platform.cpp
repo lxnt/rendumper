@@ -246,14 +246,16 @@ const char * const *implementation::glob(const char* pattern, const char * const
             if (S_ISDIR(cstat.st_mode) && !include_dirs)
                 continue;
 
-            char *src = strrchr(g.gl_pathv[i], '/');
+            char *basename = strrchr(g.gl_pathv[i], '/');
+            if (!basename)
+                basename = g.gl_pathv[i];
 
-            if (src && exclude)
+            if (exclude)
                 for (const char * const *e = exclude; *e != NULL; e++)
-                    if (!strcmp(src + 1, *e))
+                    if (!strcmp(basename, *e))
                         continue;
 
-            rv[used++] = strdup(src ? src + 1 : g.gl_pathv[i]);
+            rv[used++] = strdup(basename);
         }
     globfree(&g);
     return rv;

@@ -9,6 +9,7 @@
 typedef std::pair<bool,int> slot;
 
 class musicsoundst {
+  char filler[0x70];
   imusicsound *impl;
  public:
   bool initsound(); // Returns false if it failed

@@ -432,7 +432,7 @@ void enabler_inputst::save_keybindings() {
 }
 
 #if !defined(RENDER_SDL)
-void enabler_inputst::add_input(SDL_Event &, Uint32) {
+void enabler_inputst::add_input(SDL_Event &, Uint32) { }
 #else
 void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
   // Before we can use this input, there are some issues to deal with:
@@ -529,8 +529,8 @@ void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
     // And pass the event on deeper.
     add_input_refined(lit->first, now, lit->second);
   }
-#endif
 }
+#endif
 
 // Input encoding:
 // 1 and up are ncurses symbols, as returned by getch.

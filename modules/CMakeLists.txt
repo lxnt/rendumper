@@ -158,6 +158,10 @@ add_executable(test-alert tests/alert.cpp)
 target_link_libraries(test-alert glue dl ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-alert RUNTIME DESTINATION bin)
 
+add_executable(test-find tests/find.cpp)
+target_link_libraries(test-find glue dl ${CMAKE_THREAD_LIBS_INIT})
+install(TARGETS test-find RUNTIME DESTINATION bin)
+
 #add_executable(life tests/life.cpp)
 #target_link_libraries(life glue dl ${CMAKE_THREAD_LIBS_INIT})
 #install(TARGETS life RUNTIME DESTINATION bin)

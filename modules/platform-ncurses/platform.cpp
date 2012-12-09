@@ -224,7 +224,7 @@ const char * const *implementation::glob(const char* pattern, const char * const
     glob_t g;
     size_t allocd = sizeof(char *) * 1024;
     size_t used = 0;
-    char **rv = (char **) calloc(2*allocd, sizeof(char *));
+    char **rv = (char **) calloc(allocd, sizeof(char *));
 
     if (!::glob(pattern, 0, glob_errfunc, &g))
         for (size_t i = 0; i < g.gl_pathc; i++) {

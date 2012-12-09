@@ -616,6 +616,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     }
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
     e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
+    e.macro = false;
     timeline.insert(e);
     key_registering = false;
     return;
@@ -625,6 +626,8 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   // events anyway.
   KeyEvent kev; kev.release = false;
   Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now;
+  e.macro = false;
+
   if (sdl.key) {
     set<InterfaceKey> events = key_translation(sdl);
     for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {

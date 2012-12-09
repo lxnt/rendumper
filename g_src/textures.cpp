@@ -9,7 +9,7 @@ void textures::upload_textures() {
     DFM_STUB(textures::upload_textures);
 }
 void textures::remove_uploaded_textures() {
-    DFM_STUB(textures::upload_textures);
+    DFM_STUB(textures::remove_uploaded_textures);
 }
 void *textures::get_texture_data(long) {
     DFM_STUB(textures::get_texture_data);

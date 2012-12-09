@@ -218,7 +218,7 @@ static int glob_errfunc(const char *epath, int err) {
     return 0;
 }
 
-const char * const *implementation::glob(const char* pattern, const char * const exceptions[],
+const char * const *implementation::glob(const char* pattern, const char * const exclude[],
                     const bool include_dirs, const bool include_files) {
 
     glob_t g;
@@ -238,8 +238,7 @@ const char * const *implementation::glob(const char* pattern, const char * const
             }
 
             struct stat cstat;
-
-            stat(g.gl_pathv[i],&cstat);
+            stat(g.gl_pathv[i], &cstat);
 
             if (S_ISREG(cstat.st_mode) && !include_files)
                 continue;
@@ -249,12 +248,12 @@ const char * const *implementation::glob(const char* pattern, const char * const
 
             char *src = strrchr(g.gl_pathv[i], '/');
 
-            if (src && exceptions)
-                for (const char * const *e = exceptions; *e != NULL; e++)
+            if (src && exclude)
+                for (const char * const *e = exclude; *e != NULL; e++)
                     if (!strcmp(src + 1, *e))
                         continue;
 
-            rv[used++] = strdup(g.gl_pathv[i]);
+            rv[used++] = strdup(src ? src + 1 : g.gl_pathv[i]);
         }
     globfree(&g);
     return rv;

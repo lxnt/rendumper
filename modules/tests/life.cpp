@@ -12,6 +12,7 @@
 #include <cstring>
 #include "iplatform.h"
 #include "irenderer.h"
+#include "isimuloop.h"
 #include "ikeyboard.h"
 #include "itextures.h"
 #include "imusicsound.h"
@@ -204,7 +205,7 @@ int main (int argc, char* argv[]) {
 
     // get platform - trigger initialization
     iplatform *platform = getplatform();
-
+    iplatform->log_info("starting. or maybe staring.");
     irenderer *renderer = getrenderer();
     isimuloop *simuloop = getsimuloop();
 

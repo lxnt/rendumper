@@ -78,6 +78,7 @@ Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
 }
 
 void renderer::display()                { DFM_STUB(renderer::display); }
+bool renderer::uses_opengl()            { DFM_STUB(renderer::uses_opengl); return false; }
 void renderer::cleanup_arrays()         { DFM_STUB(renderer::cleanup_arrays); }
 void renderer::gps_allocate(int, int)   { DFM_STUB(renderer::gps_allocate); }
 void renderer::swap_arrays()            { DFM_STUB(renderer::swap_arrays); }

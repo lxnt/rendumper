@@ -30,6 +30,8 @@ struct implementation : public isimuloop {
 
     void add_input_ncurses(int32_t, uint32_t);
 
+    uint32_t get_frame_count();
+
     void acknowledge(const itc_message_t&) { /* we don't have to acknowledge anything */ }
 
     /* --- */
@@ -94,6 +96,7 @@ void implementation::set_callbacks(mainloop_foo_t ml,
     add_input_ncurses_cb = ain;
 }
 
+uint32_t implementation::get_frame_count() { return frames; }
 
 /* to be called from other threads. */
 void implementation::add_input_ncurses(int32_t key, uint32_t now) {

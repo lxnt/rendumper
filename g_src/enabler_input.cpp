@@ -16,6 +16,8 @@ extern initst init;
 #include "find_files.h"
 #include "svector.h"
 
+#include "isimuloop.h"
+
 // The timeline events we actually pass back from get_input. Well, no,
 // that's just k, but..
 struct Event {
@@ -615,7 +617,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
       stored_keys.push_back(sdl);
     }
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
-    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
+    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = getsimuloop()->get_frame_count();
     e.macro = false;
     timeline.insert(e);
     key_registering = false;
@@ -646,6 +648,9 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   }
 }
 
+#if !defined (RENDER_SDL)
+void enabler_inputst::add_input_refined(KeyEvent &, Uint32, int) {}
+#else
 void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
@@ -701,6 +706,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
     //   }
   }
 }
+#endif
 
 
 void enabler_inputst::clear_input() {
@@ -724,7 +730,7 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
 
   const Time first_time = ev->time;
   const int first_serial = ev->serial;
-  int simtick = enabler.simticks.read();
+  int simtick =  getsimuloop()->get_frame_count();
   bool event_from_macro = false;
   while (ev != timeline.end() && ev->time == first_time && ev->serial == first_serial) {
     // Avoid recording macro-sources events as macro events.

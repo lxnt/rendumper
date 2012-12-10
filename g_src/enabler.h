@@ -47,7 +47,6 @@ using std::queue;
 #include "endian.h"
 #include "files.h"
 #include "enabler_input.h"
-#include "mail.hpp"
 
 #define ENABLER
 
@@ -626,32 +625,13 @@ class enablerst : public enabler_inputst
   Uint32 last_tick;
   float outstanding_frames, outstanding_gframes;
 
-  // Async rendering
-  struct async_cmd {
-    enum cmd_t { pause, start, render, inc, set_fps } cmd;
-    int val; // If async_inc, number of extra frames to run. If set_fps, current value of fps.
-    async_cmd() {}
-    async_cmd(cmd_t c) { cmd = c; }
-  };
-
-  struct async_msg {
-    enum msg_t { quit, complete, set_fps, set_gfps, push_resize, pop_resize, reset_textures } msg;
-    union {
-      int fps; // set_fps, set_gfps
-      struct { // push_resize
-        int x, y;
-      } a;
-    } b;
-    async_msg() {}
-    async_msg(msg_t m) { msg = m; }
-  };
-      
   unsigned int async_frames;      // Number of frames the async thread has been asked to run
   bool async_paused;
-  Chan<async_cmd> async_tobox;    // Messages to the simulation thread
-  Chan<async_msg> async_frombox;  // Messages from the simulation thread, and acknowledgements of those to
-  Chan<zoom_commands> async_zoom; // Zoom commands (from the simulation thread)
-  Chan<void> async_fromcomplete;  // Barrier for async_msg requests that require acknowledgement
+  char async_tobox[0x00000030];
+  char async_frombox[0x00000030];
+  char async_zoom[0x00000030];
+  char async_fromcomplete[0x00000004];
+
  public:
   Uint32 renderer_threadid;
  private:
@@ -705,7 +685,8 @@ class enablerst : public enabler_inputst
   text_systemst text_system;
 
   // TOADY: MOVE THESE TO "FRAMERATE INTERFACE"
-  MVar<int> simticks, gputicks;
+  char simticks[0x00000008];
+  char gputicks[0x00000008];
   Uint32 clock; // An *approximation* of the current time for use in garbage collection thingies, updated every frame or so.
 };
 #endif

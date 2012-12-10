@@ -30,6 +30,9 @@ struct isimuloop : public imessagesender {
     
     /* input event sinks */
     virtual void add_input_ncurses(int32_t, uint32_t) = 0;
+
+    /* frames done counter */
+    virtual uint32_t get_frame_count() = 0;
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)

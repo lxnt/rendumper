@@ -50,7 +50,7 @@ using std::string;
 #include "enabler.h"
 #include "find_files.h"
 
-inline void CHECK_ERR(int err, const char* msg)
+inline void CHECK_ERR(int err, const char* /* msg */)
 {
 	if (err != Z_OK)
 		{

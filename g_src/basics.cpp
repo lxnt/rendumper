@@ -145,7 +145,7 @@ char grab_variable_token(string &str,string &token,char sec_comp,int32_t &pos,in
 	return 0;
 }
 
-bool grab_token_expression(string &dest,string &source,int32_t &pos,char compc)
+bool grab_token_expression(string &dest,string &source,int32_t &pos,char /* compc */)
 {
 	dest.erase();
 	dest+="[";
@@ -166,7 +166,7 @@ bool grab_token_expression(string &dest,string &source,int32_t &pos,char compc)
 	return (dest.length()>2);
 }
 
-bool grab_token_list_as_string(string &dest,string &source,int32_t &pos,char compc)
+bool grab_token_list_as_string(string &dest,string &source,int32_t &pos,char /* compc */)
 {
 	dest.erase();
 
@@ -254,7 +254,7 @@ bool grab_token_string(string &dest,const char *source,char compc)
 }
 
 
-void replace_token_string(string &token,string &str,int32_t pos,char compc,string &nw,char repc)
+void replace_token_string(string &token,string &str,int32_t /* pos */,char compc,string &nw,char repc)
 {
 	string rep;
 	if(repc!=0)rep=repc;

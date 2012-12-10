@@ -6,15 +6,6 @@
 #define ENABLER_H
 
 #include "platform.h"
-#include <SDL/SDL.h>
-
-#if defined(TTF_SUPPORT)
-#ifdef __APPLE__
-# include <SDL_ttf/SDL_ttf.h>
-#else
-# include <SDL/SDL_ttf.h>
-#endif
-#endif
 
 #include <map>
 #include <vector>

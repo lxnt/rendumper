@@ -136,14 +136,6 @@ int main (int argc, char* argv[]) {
         enabler.command_line += " ";
     }
 
-  // Initialise minimal SDL subsystems.
-  int retval = SDL_Init(SDL_INIT_TIMER);
-  // Report failure?
-  if (retval != 0) {
-    report_error("SDL initialization failure", SDL_GetError());
-    return false;
-  }
-
     if (beginroutine()) { // TODO: think of moving to simuloop.
         renderer->start();
         simuloop->start();
@@ -155,7 +147,6 @@ int main (int argc, char* argv[]) {
         report_error("beginroutine()", "failed");
     }
 
-    SDL_Quit();
     return 0;
 }
 

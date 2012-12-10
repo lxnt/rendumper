@@ -607,7 +607,7 @@ class enablerst : public enabler_inputst
   // Frame timing calculations
   float fps, gfps;
   float fps_per_gfps;
-  Uint32 last_tick;
+  uint32_t last_tick;
   float outstanding_frames, outstanding_gframes;
 
   unsigned int async_frames;      // Number of frames the async thread has been asked to run
@@ -618,7 +618,7 @@ class enablerst : public enabler_inputst
   char async_fromcomplete[0x00000004];
 
  public:
-  Uint32 renderer_threadid;
+  uint32_t renderer_threadid;
  private:
 
   void pause_async_loop();
@@ -672,7 +672,7 @@ class enablerst : public enabler_inputst
   // TOADY: MOVE THESE TO "FRAMERATE INTERFACE"
   char simticks[0x00000008];
   char gputicks[0x00000008];
-  Uint32 clock; // An *approximation* of the current time for use in garbage collection thingies, updated every frame or so.
+  uint32_t clock; // An *approximation* of the current time for use in garbage collection thingies, updated every frame or so.
 };
 #endif
 

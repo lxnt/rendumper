@@ -9,7 +9,7 @@
 #include "ViewBase.h"
 #include "keybindings.h"
 
-typedef Uint32 Time;
+typedef uint32_t Time;
 
 enum Repeat {
   REPEAT_NOT,  // Don't repeat at all. Furthermore, cancel other repeats.
@@ -19,8 +19,8 @@ enum Repeat {
 
 enum MatchType { type_unicode, type_key, type_button };
 
-Uint8 getModState();
-std::string translate_mod(Uint8 mod);
+uint8_t getModState();
+std::string translate_mod(uint8_t mod);
 int decode_utf8(const std::string &s);
 std::string encode_utf8(int unicode);
 

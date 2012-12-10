@@ -174,7 +174,7 @@ string encode_utf8(int unicode) {
   return s;
 }
 
-string translate_mod(Uint8 mod) {
+string translate_mod(uint8_t mod) {
   string ret;
   if (mod & 1) ret += "Shift+";
   if (mod & 2) ret += "Ctrl+";
@@ -253,7 +253,7 @@ static void update_modstate(const SDL_Event &e) {
 #endif
 
 // Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
-Uint8 getModState() {
+uint8_t getModState() {
   return modState;
 }
 
@@ -436,7 +436,7 @@ void enabler_inputst::save_keybindings() {
 #if !defined(RENDER_SDL)
 void enabler_inputst::add_input(SDL_Event &, Uint32) { }
 #else
-void enabler_inputst::add_input(SDL_Event &e, Uint32 now) {
+void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   // Before we can use this input, there are some issues to deal with:
   // - SDL provides unicode translations only for key-press events, not
   //   releases. We need to keep track of pressed keys, and generate
@@ -649,9 +649,9 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
 }
 
 #if !defined (RENDER_SDL)
-void enabler_inputst::add_input_refined(KeyEvent &, Uint32, int) {}
+void enabler_inputst::add_input_refined(KeyEvent &, uint32_t, int) {}
 #else
-void enabler_inputst::add_input_refined(KeyEvent &e, Uint32 now, int serial) {
+void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
   if (key_registering && !e.release) {

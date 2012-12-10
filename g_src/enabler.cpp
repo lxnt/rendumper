@@ -97,8 +97,9 @@ static void assimilate_buffer(df_buffer_t *buf) {
     gps.resize(buf->dimx, buf->dimy);
 }
 
-static void add_input_ncurses(int key, uint32_t now) {
-    enabler.add_input_ncurses(key, now, false);
+static void add_input_event(df_input_event_t *event) {
+    enabler.add_input(*event);
+}
 }
 
 int main (int argc, char* argv[]) {
@@ -113,7 +114,7 @@ int main (int argc, char* argv[]) {
     simuloop->set_callbacks(mainloop,
                             render_things,
                             assimilate_buffer,
-                            add_input_ncurses);
+                            add_input_event);
 
     { FILE *fp = fopen("df.pid", "w"); fprintf(fp, "%d\n", getpid()); fclose(fp); }
 

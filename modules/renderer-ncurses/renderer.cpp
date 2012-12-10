@@ -288,6 +288,13 @@ void implementation::slurp_keys() {
     uint32_t now = platform->GetTickCount();
 
     do {
+        event.type = df_input_event_t::DF_KEY_DOWN;
+        event.now = now;
+        event.mod = DFMOD_NONE;
+        event.reports_release = false;
+        event.sym = DFKS_UNKNOWN;
+        event.unicode = 0;
+
         wint_t key;
         int what = get_wch(&key);
 #if defined(DEBUG_INPUT)
@@ -299,10 +306,6 @@ void implementation::slurp_keys() {
                 break;
 
             case OK:
-                event.type = df_input_event_t::DF_KEY_DOWN;
-                event.now = now;
-                event.reports_release = false;
-                event.sym = DFKS_UNKNOWN;
                 switch (key) {
                     /* synthesize sym */
                     case   9: event.sym = DFKS_TAB; break;
@@ -330,10 +333,6 @@ void implementation::slurp_keys() {
                 continue;
 
             case KEY_CODE_YES:
-                event.type = df_input_event_t::DF_KEY_DOWN;
-                event.now = now;
-                event.reports_release = false;
-                event.unicode = 0;
                 switch (key) {
                     case KEY_DOWN:      event.sym = DFKS_DOWN; break;
                     case KEY_UP:        event.sym = DFKS_UP; break;

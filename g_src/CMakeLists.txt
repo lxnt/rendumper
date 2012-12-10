@@ -2,14 +2,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG=8)
 endif()
 
-set ( LIBS 
-    SDL-1.2
-    SDL_image-1.2
-    SDL_ttf-2.0
-    m
-    png12
-    rt
-    )
+set ( LIBS m )
 
 if(FG_DUMPER)
     set(FGD_LIBS lwapi)

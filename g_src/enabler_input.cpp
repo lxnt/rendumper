@@ -443,8 +443,10 @@ void enabler_inputst::add_input(df_input_event_t& e) {
   //   These are of course separate keypresses, and must be kept separate.
   //   That's what the serial is for.
 
+#if defined(DEBUG_INPUT)
     getplatform()->log_info("Got: type=%d mod=%x sym=%x uni=%x rr=%d now=%x",
         e.type, e.mod, e.sym, e.unicode, e.reports_release, e.now);
+#endif
     if (!e.reports_release) {
         add_input_ncurses(e);
         return;

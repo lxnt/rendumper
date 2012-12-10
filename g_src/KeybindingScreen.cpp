@@ -212,7 +212,7 @@ void KeybindingScreen::reset_keyR() {
         desc << "U+" << hex << uppercase << it->unicode;
       break;
     case type_key:
-      desc << "By position: " << translate_mod(it->mod) << sdlNames.left[it->key];
+      desc << "By position: " << translate_mod(it->mod) << symNames.left[it->sym];
       break;
     case type_button:
       desc << "Mouse: " << (int)it->button;

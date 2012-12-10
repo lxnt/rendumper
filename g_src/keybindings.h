@@ -1,15 +1,16 @@
 #ifndef KEYBINDINGS_H
 #define KEYBINDINGS_H
 
-#include <SDL/SDL.h>
 #include <map>
 #include <string>
 
 #include "bimap.h"
 
+#include "itypes.h"
+
 typedef long InterfaceKey;
 
-enum InterfaceKeyType
+enum InterfaceKeyType : long
 {
 	INTERFACEKEY_NONE=0,
 	INTERFACEKEY_SELECT,
@@ -1467,9 +1468,11 @@ enum InterfaceKeyType
 	INTERFACEKEYNUM
 };
 
+
+
 extern bimap<InterfaceKey,std::string> bindingNames;
 extern bimap<InterfaceKey,std::string> displayNames;
-extern bimap<SDLKey,std::string> sdlNames;
+extern bimap<DFKeySym,std::string> symNames;
 
 void keybinding_init();
 

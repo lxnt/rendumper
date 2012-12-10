@@ -1,13 +1,14 @@
 #ifndef ENABLER_INPUT_H
 #define ENABLER_INPUT_H
 
-#include <SDL/SDL.h>
 #include <string>
 #include <set>
 #include <list>
 
 #include "ViewBase.h"
 #include "keybindings.h"
+
+#include "itypes.h"
 
 typedef uint32_t Time;
 
@@ -24,18 +25,19 @@ std::string translate_mod(uint8_t mod);
 int decode_utf8(const std::string &s);
 std::string encode_utf8(int unicode);
 
+#define DFMOD_NONE 0
 #define DFMOD_SHIFT 1
 #define DFMOD_CTRL 2
 #define DFMOD_ALT 4
 
 struct EventMatch {
   MatchType type;
-  Uint8 mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
-  Uint8 scancode; // not defined for type=button
+  uint8_t mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
+  uint8_t scancode; // not defined for type=button; unused in lieu of the sym
   union {
-    Uint16 unicode;
-    SDLKey key;
-    Uint8 button;
+    uint16_t unicode;
+    DFKeySym sym;
+    uint8_t button;
   };
   
   bool operator== (const EventMatch &other) const {
@@ -43,7 +45,7 @@ struct EventMatch {
     if (type != other.type) return false;
     switch (type) {
     case type_unicode: return unicode == other.unicode;
-    case type_key: return key == other.key;
+    case type_key: return sym == other.sym;
     case type_button: return button == other.button;
     default: return false;
     }
@@ -54,7 +56,7 @@ struct EventMatch {
     if (type != other.type) return type < other.type;
     switch (type) {
     case type_unicode: return unicode < other.unicode;
-    case type_key: return key < other.key;
+    case type_key: return sym < other.sym;
     case type_button: return button < other.button;
     default: return false;
     }
@@ -82,7 +84,7 @@ class enabler_inputst {
   void save_macro_to_file(const std::string &file, const std::string &name, const macro &);
   
   // In practice.. do not use this one.
-  void add_input(SDL_Event &e, Time now);
+  void add_input(df_input_event_t &e, Time now);
   // Use this one. It's much nicer.
   void add_input_refined(KeyEvent &e, Time now, int serial);
   // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.

@@ -1,4 +1,3 @@
-#include <SDL/SDL.h>
 #include <map>
 #include <vector>
 #include <iostream>
@@ -16,6 +15,7 @@ extern initst init;
 #include "find_files.h"
 #include "svector.h"
 
+#include "itypes.h"
 #include "isimuloop.h"
 
 // The timeline events we actually pass back from get_input. Well, no,
@@ -188,11 +188,11 @@ static string display(const EventMatch &match) {
   switch (match.type) {
   case type_unicode: ret << (char)match.unicode; break;
   case type_key: {
-    map<SDLKey,string>::iterator it = sdlNames.left.find(match.key);
-    if (it != sdlNames.left.end())
+    map<DFKeySym,string>::iterator it = symNames.left.find(match.sym);
+    if (it != symNames.left.end())
       ret << it->second;
     else
-      ret << "SDL+" << (int)match.key;
+      ret << "DFKS+" << (int)match.sym;
     break;
   }
   case type_button:
@@ -211,38 +211,37 @@ static string translate_repeat(Repeat r) {
   }
 }
 
-#if defined(RENDER_SDL)
 // Update the modstate, since SDL_getModState doesn't /work/ for alt
-static void update_modstate(const SDL_Event &e) {
-  if (e.type == SDL_KEYUP) {
-    switch (e.key.keysym.sym) {
-    case SDLK_RSHIFT:
-    case SDLK_LSHIFT:
+static void update_modstate(const df_input_event_t &e) {
+  if (e.type == df_input_event_t::DF_KEY_UP) {
+    switch (e.sym) {
+    case DFKS_RSHIFT:
+    case DFKS_LSHIFT:
       modState &= ~1;
       break;
-    case SDLK_RCTRL:
-    case SDLK_LCTRL:
+    case DFKS_RCTRL:
+    case DFKS_LCTRL:
       modState &= ~2;
       break;
-    case SDLK_RALT:
-    case SDLK_LALT:
+    case DFKS_RALT:
+    case DFKS_LALT:
       modState &= ~4;
       break;
     default:
       break;
     }
-  } else if (e.type == SDL_KEYDOWN) {
-    switch (e.key.keysym.sym) {
-    case SDLK_RSHIFT:
-    case SDLK_LSHIFT:
+  } else if (e.type == df_input_event_t::DF_KEY_DOWN) {
+    switch (e.sym) {
+    case DFKS_RSHIFT:
+    case DFKS_LSHIFT:
       modState |= 1;
       break;
-    case SDLK_RCTRL:
-    case SDLK_LCTRL:
+    case DFKS_RCTRL:
+    case DFKS_LCTRL:
       modState |= 2;
       break;
-    case SDLK_RALT:
-    case SDLK_LALT:
+    case DFKS_RALT:
+    case DFKS_LALT:
       modState |= 4;
       break;
     default:
@@ -250,7 +249,6 @@ static void update_modstate(const SDL_Event &e) {
     }
   }
 }
-#endif
 
 // Converts SDL mod states to ours, collapsing left/right shift/alt/ctrl
 uint8_t getModState() {
@@ -328,22 +326,22 @@ void enabler_inputst::load_keybindings(const string &file) {
           EventMatch matcher;
           // SDL Keys
           if (parse_line(*line, sym, match)) {
-            map<string,SDLKey>::iterator it = sdlNames.right.find(match[2]);
-            if (it != sdlNames.right.end()) {
+            map<string,DFKeySym>::iterator it = symNames.right.find(match[2]);
+            if (it != symNames.right.end()) {
               matcher.mod  = atoi(string(match[1]).c_str());
               matcher.type = type_key;
-              matcher.key  = it->second;
+              matcher.sym  = it->second;
               keymap.insert(pair<EventMatch,InterfaceKey>(matcher, (InterfaceKey)binding));
               update_keydisplay(binding, display(matcher));
             } else {
-              cout << "Unknown SDLKey: " << match[2] << endl;
+              cout << "Unknown DFKeySym: " << match[2] << endl;
             }
             ++line;           
           } // Unicode
           else if (parse_line(*line, key, match)) {
             matcher.type = type_unicode;
             matcher.unicode = decode_utf8(match[1]);
-            matcher.mod = KMOD_NONE;
+            matcher.mod = DFMOD_NONE;
             if (matcher.unicode) {
               keymap.insert(make_pair(matcher, (InterfaceKey)binding));
               if (matcher.unicode < 256) {
@@ -418,7 +416,7 @@ void enabler_inputst::save_keybindings(const string &file) {
       s << "[KEY:" << encode_utf8(it->second.unicode) << "]" << endl;
       break;
     case type_key:
-      s << "[SYM:" << (int)it->second.mod << ":" << sdlNames.left[it->second.key] << "]" << endl;
+      s << "[SYM:" << (int)it->second.mod << ":" << symNames.left[it->second.sym] << "]" << endl;
       break;
     case type_button:
       s << "[BUTTON:" << (int)it->second.mod << ":" << (int)it->second.button << "]" << endl;
@@ -433,9 +431,6 @@ void enabler_inputst::save_keybindings() {
   save_keybindings(interfacefile);
 }
 
-#if !defined(RENDER_SDL)
-void enabler_inputst::add_input(SDL_Event &, Uint32) { }
-#else
 void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   // Before we can use this input, there are some issues to deal with:
   // - SDL provides unicode translations only for key-press events, not
@@ -453,13 +448,13 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   update_modstate(e);
   
   // Convert modifier state changes
-  if ((e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) &&
-      (e.key.keysym.sym == SDLK_RSHIFT ||
-       e.key.keysym.sym == SDLK_LSHIFT ||
-       e.key.keysym.sym == SDLK_RCTRL  ||
-       e.key.keysym.sym == SDLK_LCTRL  ||
-       e.key.keysym.sym == SDLK_RALT   ||
-       e.key.keysym.sym == SDLK_LALT   )) {
+  if ((e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_KEY_DOWN) &&
+      (e.sym == DFKS_RSHIFT ||
+       e.sym == DFKS_LSHIFT ||
+       e.sym == DFKS_RCTRL  ||
+       e.sym == DFKS_LCTRL  ||
+       e.sym == DFKS_RALT   ||
+       e.sym == DFKS_LALT   )) {
     for (pkit = pressed_keys.begin(); pkit != pressed_keys.end(); ++pkit) {
       // Release currently pressed keys
       KeyEvent synth;
@@ -477,9 +472,9 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   } else {
     // It's not a modifier. If this is a key release, then we still need
     // to find and release pressed unicode keys with this scancode
-    if (e.type == SDL_KEYUP) {
+    if (e.type == df_input_event_t::DF_KEY_UP) {
       for (pkit = pressed_keys.begin(); pkit != pressed_keys.end(); ++pkit) {
-        if (pkit->type == type_unicode && pkit->scancode == e.key.keysym.scancode) {
+        if (pkit->type == type_unicode && pkit->sym == e.sym) {
           KeyEvent synth;
           synth.release = true;
           synth.match = *pkit;
@@ -495,30 +490,30 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
     const int serial = next_serial();
 
     KeyEvent real;
-    real.release = (e.type == SDL_KEYUP || e.type == SDL_MOUSEBUTTONUP) ? true : false;
+    real.release = (e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_BUTTON_UP) ? true : false;
     real.match.mod = getModState();
-    if (e.type == SDL_MOUSEBUTTONUP || e.type == SDL_MOUSEBUTTONDOWN) {
+    if (e.type == df_input_event_t::DF_BUTTON_UP || e.type == df_input_event_t::DF_BUTTON_UP) {
       real.match.type = type_button;
-      real.match.scancode = 0;
-      real.match.button = e.button.button;
+      // let valgrind bring it on real.match.scancode = 0;
+      real.match.button = e.button;
       synthetics.push_back(make_pair(real, serial));
     }
-    if (e.type == SDL_KEYUP || e.type == SDL_KEYDOWN) {
+    if (e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_KEY_DOWN) {
       real.match.type = type_key;
-      real.match.scancode = e.key.keysym.scancode;
-      real.match.key = e.key.keysym.sym;
+      real.match.scancode = 0;
+      real.match.sym = e.sym;
       synthetics.push_back(make_pair(real, serial));
     }
-    if (e.type == SDL_KEYDOWN && e.key.keysym.unicode && getModState() < 2) {
-      real.match.mod = KMOD_NONE;
+    if (e.type == df_input_event_t::DF_KEY_DOWN && e.unicode && getModState() < 2) {
+      real.match.mod = DFMOD_NONE;
       real.match.type = type_unicode;
-      real.match.scancode = e.key.keysym.scancode;
-      real.match.unicode = e.key.keysym.unicode;
+      real.match.scancode = e.sym;
+      real.match.unicode = e.unicode;
       synthetics.push_back(make_pair(real, serial));
     }
-    if (e.type == SDL_QUIT) {
+    if (e.type == df_input_event_t::DF_QUIT) {
       // This one, we insert directly into the timeline.
-      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS, 0, next_serial(), now, 0};
+      Event e = {REPEAT_NOT, (InterfaceKey)INTERFACEKEY_OPTIONS, 0, next_serial(), now, 0, false};
       timeline.insert(e);
     }
   }
@@ -532,7 +527,6 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
     add_input_refined(lit->first, now, lit->second);
   }
 }
-#endif
 
 // Input encoding:
 // 1 and up are ncurses symbols, as returned by getch.
@@ -549,7 +543,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   uni.type = type_unicode;
   sdl.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
   sdl.mod = uni.mod = 0;
-  sdl.key = SDLK_UNKNOWN;
+  sdl.sym = DFKS_UNKNOWN;
   uni.unicode = 0;
 
   if (esc) { // Escape sequence, meaning alt was held. I hope.
@@ -557,53 +551,53 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   }
 
   if (key == -10) { // Return
-    sdl.key = SDLK_RETURN;
+    sdl.sym = DFKS_RETURN;
     uni.unicode = '\n';
   } else if (key == -9) { // Tab
-    sdl.key = SDLK_TAB;
+    sdl.sym = DFKS_TAB;
     uni.unicode = '\t';
   } else if (key == -27) { // If we see esc here, it's the actual esc key. Hopefully.
-    sdl.key = SDLK_ESCAPE;
+    sdl.sym = DFKS_ESCAPE;
   } else if (key == -127) { // Backspace/del
-    sdl.key = SDLK_BACKSPACE;
+    sdl.sym = DFKS_BACKSPACE;
   } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
     sdl.mod |= DFMOD_CTRL;
-    sdl.key = (SDLKey)(SDLK_a + (-key) - 1);
+    sdl.sym = (DFKeySym)(DFKS_a + (-key) - 1);
   } else if (key <= -32 && key >= -126) { // ASCII character set
     uni.unicode = -key;
-    sdl.key = (SDLKey)-key; // Most of this maps directly to SDL keys, except..
-    if (sdl.key > 64 && sdl.key < 91) { // Uppercase
-      sdl.key = (SDLKey)(sdl.key + 32); // Maps to lowercase, and
+    sdl.sym = (DFKeySym)-key; // Most of this maps directly to SDL keys, except..
+    if (sdl.sym > 64 && sdl.sym < 91) { // Uppercase
+      sdl.sym = (DFKeySym)(sdl.sym + 32); // Maps to lowercase, and
       sdl.mod |= DFMOD_SHIFT; // Add shift.
     }
   } else if (key < -127) { // Unicode, no matching SDL keys
     uni.unicode = -key;
   } else if (key > 0) { // Symbols such as arrow-keys, etc, no matching unicode.
     switch (key) {
-    case KEY_DOWN: sdl.key = SDLK_DOWN; break;
-    case KEY_UP: sdl.key = SDLK_UP; break;
-    case KEY_LEFT: sdl.key = SDLK_LEFT; break;
-    case KEY_RIGHT: sdl.key = SDLK_RIGHT; break;
-    case KEY_BACKSPACE: sdl.key = SDLK_BACKSPACE; break;
-    case KEY_F(1): sdl.key = SDLK_F1; break;
-    case KEY_F(2): sdl.key = SDLK_F2; break;
-    case KEY_F(3): sdl.key = SDLK_F3; break;
-    case KEY_F(4): sdl.key = SDLK_F4; break;
-    case KEY_F(5): sdl.key = SDLK_F5; break;
-    case KEY_F(6): sdl.key = SDLK_F6; break;
-    case KEY_F(7): sdl.key = SDLK_F7; break;
-    case KEY_F(8): sdl.key = SDLK_F8; break;
-    case KEY_F(9): sdl.key = SDLK_F9; break;
-    case KEY_F(10): sdl.key = SDLK_F10; break;
-    case KEY_F(11): sdl.key = SDLK_F11; break;
-    case KEY_F(12): sdl.key = SDLK_F12; break;
-    case KEY_F(13): sdl.key = SDLK_F13; break;
-    case KEY_F(14): sdl.key = SDLK_F14; break;
-    case KEY_F(15): sdl.key = SDLK_F15; break;
-    case KEY_DC: sdl.key = SDLK_DELETE; break;
-    case KEY_NPAGE: sdl.key = SDLK_PAGEDOWN; break;
-    case KEY_PPAGE: sdl.key = SDLK_PAGEUP; break;
-    case KEY_ENTER: sdl.key = SDLK_RETURN; break;
+    case KEY_DOWN: sdl.sym = DFKS_DOWN; break;
+    case KEY_UP: sdl.sym = DFKS_UP; break;
+    case KEY_LEFT: sdl.sym = DFKS_LEFT; break;
+    case KEY_RIGHT: sdl.sym = DFKS_RIGHT; break;
+    case KEY_BACKSPACE: sdl.sym = DFKS_BACKSPACE; break;
+    case KEY_F(1): sdl.sym = DFKS_F1; break;
+    case KEY_F(2): sdl.sym = DFKS_F2; break;
+    case KEY_F(3): sdl.sym = DFKS_F3; break;
+    case KEY_F(4): sdl.sym = DFKS_F4; break;
+    case KEY_F(5): sdl.sym = DFKS_F5; break;
+    case KEY_F(6): sdl.sym = DFKS_F6; break;
+    case KEY_F(7): sdl.sym = DFKS_F7; break;
+    case KEY_F(8): sdl.sym = DFKS_F8; break;
+    case KEY_F(9): sdl.sym = DFKS_F9; break;
+    case KEY_F(10): sdl.sym = DFKS_F10; break;
+    case KEY_F(11): sdl.sym = DFKS_F11; break;
+    case KEY_F(12): sdl.sym = DFKS_F12; break;
+    case KEY_F(13): sdl.sym = DFKS_F13; break;
+    case KEY_F(14): sdl.sym = DFKS_F14; break;
+    case KEY_F(15): sdl.sym = DFKS_F15; break;
+    case KEY_DC: sdl.sym = DFKS_DELETE; break;
+    case KEY_NPAGE: sdl.sym = DFKS_PAGEDOWN; break;
+    case KEY_PPAGE: sdl.sym = DFKS_PAGEUP; break;
+    case KEY_ENTER: sdl.sym = DFKS_RETURN; break;
     }
   }
 
@@ -613,7 +607,7 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     if (uni.unicode) {
       stored_keys.push_back(uni);
     }
-    if (sdl.key) {
+    if (sdl.sym) {
       stored_keys.push_back(sdl);
     }
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
@@ -626,11 +620,10 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   
   // Key repeat is handled by the terminal, and we don't get release
   // events anyway.
-  KeyEvent kev; kev.release = false;
   Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now;
   e.macro = false;
 
-  if (sdl.key) {
+  if (sdl.sym) {
     set<InterfaceKey> events = key_translation(sdl);
     for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
       e.serial = serial;

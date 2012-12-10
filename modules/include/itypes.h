@@ -21,58 +21,6 @@ struct imessagesender {
     virtual void acknowledge(const itc_message_t&) = 0;
 };
 
-/* This is not a part of irenderer/isimuloop C++ interfaces,
-   rather of their mqueue ones.
-
-   Messages are sent by calling appropriate method on the recipient
-   instance. Its implementation is responsible for the gory details,
-   such as queue name, etc.
-
-   Commands, generally, should be passed by setting corresponding
-   bool flags in the recipient instance via its method. Remember,
-   that anything less that 4 bytes aligned to 4 bytes is likely read
-   and written atomically on our target platforms, and even if it's not,
-   a single bool value can be either true or false, never in between.
-
-   Only when passing a compound data type or when acknowledgement
-   is required is the use of mqueues acceptable.
-
-*/
-struct itc_message_t {
-    enum msg_t {
-	quit, 		// async_msg - to main (renderer) thread
-	complete,
-	set_fps,
-	set_gfps,
-	push_resize,
-	pop_resize,
-	reset_textures,
-	pause, 		// async_cmd - from main (renderer) thread
-	start,          //      unpause
-	render,         //      be obvious
-	inc,            // 	run extra simulation frames
-	zoom_in, 	// zoom_commands - to main (renderer) thread
-	zoom_out,
-	zoom_reset,
-	zoom_fullscreen,
-	zoom_resetgrid,
-
-        render_buffer,  // buffer submission to the renderer
-        input_ncurses   // renderthread->simuthread, ncurses input in d.inp
-
-    } t;
-    imessagesender *sender;
-    union {
-        int fps;
-        df_buffer_t *buffer;
-        struct {
-             int32_t key;
-            uint32_t now;
-        } inp;
-    } d;
-};
-
-
 enum DFKeySym : int32_t {
 /* Values accidentally coincide with SDL2's ones. We can map SDL12's ones
    to SDL2's with a simple int32_t[], but in the other direction we would
@@ -316,13 +264,69 @@ enum DFKeySym : int32_t {
     DFKS_SPACE = 0x00000020
 };
 
+#define DFMOD_NONE 0
+#define DFMOD_SHIFT 1
+#define DFMOD_CTRL 2
+#define DFMOD_ALT 4
+
 struct df_input_event_t {
     enum ev_type : uint8_t { DF_KEY_UP, DF_KEY_DOWN, DF_BUTTON_UP, DF_BUTTON_DOWN, DF_QUIT } type;
     enum but_num : uint8_t { DF_BUTTON_LEFT, DF_BUTTON_RIGHT, DF_BUTTON_MIDDLE, DF_WHEEL_UP, DF_WHEEL_DOWN } button;
+    uint16_t mod;
     DFKeySym sym;
     int32_t button_grid_x, button_grid_y;
     int32_t unicode;
     bool reports_release;
+    uint32_t now;
 };
+
+/* This is not a part of irenderer/isimuloop C++ interfaces,
+   rather of their mqueue ones.
+
+   Messages are sent by calling appropriate method on the recipient
+   instance. Its implementation is responsible for the gory details,
+   such as queue name, etc.
+
+   Commands, generally, should be passed by setting corresponding
+   bool flags in the recipient instance via its method. Remember,
+   that anything less that 4 bytes aligned to 4 bytes is likely read
+   and written atomically on our target platforms, and even if it's not,
+   a single bool value can be either true or false, never in between.
+
+   Only when passing a compound data type or when acknowledgement
+   is required is the use of mqueues acceptable.
+
+*/
+struct itc_message_t {
+    enum msg_t {
+	quit, 		// async_msg - to main (renderer) thread
+	complete,
+	set_fps,
+	set_gfps,
+	push_resize,
+	pop_resize,
+	reset_textures,
+	pause, 		// async_cmd - from main (renderer) thread
+	start,          //      unpause
+	render,         //      be obvious
+	inc,            // 	run extra simulation frames
+	zoom_in, 	// zoom_commands - to main (renderer) thread
+	zoom_out,
+	zoom_reset,
+	zoom_fullscreen,
+	zoom_resetgrid,
+
+        render_buffer,  // buffer submission to the renderer
+        input_event   // renderthread->simuthread, ncurses input in d.inp
+
+    } t;
+    imessagesender *sender;
+    union {
+        int fps;
+        df_buffer_t *buffer;
+        df_input_event_t event;
+    } d;
+};
+
 
 #endif

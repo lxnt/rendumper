@@ -431,7 +431,7 @@ void enabler_inputst::save_keybindings() {
   save_keybindings(interfacefile);
 }
 
-void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
+void enabler_inputst::add_input(df_input_event_t& e) {
   // Before we can use this input, there are some issues to deal with:
   // - SDL provides unicode translations only for key-press events, not
   //   releases. We need to keep track of pressed keys, and generate
@@ -443,6 +443,14 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   //   These are of course separate keypresses, and must be kept separate.
   //   That's what the serial is for.
 
+    getplatform()->log_info("Got: type=%d mod=%d sym=%d uni=%d rr=%d now=%d",
+        e.type, e.mod, e.sym, e.unicode, e.reports_release, e.now);
+    if (!e.reports_release) {
+        add_input_ncurses(e);
+        return;
+    }
+
+  Time now = e.now;
   set<EventMatch>::iterator pkit;
   list<pair<KeyEvent, int> > synthetics;
   update_modstate(e);
@@ -528,78 +536,16 @@ void enabler_inputst::add_input(df_input_event_t &e, uint32_t now) {
   }
 }
 
-// Input encoding:
-// 1 and up are ncurses symbols, as returned by getch.
-// -1 and down are unicode values.
-// esc is true if this key was part of an escape sequence.
-#include <ncursesw/curses.h>
-
-void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
-  // TODO: Deal with shifted arrow keys, etc. See man 5 terminfo and tgetent.
-  
-  EventMatch sdl, uni; // Each key may provoke an unicode event, an "SDL-key" event, or both
+void enabler_inputst::add_input_ncurses(df_input_event_t& event) {
+  Time now = event.now;
+  EventMatch key, uni; // Each key may provoke an unicode event, an "SDL-key" event, or both
   const int serial = next_serial();
-  sdl.type = type_key;
+  key.type = type_key;
   uni.type = type_unicode;
-  sdl.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
-  sdl.mod = uni.mod = 0;
-  sdl.sym = DFKS_UNKNOWN;
-  uni.unicode = 0;
-
-  if (esc) { // Escape sequence, meaning alt was held. I hope.
-    sdl.mod = uni.mod = DFMOD_ALT;
-  }
-
-  if (key == -10) { // Return
-    sdl.sym = DFKS_RETURN;
-    uni.unicode = '\n';
-  } else if (key == -9) { // Tab
-    sdl.sym = DFKS_TAB;
-    uni.unicode = '\t';
-  } else if (key == -27) { // If we see esc here, it's the actual esc key. Hopefully.
-    sdl.sym = DFKS_ESCAPE;
-  } else if (key == -127) { // Backspace/del
-    sdl.sym = DFKS_BACKSPACE;
-  } else if (key < 0 && key >= -26) { // Control-a through z (but not ctrl-j, or ctrl-i)
-    sdl.mod |= DFMOD_CTRL;
-    sdl.sym = (DFKeySym)(DFKS_a + (-key) - 1);
-  } else if (key <= -32 && key >= -126) { // ASCII character set
-    uni.unicode = -key;
-    sdl.sym = (DFKeySym)-key; // Most of this maps directly to SDL keys, except..
-    if (sdl.sym > 64 && sdl.sym < 91) { // Uppercase
-      sdl.sym = (DFKeySym)(sdl.sym + 32); // Maps to lowercase, and
-      sdl.mod |= DFMOD_SHIFT; // Add shift.
-    }
-  } else if (key < -127) { // Unicode, no matching SDL keys
-    uni.unicode = -key;
-  } else if (key > 0) { // Symbols such as arrow-keys, etc, no matching unicode.
-    switch (key) {
-    case KEY_DOWN: sdl.sym = DFKS_DOWN; break;
-    case KEY_UP: sdl.sym = DFKS_UP; break;
-    case KEY_LEFT: sdl.sym = DFKS_LEFT; break;
-    case KEY_RIGHT: sdl.sym = DFKS_RIGHT; break;
-    case KEY_BACKSPACE: sdl.sym = DFKS_BACKSPACE; break;
-    case KEY_F(1): sdl.sym = DFKS_F1; break;
-    case KEY_F(2): sdl.sym = DFKS_F2; break;
-    case KEY_F(3): sdl.sym = DFKS_F3; break;
-    case KEY_F(4): sdl.sym = DFKS_F4; break;
-    case KEY_F(5): sdl.sym = DFKS_F5; break;
-    case KEY_F(6): sdl.sym = DFKS_F6; break;
-    case KEY_F(7): sdl.sym = DFKS_F7; break;
-    case KEY_F(8): sdl.sym = DFKS_F8; break;
-    case KEY_F(9): sdl.sym = DFKS_F9; break;
-    case KEY_F(10): sdl.sym = DFKS_F10; break;
-    case KEY_F(11): sdl.sym = DFKS_F11; break;
-    case KEY_F(12): sdl.sym = DFKS_F12; break;
-    case KEY_F(13): sdl.sym = DFKS_F13; break;
-    case KEY_F(14): sdl.sym = DFKS_F14; break;
-    case KEY_F(15): sdl.sym = DFKS_F15; break;
-    case KEY_DC: sdl.sym = DFKS_DELETE; break;
-    case KEY_NPAGE: sdl.sym = DFKS_PAGEDOWN; break;
-    case KEY_PPAGE: sdl.sym = DFKS_PAGEUP; break;
-    case KEY_ENTER: sdl.sym = DFKS_RETURN; break;
-    }
-  }
+  key.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
+  key.mod = uni.mod = event.mod;
+  key.sym = event.sym;
+  uni.unicode = event.unicode;
 
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
@@ -607,8 +553,8 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
     if (uni.unicode) {
       stored_keys.push_back(uni);
     }
-    if (sdl.sym) {
-      stored_keys.push_back(sdl);
+    if (key.sym) {
+      stored_keys.push_back(key);
     }
     Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
     e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = getsimuloop()->get_frame_count();
@@ -623,8 +569,8 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   Event e; e.r = REPEAT_NOT; e.repeats = 0; e.time = now;
   e.macro = false;
 
-  if (sdl.sym) {
-    set<InterfaceKey> events = key_translation(sdl);
+  if (key.sym) {
+    set<InterfaceKey> events = key_translation(key);
     for (set<InterfaceKey>::iterator k = events.begin(); k != events.end(); ++k) {
       e.serial = serial;
       e.k = *k;
@@ -641,9 +587,6 @@ void enabler_inputst::add_input_ncurses(int key, Time now, bool esc) {
   }
 }
 
-#if !defined (RENDER_SDL)
-void enabler_inputst::add_input_refined(KeyEvent &, uint32_t, int) {}
-#else
 void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
@@ -651,7 +594,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
     stored_keys.push_back(e.match);
     Event e;
     e.r = REPEAT_NOT; e.repeats = 0; e.time = now; e.serial = serial;
-    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = enabler.simticks.read();
+    e.k = INTERFACEKEY_KEYBINDING_COMPLETE; e.tick = getsimuloop()->get_frame_count();
     timeline.insert(e);
     return;
   }
@@ -688,7 +631,7 @@ void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
     // okay to cancel repeats unless /all/ the bindings are
     // non-repeating.
     for (set<InterfaceKey>::iterator k = keys.begin(); k != keys.end(); ++k) {
-      Event e = {key_repeat(*k), *k, 0, serial, now, enabler.simticks.read(), false};
+      Event e = {key_repeat(*k), *k, 0, serial, now, getsimuloop()->get_frame_count(), false};
       timeline.insert(e);
     }
     // if (cancel_ok) {
@@ -699,8 +642,6 @@ void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
     //   }
   }
 }
-#endif
-
 
 void enabler_inputst::clear_input() {
   timeline.clear();

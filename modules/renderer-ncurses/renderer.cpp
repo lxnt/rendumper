@@ -48,6 +48,7 @@ struct implementation : public irenderer {
     bool not_done;
     void renderer_thread();
     thread_t thread_id;
+    void slurp_keys();
 };
 
 implementation::implementation() {
@@ -274,6 +275,103 @@ static const int charmap[256] = {
     0xB0, 0x2219, 0xB7, 0x221A, 0x207F, 0xB2, 0x25A0, 0xA0
 };
 
+void implementation::slurp_keys() {
+    /* slurp all input there is and stuff it into
+       simuloop's message queue. Don't pause simuloop,
+       and absolutely don't wait until it gets paused.
+
+       TODO:
+            - shifted arrow keys, etc. See man 5 terminfo and tgetent.
+            - mouse events */
+
+    df_input_event_t event;
+    uint32_t now = platform->GetTickCount();
+
+    do {
+        wint_t key;
+        int what = get_wch(&key);
+#if defined(DEBUG_INPUT)
+        if (what != -1)
+            platform->log_info("get_wch(): what=%d key=%u.", what, key);
+#endif
+        switch (what) {
+            case ERR:
+                break;
+
+            case OK:
+                event.type = df_input_event_t::DF_KEY_DOWN;
+                event.now = now;
+                event.reports_release = false;
+                event.sym = DFKS_UNKNOWN;
+                switch (key) {
+                    /* synthesize sym */
+                    case   9: event.sym = DFKS_TAB; break;
+                    case  10: event.sym = DFKS_RETURN; break;
+                    case 127: event.sym = DFKS_BACKSPACE; break;
+                    case  27: event.sym = DFKS_ESCAPE; break;
+                    default:
+                        if (key > 0 && key <= 26) { // Control-a through z (but not ctrl-j, or ctrl-i)
+                            event.mod |= DFMOD_CTRL;
+                            event.sym = (DFKeySym)(DFKS_a + key - 1);
+                            break;
+                        }
+                        if (key >= 32 && key <= 126) { // ASCII character set
+                            event.unicode = key;
+                            event.sym = (DFKeySym)+key; // Most of this maps directly to DF keys, except..
+                            if (event.sym > 64 && event.sym < 91) { // Uppercase
+                                event.sym = (DFKeySym)(event.sym + 32); // Maps to lowercase, and
+                                event.mod |= DFMOD_SHIFT; // Add shift.
+                            }
+                        }
+                        break;
+                }
+                event.unicode = key;
+                simuloop->add_input_event(&event);
+                continue;
+
+            case KEY_CODE_YES:
+                event.type = df_input_event_t::DF_KEY_DOWN;
+                event.now = now;
+                event.reports_release = false;
+                event.unicode = 0;
+                switch (key) {
+                    case KEY_DOWN:      event.sym = DFKS_DOWN; break;
+                    case KEY_UP:        event.sym = DFKS_UP; break;
+                    case KEY_LEFT:      event.sym = DFKS_LEFT; break;
+                    case KEY_RIGHT:     event.sym = DFKS_RIGHT; break;
+                    case KEY_BACKSPACE: event.sym = DFKS_BACKSPACE; break;
+                    case KEY_F(1):      event.sym = DFKS_F1; break;
+                    case KEY_F(2):      event.sym = DFKS_F2; break;
+                    case KEY_F(3):      event.sym = DFKS_F3; break;
+                    case KEY_F(4):      event.sym = DFKS_F4; break;
+                    case KEY_F(5):      event.sym = DFKS_F5; break;
+                    case KEY_F(6):      event.sym = DFKS_F6; break;
+                    case KEY_F(7):      event.sym = DFKS_F7; break;
+                    case KEY_F(8):      event.sym = DFKS_F8; break;
+                    case KEY_F(9):      event.sym = DFKS_F9; break;
+                    case KEY_F(10):     event.sym = DFKS_F10; break;
+                    case KEY_F(11):     event.sym = DFKS_F11; break;
+                    case KEY_F(12):     event.sym = DFKS_F12; break;
+                    case KEY_F(13):     event.sym = DFKS_F13; break;
+                    case KEY_F(14):     event.sym = DFKS_F14; break;
+                    case KEY_F(15):     event.sym = DFKS_F15; break;
+                    case KEY_DC:        event.sym = DFKS_DELETE; break;
+                    case KEY_NPAGE:     event.sym = DFKS_PAGEDOWN; break;
+                    case KEY_PPAGE:     event.sym = DFKS_PAGEUP; break;
+                    case KEY_ENTER:     event.sym = DFKS_RETURN; break;
+                    default:
+                        platform->log_info("get_wch(): what=%d key=%u, skipped.", what, key);
+                        continue;
+                }
+                simuloop->add_input_event(&event);
+                continue;
+            default:
+                platform->log_info("get_wch(): what=%d key=%u, skipped.", what, key);
+                continue;
+        }
+    } while(false);
+}
+
 void implementation::renderer_thread(void) {
     /* pseudocode:
         - see if simulation thread died; exit if so.
@@ -289,37 +387,7 @@ void implementation::renderer_thread(void) {
         getmaxyx(stdscr, y, x);
         this->set_gridsize(x, y);
 
-        /* slurp all input there is and stuff it into
-           simuloop's message queue. Don't pause simuloop,
-           and absolutely don't wait until it gets paused. */
-
-        uint32_t now = platform->GetTickCount();
-        do {
-            wint_t key;
-            int what = get_wch(&key);
-
-            //if (what != -1)
-            //    platform->log_info("get_wch(): what=%d key=%u.", what, key);
-            switch (what) {
-                case ERR:
-                    break;
-
-                /* Emulate the following (enabler_input.cpp):
-                    // Input encoding:
-                    // 1 and up are ncurses symbols, as returned by getch.
-                    // -1 and down are unicode values.   */
-                case OK:
-                    simuloop->add_input_ncurses(-key, now);
-                    continue;
-                case KEY_CODE_YES:
-                    simuloop->add_input_ncurses(key, now);
-                    continue;
-                default:
-                    platform->log_info("get_wch(): what=%d key=%u defaulted to add.", what, key);
-                    simuloop->add_input_ncurses(key, now);
-                    continue;
-            }
-        } while(false);
+        slurp_keys();
 
         /* wait for a buffer to render or simuloop to quit */
         /* todo: drop any extra frames, render only the last one. */

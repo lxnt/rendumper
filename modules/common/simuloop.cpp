@@ -16,7 +16,7 @@ struct implementation : public isimuloop {
     void set_callbacks(mainloop_foo_t,
                        render_things_foo_t,
                        assimilate_buffer_foo_t,
-                       add_input_ncurses_foo_t);
+                       add_input_event_foo_t);
 
     void start();
     void join();
@@ -28,7 +28,7 @@ struct implementation : public isimuloop {
     uint32_t get_actual_sfps();
     uint32_t get_actual_rfps();
 
-    void add_input_ncurses(int32_t, uint32_t);
+    void add_input_event(df_input_event_t *);
 
     uint32_t get_frame_count();
 
@@ -41,7 +41,7 @@ struct implementation : public isimuloop {
     mainloop_foo_t mainloop_cb;
     render_things_foo_t render_things_cb;
     assimilate_buffer_foo_t assimilate_buffer_cb;
-    add_input_ncurses_foo_t add_input_ncurses_cb;
+    add_input_event_foo_t add_input_event_cb;
 
     bool started;
     bool paused;
@@ -89,21 +89,20 @@ struct implementation : public isimuloop {
 void implementation::set_callbacks(mainloop_foo_t ml,
                    render_things_foo_t rt,
                    assimilate_buffer_foo_t ab,
-                   add_input_ncurses_foo_t ain) {
+                   add_input_event_foo_t ain) {
     mainloop_cb = ml;
     render_things_cb = rt;
     assimilate_buffer_cb = ab;
-    add_input_ncurses_cb = ain;
+    add_input_event_cb = ain;
 }
 
 uint32_t implementation::get_frame_count() { return frames; }
 
 /* to be called from other threads. */
-void implementation::add_input_ncurses(int32_t key, uint32_t now) {
+void implementation::add_input_event(df_input_event_t *event) {
     itc_message_t msg;
-    msg.t = itc_message_t::input_ncurses;
-    msg.d.inp.key = key;
-    msg.d.inp.now = now;
+    msg.t = itc_message_t::input_event;
+    msg.d.event = *event;
     mqueue->copy(incoming_q, &msg, sizeof(msg), -1);
 }
 
@@ -215,8 +214,8 @@ void implementation::simulation_thread() {
                     mqueue->free(msg);
                     break;
 
-                case itc_message_t::input_ncurses:
-                    add_input_ncurses_cb(msg->d.inp.key, msg->d.inp.now);
+                case itc_message_t::input_event:
+                    add_input_event_cb(&(msg->d.event));
                     mqueue->free(msg);
                     break;
 

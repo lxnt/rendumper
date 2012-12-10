@@ -25,11 +25,6 @@ std::string translate_mod(uint8_t mod);
 int decode_utf8(const std::string &s);
 std::string encode_utf8(int unicode);
 
-#define DFMOD_NONE 0
-#define DFMOD_SHIFT 1
-#define DFMOD_CTRL 2
-#define DFMOD_ALT 4
-
 struct EventMatch {
   MatchType type;
   uint8_t mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
@@ -84,11 +79,11 @@ class enabler_inputst {
   void save_macro_to_file(const std::string &file, const std::string &name, const macro &);
   
   // In practice.. do not use this one.
-  void add_input(df_input_event_t &e, Time now);
+  void add_input(df_input_event_t& e);
   // Use this one. It's much nicer.
   void add_input_refined(KeyEvent &e, Time now, int serial);
   // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.
-  void add_input_ncurses(int key, Time now, bool esc);
+  void add_input_ncurses(df_input_event_t& event);
 
   std::set<InterfaceKey> get_input(Time now);
   void clear_input();

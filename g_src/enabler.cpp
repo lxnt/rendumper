@@ -18,9 +18,6 @@ static iplatform *platform = NULL;
 
 enablerst enabler;
 
-// For the printGLError macro
-int glerrorcount = 0;
-
 // Reports an error to the user, using a MessageBox and stderr.
 void report_error(const char *error_preface, const char *error_message)
 {

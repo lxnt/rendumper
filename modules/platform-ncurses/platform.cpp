@@ -249,13 +249,18 @@ const char * const *implementation::glob(const char* pattern, const char * const
             char *basename = strrchr(g.gl_pathv[i], '/');
             if (!basename)
                 basename = g.gl_pathv[i];
+            else
+                basename += 1;
 
+            bool excluded = false;
             if (exclude)
                 for (const char * const *e = exclude; *e != NULL; e++)
-                    if (!strcmp(basename, *e))
-                        continue;
-
-            rv[used++] = strdup(basename);
+                    if (!strcmp(basename, *e)) {
+                        excluded = true;
+                        break;
+                    }
+            if (not excluded)
+                rv[used++] = strdup(basename);
         }
     globfree(&g);
     return rv;

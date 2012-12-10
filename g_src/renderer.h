@@ -73,8 +73,6 @@ class renderer {
     virtual bool uses_opengl();
 };
 
-struct eightbytes { uint32_t a, b; };
-
 class renderer_2d_base : public renderer {
   protected:
     void *screen;
@@ -90,7 +88,7 @@ class renderer_2d_base : public renderer {
     virtual bool init_video(int w, int h);
 
   public:
-    std::list<std::pair<void *, eightbytes>> ttfs_to_render;
+    std::list<std::pair<void *, uint64_t>> ttfs_to_render;
 
     void update_tile(int x, int y);
     void update_all();

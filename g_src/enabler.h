@@ -590,24 +590,6 @@ class textures
   void delete_texture(long pos);
 };
 
-struct tile {
-  int x, y;
-  long tex;
-};
-
-typedef struct {									// Window Creation Info
-  char*				title;						// Window Title
-  int					width;						// Width
-  int					height;						// Height
-  int					bitsPerPixel;				// Bits Per Pixel
-  BOOL				isFullScreen;				// FullScreen?
-} GL_WindowInit;									// GL_WindowInit
-
-typedef struct {									// Contains Information Vital To A Window
-  GL_WindowInit		init;						// Window Init
-  BOOL				isVisible;				// Window Visible?
-} GL_Window;								// GL_Window
-
 enum zoom_commands { zoom_in, zoom_out, zoom_reset, zoom_fullscreen, zoom_resetgrid };
 
 

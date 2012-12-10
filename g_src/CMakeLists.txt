@@ -29,7 +29,6 @@ set( SOURCE
     keybindings.cpp
     KeybindingScreen.cpp
     random.cpp
-    resize++.cpp
     textlines.cpp
     textures.cpp
     ViewBase.cpp
@@ -57,15 +56,11 @@ set( HEADERS
     music_and_sound_g.h
     platform.h
     random.h
-    renderer_2d.hpp
-    renderer_curses.cpp
-    renderer_opengl.hpp
-    resize++.h
     svector.h
+    stringvecst.h
     template.h
     textlines.h
     texture_handler.h
-    ttf_manager.hpp
     ViewBase.h
 )
 link_directories(${LIB32_LINK_DIR})

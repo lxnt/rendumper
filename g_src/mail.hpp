@@ -135,21 +135,4 @@ public:
   }
 };
 
-template<typename L, typename R>
-struct Either {
-  bool isL;
-  union {
-    L left;
-    R right;
-  };
-  Either(const L &l) {
-    isL = true;
-    left = l;
-  }
-  Either(const R &r) {
-    isL = false;
-    right = r;
-  }
-};
-
 #endif

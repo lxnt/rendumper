@@ -29,6 +29,7 @@ set( SOURCE
     keybindings.cpp
     KeybindingScreen.cpp
     random.cpp
+    renderer.cpp
     textlines.cpp
     textures.cpp
     ViewBase.cpp
@@ -56,6 +57,7 @@ set( HEADERS
     music_and_sound_g.h
     platform.h
     random.h
+    renderer.h
     svector.h
     stringvecst.h
     template.h

@@ -6,75 +6,10 @@
 #include "enabler.h"
 #include "renderer.h"
 
-Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int x, int y) {
-  const int tile = x * gps.dimy + y;
-  const unsigned char *s = screen + tile*4;
-
-  struct texture_fullid ret;
-  int ch;
-  int bold;
-  int fg;
-  int bg;
-
-  // TTF text does not get the full treatment.
-  if (s[3] == GRAPHICSTYPE_TTF) {
-    texture_ttfid texpos = *((unsigned int *)s) & 0xffffff;
-    return Either<texture_fullid,texture_ttfid>(texpos);
-  } else if (s[3] == GRAPHICSTYPE_TTFCONT) {
-    // TTFCONT means this is a tile that does not have TTF anchored on it, but is covered by TTF.
-    // Since this may actually be stale information, we'll draw it as a blank space,
-    ch = 32;
-    fg = bg = bold = 0;
-  } else {
-    // Otherwise, it's a normal (graphical?) tile.
-    ch   = s[0];
-    bold = (s[3] != 0) * 8;
-    fg   = (s[1] + bold) % 16;
-    bg   = s[2] % 16;
-  }
-  
-  static bool use_graphics = init.display.flag.has_flag(INIT_DISPLAY_FLAG_USE_GRAPHICS);
-  
-  if (use_graphics) {
-    const long texpos             = screentexpos[tile];
-    const char addcolor           = screentexpos_addcolor[tile];
-    const unsigned char grayscale = screentexpos_grayscale[tile];
-    const unsigned char cf        = screentexpos_cf[tile];
-    const unsigned char cbr       = screentexpos_cbr[tile];
-
-    if (texpos) {
-      ret.texpos = texpos;
-      if (grayscale) {
-        ret.r = enabler.ccolor[cf][0];
-        ret.g = enabler.ccolor[cf][1];
-        ret.b = enabler.ccolor[cf][2];
-        ret.br = enabler.ccolor[cbr][0];
-        ret.bg = enabler.ccolor[cbr][1];
-        ret.bb = enabler.ccolor[cbr][2];
-      } else if (addcolor) {
-        goto use_ch;
-      } else {
-        ret.r = ret.g = ret.b = 1;
-        ret.br = ret.bg = ret.bb = 0;
-      }
-      goto skip_ch;
-    }
-  }
-  
-  ret.texpos = enabler.is_fullscreen() ?
-    init.font.large_font_texpos[ch] :
-    init.font.small_font_texpos[ch];
- use_ch:
-  ret.r = enabler.ccolor[fg][0];
-  ret.g = enabler.ccolor[fg][1];
-  ret.b = enabler.ccolor[fg][2];
-  ret.br = enabler.ccolor[bg][0];
-  ret.bg = enabler.ccolor[bg][1];
-  ret.bb = enabler.ccolor[bg][2];
-
- skip_ch:
-
-  return Either<texture_fullid,texture_ttfid>(ret);
+Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int , int ) {
+    DFM_STUB(renderer::screen_to_texid);
+    texture_ttfid ret = 0;
+    return Either<texture_fullid,texture_ttfid>(ret);
 }
 
 void renderer::display()                { DFM_STUB(renderer::display); }
@@ -84,5 +19,31 @@ void renderer::gps_allocate(int, int)   { DFM_STUB(renderer::gps_allocate); }
 void renderer::swap_arrays()            { DFM_STUB(renderer::swap_arrays); }
 void renderer::set_fullscreen()         { DFM_STUB(renderer::set_fullscreen); }
 void renderer::zoom(zoom_commands)      { DFM_STUB(renderer::zoom); }
-renderer::renderer()                    { DFM_STUB(renderer::renderer);}
-renderer::~renderer()                   { DFM_STUB(renderer::~renderer);}
+renderer::renderer()                    { DFM_STUB(renderer::renderer); }
+renderer::~renderer()                   { DFM_STUB(renderer::~renderer); }
+
+void *renderer_2d_base::tile_cache_lookup(texture_fullid &, bool) {
+        DFM_STUB(renderer_2d_base::tile_cache_lookup); return NULL; }
+bool renderer_2d_base::init_video(int, int)     { DFM_STUB(renderer_2d_base::init_video); return true; }
+void renderer_2d_base::update_tile(int, int)    { DFM_STUB(renderer_2d_base::update_tile); }
+void renderer_2d_base::update_all()             { DFM_STUB(renderer_2d_base::update_all); }
+void renderer_2d_base::render()                 { DFM_STUB(renderer_2d_base::render); }
+renderer_2d_base::~renderer_2d_base()           { DFM_STUB(renderer_2d_base::~renderer_2d_base); }
+void renderer_2d_base::grid_resize(int, int)    { DFM_STUB(renderer_2d_base::grid_resize); }
+renderer_2d_base::renderer_2d_base()            { DFM_STUB(renderer_2d_base::renderer_2d_base); }
+void renderer_2d_base::compute_forced_zoom() { DFM_STUB(renderer_2d_base::compute_forced_zoom); }
+std::pair<int, int> renderer_2d_base::compute_zoom(bool) {
+    DFM_STUB(renderer_2d_base::compute_zoom);
+    return std::pair<int, int>(0,0); }
+void renderer_2d_base::resize(int , int)        { DFM_STUB(renderer_2d_base::resize); }
+void renderer_2d_base::reshape(pair<int,int>)   { DFM_STUB(renderer_2d_base::reshape); }
+void renderer_2d_base::set_fullscreen()         { DFM_STUB(renderer_2d_base::set_fullscreen); }
+bool renderer_2d_base::get_mouse_coords(int &, int &) {
+        DFM_STUB(renderer_2d_base::get_mouse_coords); return false; }
+void renderer_2d_base::zoom(zoom_commands)      { DFM_STUB(renderer_2d_base::zoom); }
+
+
+renderer_offscreen::~renderer_offscreen()           { DFM_STUB(renderer_offscreen::~renderer_offscreen); }
+renderer_offscreen::renderer_offscreen(int, int)    { DFM_STUB(renderer_offscreen::renderer_offscreen); }
+void renderer_offscreen::update_all(int, int)       { DFM_STUB(renderer_offscreen::update_all); }
+void renderer_offscreen::save_to_file(const std::string &) { DFM_STUB(renderer_offscreen::save_to_file); }

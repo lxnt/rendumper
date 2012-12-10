@@ -100,7 +100,6 @@ static void assimilate_buffer(df_buffer_t *buf) {
 static void add_input_event(df_input_event_t *event) {
     enabler.add_input(*event);
 }
-}
 
 int main (int argc, char* argv[]) {
     /* here decide what platform to load, without init.txt. somehow. */

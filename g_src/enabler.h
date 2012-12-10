@@ -16,12 +16,6 @@
 #endif
 #endif
 
-#if !defined(GLsync)
-typedef void * GLsync;
-typedef uint32_t GLuint;
-typedef float GLfloat;
-#endif
-
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -667,7 +661,7 @@ class enablerst : public enabler_inputst
 
   // OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
-  GLsync sync; // Rendering barrier
+  void *sync; // Rendering barrier
   void reset_textures();
   bool uses_opengl();
   

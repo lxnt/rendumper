@@ -114,6 +114,11 @@ enablerst::enablerst() {
   last_tick = 0;
 }
 
+bool enablerst::is_fullscreen()         { DFM_STUB(enablerst::is_fullscreen); return false; }
+void enablerst::toggle_fullscreen()     { DFM_STUB(enablerst::toggle_fullscreen); }
+int enablerst::get_fps()                { DFM_STUB(enablerst::get_fps); return 1; }
+int enablerst::get_gfps()               { DFM_STUB(enablerst::get_gfps); return 1;}
+void enablerst::unpause_async_loop()    { DFM_STUB(enablerst::unpause_async_loop); }
 void renderer::display()                { DFM_STUB(renderer::display); }
 void renderer::cleanup_arrays()         { DFM_STUB(renderer::cleanup_arrays); }
 void renderer::gps_allocate(int, int)   { DFM_STUB(renderer::gps_allocate); }

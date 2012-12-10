@@ -727,11 +727,7 @@ class enablerst : public enabler_inputst
 
   void pause_async_loop();
   void async_wait();
-  void unpause_async_loop() {
-    struct async_cmd cmd;
-    cmd.cmd = async_cmd::start;
-    async_tobox.write(cmd);
-  }
+  void unpause_async_loop();
   
  public:
 
@@ -749,8 +745,8 @@ class enablerst : public enabler_inputst
   // Framerate interface
   void set_fps(int fps);
   void set_gfps(int gfps);
-  int get_fps() { return (int)fps; }
-  int get_gfps() { return (int)gfps; }
+  int get_fps();
+  int get_gfps();
   int calculate_fps();  // Calculate the actual provided (G)FPS
   int calculate_gfps();
 
@@ -761,13 +757,8 @@ class enablerst : public enabler_inputst
   // OpenGL state (wrappers)
   class textures textures; // Font/graphics texture catalog
   GLsync sync; // Rendering barrier
-  void reset_textures() {
-    async_frombox.write(async_msg(async_msg::reset_textures));
-  }
-  bool uses_opengl() {
-    if (!renderer) return false;
-    return renderer->uses_opengl();
-  }
+  void reset_textures();
+  bool uses_opengl();
   
   // Grid-size interface
   void override_grid_size(int w, int h); // Pick a /particular/ grid-size
@@ -776,11 +767,8 @@ class enablerst : public enabler_inputst
   
   
   // Window management
-  bool is_fullscreen() { return fullscreen; }
-  void toggle_fullscreen() {
-    fullscreen = !fullscreen;
-    async_zoom.write(zoom_fullscreen);
-  }
+  bool is_fullscreen();
+  void toggle_fullscreen();
 
   // Conversations
   text_systemst text_system;

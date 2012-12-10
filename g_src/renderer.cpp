@@ -42,7 +42,7 @@ bool renderer_2d_base::get_mouse_coords(int &, int &) {
         DFM_STUB(renderer_2d_base::get_mouse_coords); return false; }
 void renderer_2d_base::zoom(zoom_commands)      { DFM_STUB(renderer_2d_base::zoom); }
 
-
+bool renderer_offscreen::init_video(int, int)       { DFM_STUB(renderer_offscreen::~renderer_offscreen); return true; }
 renderer_offscreen::~renderer_offscreen()           { DFM_STUB(renderer_offscreen::~renderer_offscreen); }
 renderer_offscreen::renderer_offscreen(int, int)    { DFM_STUB(renderer_offscreen::renderer_offscreen); }
 void renderer_offscreen::update_all(int, int)       { DFM_STUB(renderer_offscreen::update_all); }

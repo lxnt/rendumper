@@ -6,8 +6,11 @@
 #include "SDL_atomic.h"
 #include "SDL_timer.h"
 
-#define DFMODULE_BUILD
 #include "iplatform.h"
+#define DFMODULE_BUILD
+#include "imqueue.h"
+
+namespace {
 
 struct the_message {
     void *buf;
@@ -68,7 +71,7 @@ static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeou
     if (!*what) {
         if (timeout == 0) {
             SDL_UnlockMutex(mutex);
-            return IMQ_WOULDBLOCK;
+            return IMQ_TIMEDOUT;
         }
         if (timeout < 1) {
             while ((!*what) && (rv == 0))
@@ -87,7 +90,11 @@ static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeou
                 return IMQ_CLOWNS;
             }
         } else {
-            /* reimplement pthread_cond_timedwait()'s abstime. dunno why. */
+            /* man pthread_cond_timedwait says:
+                    TLDR, races, unavoidable, blah, blah;
+
+                    It is thus recommended that a condition wait be enclosed in the equivalent
+                    of a "while loop" that checks the predicate. */
             unsigned abstime = timeout + SDL_GetTicks();
             while ((!*what) && (rv == 0) && (timeout > 0)) {
                 rv = SDL_CondWaitTimeout(cond, mutex, timeout);
@@ -114,18 +121,23 @@ int the_queue::pop(the_message& into, int timeout) {
 
     if (rv == IMQ_OK) {
         SDL_LockMutex(messages_mtx); // someone might be sending a message
-        if (messages.size() == 0)
+        if (messages.size() > 0) {
+            if (max_messages && (messages.size() == max_messages - 1)) {
+                SDL_LockMutex(writable_mtx);
+                writable = true;
+                /* man pthread_cond_signal says the mutex be locked
+                   if predictable scheduling is to be hoped for. */
+                SDL_CondSignal(writable_cond);
+                SDL_UnlockMutex(writable_mtx);
+            }
+            into = messages.front();
+            messages.pop();
+            if (messages.size() == 0)
+                readable = false;
+        } else {
             readable = false;
-        if (max_messages && (messages.size() == max_messages - 1)) {
-            SDL_LockMutex(writable_mtx);
-            writable = true;
-            /* man pthread_cond_signal says the mutex be locked
-               if predictable scheduling is to be hoped for. */
-            SDL_CondSignal(writable_cond);
-            SDL_UnlockMutex(writable_mtx);
+            rv = IMQ_TIMEDOUT;
         }
-        into = messages.front();
-        messages.pop();
         SDL_UnlockMutex(messages_mtx);
         SDL_UnlockMutex(readable_mtx);
     }
@@ -293,8 +305,6 @@ int implementation::recv(imqd_t qd, void **buf, size_t *len, int timeout) {
     return IMQ_OK;
 }
 
-
-
 static implementation *impl = NULL;
 static int impl_refcount = 0;
 static SDL_SpinLock impl_spinlock = 0;
@@ -328,3 +338,4 @@ extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void) {
     SDL_AtomicUnlock(&impl_spinlock);
     return impl;
 }
+} /* ns */

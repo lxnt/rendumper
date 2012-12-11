@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <locale.h>
 
+#include "posix_glob.h"
+
 #include "SDL.h"
 #include "SDL_thread.h"
 #include "SDL_timer.h"
@@ -14,6 +16,8 @@
 
 #define DFMODULE_BUILD
 #include "iplatform.h"
+
+namespace {
 
 struct implementation : public iplatform {
     implementation() {}
@@ -77,18 +81,39 @@ struct implementation : public iplatform {
     void log_error(const char *fmt, ...) {
         va_list ap;
 
+        fputs("ERROR ", stderr);
         va_start(ap, fmt);
         vfprintf(stderr, fmt, ap);
+        fputc('\n', stderr);
         va_end(ap);
     }
 
     void log_info(const char *fmt, ...) {
         va_list ap;
 
+        fputs("INFO ", stderr);
         va_start(ap, fmt);
         vfprintf(stderr, fmt, ap);
+        fputc('\n', stderr);
         va_end(ap);
     }
+
+    NORETURN void fatal(const char *fmt, ...) {
+        va_list ap;
+
+        va_start(ap, fmt);
+        fputs("FATAL ", stderr);
+        vfprintf(stderr, fmt, ap);
+        fputc('\n', stderr);
+        va_end(ap);
+        exit(1);
+    }
+
+    const char * const *glob(const char* pattern, const char * const exclude[],
+                    const bool include_dirs, const bool include_files) {
+        return posix_glob(pattern, exclude, include_dirs, include_files);
+    }
+    void gfree(const char * const *rv) { posix_gfree(rv); }
 };
 
 static implementation impl;
@@ -105,4 +130,4 @@ extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
 
     return &impl;
 }
-
+} /* ns */

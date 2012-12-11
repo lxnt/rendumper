@@ -162,6 +162,11 @@ static int wait_on_cond(bool *what, pthread_cond_t *cond, pthread_mutex_t *mutex
                 return IMQ_CLOWNS;
             }
         } else {
+            /* man pthread_cond_timedwait says:
+                    TLDR, races, unavoidable, blah, blah;
+
+                    It is thus recommended that a condition wait be enclosed in the equivalent
+                    of a "while loop" that checks the predicate. */
             while ((!*what) && (rv == 0))
                 rv = cond_timedwait(cond, mutex, timeout);
             if (!*what) {

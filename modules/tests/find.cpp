@@ -6,7 +6,10 @@
 #include "glue.h"
 
 int usage(const char *s) {
-    getplatform()->log_error("Usage: %s module-path platform-name pattern {dirs|files|all} [exclude [exclude ...]]", s);
+    if (getplatform)
+        getplatform()->log_error("Usage: %s module-path platform-name pattern {dirs|files|all} [exclude [exclude ...]]", s);
+    else
+        fprintf(stderr, "Usage: %s module-path platform-name pattern {dirs|files|all} [exclude [exclude ...]]\n", s);
     return 1;
 }
 
@@ -14,7 +17,8 @@ int main (int argc, char* argv[]) {
     if (argc < 5)
         return usage(argv[0]);
 
-    load_platform(argv[2], argv[1]);
+    if (!load_platform(argv[2], argv[1]))
+        return usage(argv[0]);
 
     iplatform *platform = getplatform();
 

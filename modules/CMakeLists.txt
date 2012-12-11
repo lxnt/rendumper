@@ -21,16 +21,19 @@ if (ARCH64)
     else()
         set(DF_32BIT_COMPAT TRUE)
     endif()
-    if (DF_32BIT_COMPAT)
+    if(DF_32BIT_COMPAT)
+#        set(SDL2_PREFIX /home/lxnt/00DFGL/prefix32)
+        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
+
         set(CMAKE_CXX_COMPILER g++-4.5)
         set(CMAKE_C_COMPILER g++-4.5)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
         set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
-        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
+    else()
+#        set(SDL2_PREFIX CACHE PATH /home/lxnt/00DFGL/fgtestbed/prefix FORCE)
+        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
     endif()
-else()
-    set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
 endif()
 
 include(FindPkgConfig)
@@ -42,21 +45,15 @@ else()
     set(DFMOD_DESTDIR lib/dfmodules)
 endif()
 
-include_directories(include)
-set(HEADERS
-    include/ideclspec.h
-    include/glue.h
-    include/iplatform.h
-    include/ikeyboard.h
-    include/imusicsound.h
-    include/itextures.h
-    include/irenderer.h )
-install(FILES ${HEADERS} DESTINATION include)
+#if(SDL2_PREFIX)
+#    set(ENV{PKG_CONFIG_PATH} "${SDL2_INSTALL_PREFIX}/lib/pkgconfig/")
+#endif()
 
 pkg_check_modules(PKG_SDL2 QUIET sdl2)
 pkg_check_modules(PKG_OPENAL QUIET openal)
 pkg_check_modules(PKG_SNDFILE QUIET ncurses)
 pkg_check_modules(PKG_NCURSESW QUIET ncursesw)
+
 if (NOT PKG_NCURSESW_FOUND)
     pkg_check_modules(PKG_NCURSES QUIET ncurses)
 endif()
@@ -74,6 +71,7 @@ if (PKG_NCURSES_FOUND)
     set(NCURSES_INCLUDE_DIRS "${PKG_NCURSES_INCLUDE_DIRS}")
     set(NCURSES_LIBRARIES "${PKG_NCURSES_LIBRARIES}")
 endif()
+
 if (PKG_NCURSESW_FOUND)
     set(HAVE_NCURSES ON)
     set(NCURSES_CFLAGS "${PKG_NCURSESW_CFLAGS_OTHER}")
@@ -88,6 +86,22 @@ if (SOUND_FMOD)
     set_target_properties(sound_fmodex PROPERTIES PREFIX "")
     install(TARGETS sound_fmodex LIBRARY DESTINATION ${DFMOD_DESTDIR})
 endif()
+
+include_directories(include)
+include_directories(common)
+set(HEADERS
+    include/ideclspec.h
+    include/emafilter.h
+    include/imqueue.h
+    include/isimuloop.h
+    include/itypes.h
+    include/glue.h
+    include/iplatform.h
+    include/ikeyboard.h
+    include/imusicsound.h
+    include/itextures.h
+    include/irenderer.h )
+install(FILES ${HEADERS} DESTINATION include)
 
 option(SOUND_OPENAL "build sound-openal module" OFF)
 if (SOUND_OPENAL)

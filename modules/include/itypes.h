@@ -5,7 +5,7 @@
 
 
 struct df_buffer_t {
-    int dimx, dimy;
+    unsigned dimx, dimy;
 
     unsigned char *screen;     // uchar[4] in fact.
     long *texpos;

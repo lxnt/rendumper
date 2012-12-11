@@ -420,8 +420,8 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
-            for (int x = 0; x < buf->dimx; x++)
-                for (int y = 0; y < buf->dimy; y++) {
+            for (uint32_t x = 0; x < buf->dimx; x++)
+                for (uint32_t y = 0; y < buf->dimy; y++) {
                     const int ch   = buf->screen[x*buf->dimy*4 + y*4 + 0];
                     const int fg   = buf->screen[x*buf->dimy*4 + y*4 + 1];
                     const int bg   = buf->screen[x*buf->dimy*4 + y*4 + 2];

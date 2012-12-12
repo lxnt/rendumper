@@ -442,8 +442,8 @@ int snprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t 
     uint32_t i;
     uint32_t *ptr = (uint32_t *)(buffer->screen);
 
-    for (i = 0 ; (i < buffer->dimx - x) && ( i < printed ); i++) {
-        uint32_t offset = (x + i) * buffer->dimy + y;
+    for (i = 0 ; (i < buffer->w - x) && ( i < printed ); i++) {
+        uint32_t offset = (x + i) * buffer->h + y;
         *( ptr + offset ) = attrs | tbuf[i];
     }
     return i;
@@ -462,17 +462,13 @@ void gofui_t::render_things(void) {
        object, of course.
     */
 
-    memset(buf->texpos, 0, buf->dimx * buf->dimy * 4);
-    memset(buf->addcolor, 0, buf->dimx * buf->dimy);
-    memset(buf->grayscale, 0, buf->dimx * buf->dimy);
-    memset(buf->cf, 0, buf->dimx * buf->dimy);
-    memset(buf->cbr, 0, buf->dimx * buf->dimy);
+    memset(buf->ptr, 0, buf->allocated);
 
-    for (uint32_t i = 0; i < buf->dimx; i++)
-        for (uint32_t j = 0; j < buf->dimy; j++) {
-            uint32_t index = ( buf->dimy * i + j );
-            int value = sim->get( ( i + ui->vp_x ) % buf->dimx,
-                                   ( j + ui->vp_y ) % buf->dimy );
+    for (uint32_t i = 0; i < buf->w; i++)
+        for (uint32_t j = 0; j < buf->h; j++) {
+            uint32_t index = ( buf->h * i + j );
+            int value = sim->get( ( i + ui->vp_x ) % buf->w,
+                                   ( j + ui->vp_y ) % buf->h );
             buf->screen[4*index] = 111; // 'o'
             buf->screen[4*index+1] = value; // fg, 1:1 map to ansi is nice
             buf->screen[4*index+2] = 0; // bg
@@ -480,29 +476,29 @@ void gofui_t::render_things(void) {
             buf->texpos[index] = value;
         }
 
-    snprintf(buf, buf->dimx/2, 0, 20, 0x01010100, "vp: %d,%d", ui->vp_x, ui->vp_y);
+    snprintf(buf, buf->w/2, 0, 20, 0x01010100, "vp: %d,%d", ui->vp_x, ui->vp_y);
     snprintf(buf, 0, 0, 10, 0x01010100, ui->paused ? "[PAUSED]" : "[RUNNING]");
 
 
     if (first_pause || unpause_seq) {
         uint32_t *uibuf = (uint32_t *)(buf->screen);
-        uint32_t xoffs = (buf->dimx - 40)/2;
-        uint32_t yoffs = (buf->dimy > 25) ? (buf->dimy - 25)/2 : 0;
-        for (uint32_t i = 0; i < buf->dimx*buf->dimy; i++)
+        uint32_t xoffs = (buf->w - 40)/2;
+        uint32_t yoffs = (buf->h > 25) ? (buf->h - 25)/2 : 0;
+        for (uint32_t i = 0; i < buf->w*buf->h; i++)
             *(uibuf + i) = 0x010101db;
-        for (uint32_t i = 0; i < 40*(yoffs ? 25 : buf->dimy); i++)
-            *(uibuf + (i%40 + xoffs) * buf->dimy + i/40+yoffs) = 0x01010100 | c64screen[i];
+        for (uint32_t i = 0; i < 40*(yoffs ? 25 : buf->h); i++)
+            *(uibuf + (i%40 + xoffs) * buf->h + i/40+yoffs) = 0x01010100 | c64screen[i];
 
         if (!unpause_seq) {
-            *(uibuf + yoffs + 6 + buf->dimy*xoffs) = (platform->GetTickCount() % 1000 < 500) ? 0x010101db : 0x01010100;
+            *(uibuf + yoffs + 6 + buf->h*xoffs) = (platform->GetTickCount() % 1000 < 500) ? 0x010101db : 0x01010100;
         } else {
             for (uint32_t i = 0; i < c64load[unpause_seq].w * c64load[unpause_seq].h; i++) {
                 uint32_t scr_x = (i % c64load[unpause_seq].w + c64load[unpause_seq].x) + xoffs;
                 uint32_t scr_y = (i / c64load[unpause_seq].w + c64load[unpause_seq].y) + yoffs;
-                if (( scr_x >= buf->dimx )||( scr_y >= buf->dimy ))
+                if (( scr_x >= buf->w )||( scr_y >= buf->h ))
                     continue;
 
-                *(uibuf + scr_x * buf->dimy + scr_y) = 0x01010100 | c64load[unpause_seq].frame[i];
+                *(uibuf + scr_x * buf->h + scr_y) = 0x01010100 | c64load[unpause_seq].frame[i];
             }
             unpause_seq = (platform->GetTickCount() - ui->unpaused_at)/200 + 1;
             if (unpause_seq > (sizeof(c64load) / sizeof(c64frame) ) - 1)
@@ -520,7 +516,10 @@ int main (int argc, char* argv[]) {
 	return 1;
     }
 
-    load_platform(argv[2], argv[1]);
+    if (!load_platform(argv[2], argv[1])) {
+        fprintf(stderr, "loadplatform(%s, %s) failed.\n", argv[2], argv[1]);
+        return 1;
+    }
 
     int w = 128, h = 32;
     bool toroidal = false;

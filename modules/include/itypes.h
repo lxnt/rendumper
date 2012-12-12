@@ -3,9 +3,19 @@
 
 #include <cstdint>
 
+/*  A buffer for passing around screen data.
+    screen is guaranteed to be page-aligned,
+    rest of pointers  - 64bit-aligned.
 
+    tail points to grid_w*grid_h*tail_sizeof bytes,
+    for lumping the whole shebang into a single bo
+    or something. Not for use outside the backend.
+*/
 struct df_buffer_t {
-    unsigned dimx, dimy;
+    uint32_t w, h;
+    uint32_t tail_sizeof;
+    uint32_t allocated;
+    uint8_t *ptr;
 
     unsigned char *screen;     // uchar[4] in fact.
     long *texpos;
@@ -13,6 +23,8 @@ struct df_buffer_t {
     unsigned char *grayscale;
     unsigned char *cf;
     unsigned char *cbr;
+
+    uint8_t *tail;
 };
 
 struct itc_message_t;

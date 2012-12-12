@@ -5,6 +5,7 @@
 #include "iplatform.h"
 #include "imqueue.h"
 #include "isimuloop.h"
+#include "df_buffer.h"
 
 #define DFMODULE_BUILD
 #include "irenderer.h"
@@ -74,9 +75,7 @@ void implementation::override_grid_size(unsigned, unsigned) { NOT_IMPLEMENTED(ov
 void implementation::release_grid_size() { NOT_IMPLEMENTED(release_grid_size); }
 int implementation::mouse_state(int *mx, int *my) { return *mx = 0, *my = 0, 0; }
 
-static inline size_t pot_align(size_t value, unsigned pot) {
-    return (value + (1<<pot) - 1) & ~((1<<pot) -1);
-}
+
 
 /*  This is called from the simulation thread.
     Since this is a simplest possible implementation,
@@ -84,50 +83,12 @@ static inline size_t pot_align(size_t value, unsigned pot) {
 
     Since grid size is dictated by the renderer to the mainloop,
     read dimx and dimy across the thread from the backend.
-    To make this atomic, pack them up into a single uint32_t.
-
-    Excersize 64bit alignment, because we can. */
+    To make this atomic, pack them up into a single uint32_t. */
 df_buffer_t *implementation::get_buffer(void) {
     uint32_t sizeval = this->get_gridsize();
-    unsigned dimx = (sizeval >> 16) & 0xFFFF;
-    unsigned dimy = sizeval & 0xFFFF;
-
-    const unsigned pot = 3;  /* 1<<3 = 8 bytes; 64 bits */
-    const size_t screen_sz    = pot_align(dimx*dimy*4, pot);
-    const size_t texpos_sz    = pot_align(dimx*dimy*sizeof(long), pot);
-    const size_t addcolor_sz  = pot_align(dimx*dimy, pot);
-    const size_t grayscale_sz = pot_align(dimx*dimy, pot);
-    const size_t cf_sz        = pot_align(dimx*dimy, pot);
-    const size_t cbr_sz       = pot_align(dimx*dimy, pot);
-
-    df_buffer_t *rv = (df_buffer_t *) malloc(sizeof(df_buffer_t));
-
-    /*  malloc(3) says:
-            The malloc() and calloc() functions return a pointer
-            to the allocated memory that is suitably aligned for
-            any  kind  of variable.
-
-        memalign(3) says:
-            The  glibc  malloc(3) always returns 8-byte aligned
-            memory addresses, so these functions are only needed
-            if you require larger alignment values. */
-
-    rv->screen = (unsigned char *) malloc(screen_sz + texpos_sz + addcolor_sz
-        + grayscale_sz + cf_sz + cbr_sz);
-    rv->texpos = (long *) (rv->screen + screen_sz);
-    rv->addcolor = (char *) rv->screen + screen_sz + texpos_sz;
-    rv->grayscale = rv->screen + screen_sz + texpos_sz + addcolor_sz;
-    rv->cf = rv->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz;
-    rv->cbr = rv->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz;
-
-    rv->dimx = dimx, rv->dimy = dimy;
-
-    return rv;
-}
-
-static void free_buffer(df_buffer_t *buf) {
-    free(buf->screen);
-    free(buf);
+    unsigned w = (sizeval >> 16) & 0xFFFF;
+    unsigned h = sizeval & 0xFFFF;
+    return allocate_buffer_t(w, h);
 }
 
 /*  This is called from the simulation thread.
@@ -409,7 +370,7 @@ void implementation::renderer_thread(void) {
                 case itc_message_t::render_buffer:
                     if (buf) {
                         dropped_frames ++;
-                        free_buffer(buf);
+                        free_buffer_t(buf);
                     }
                     buf = msg->d.buffer;
                     mqueue->free(msg);
@@ -420,12 +381,12 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
-            for (uint32_t x = 0; x < buf->dimx; x++)
-                for (uint32_t y = 0; y < buf->dimy; y++) {
-                    const int ch   = buf->screen[x*buf->dimy*4 + y*4 + 0];
-                    const int fg   = buf->screen[x*buf->dimy*4 + y*4 + 1];
-                    const int bg   = buf->screen[x*buf->dimy*4 + y*4 + 2];
-                    const int bold = buf->screen[x*buf->dimy*4 + y*4 + 3];
+            for (uint32_t x = 0; x < buf->w; x++)
+                for (uint32_t y = 0; y < buf->h; y++) {
+                    const int ch   = buf->screen[x*buf->h*4 + y*4 + 0];
+                    const int fg   = buf->screen[x*buf->h*4 + y*4 + 1];
+                    const int bg   = buf->screen[x*buf->h*4 + y*4 + 2];
+                    const int bold = buf->screen[x*buf->h*4 + y*4 + 3];
 
                     const int pair = lookup_pair(std::make_pair(fg, bg));
 
@@ -444,7 +405,7 @@ void implementation::renderer_thread(void) {
                         mvwaddwstr(stdscr, y, x, chs);
                     }
                 }
-            free_buffer(buf);
+            free_buffer_t(buf);
             refresh();
         }
     }

@@ -167,7 +167,7 @@ void implementation::simulation_thread() {
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
     df_buffer_t *renderbuf = renderer->get_buffer();
-    platform->log_info("got renderbuf %dx%d", renderbuf->dimx, renderbuf->dimy);
+    platform->log_info("got renderbuf %dx%d", renderbuf->w, renderbuf->h);
     assimilate_buffer_cb(renderbuf);
 
 

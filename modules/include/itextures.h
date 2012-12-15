@@ -20,6 +20,7 @@
 */
 
 #include "ideclspec.h"
+#include "itypes.h"
 
 struct itextures {
     virtual void release() = 0;

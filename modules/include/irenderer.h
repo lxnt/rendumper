@@ -1,3 +1,6 @@
+#if !defined (IRENDERER_H)
+#define IRENDERER_H
+
 /* DF renderer modularization. Based on
 http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#CppMatureApproach
 
@@ -143,9 +146,7 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 */
 
-#if !defined (IRENDERER_H)
-#define IRENDERER_H
-
+#include "ideclspec.h"
 #include "itypes.h"
 
 struct irenderer : public imessagesender {

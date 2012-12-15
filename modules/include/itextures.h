@@ -44,6 +44,10 @@ struct itextures {
     /* Index sequence is not affected; a noop, or just free underlying storage. */
     virtual void delete_texture(long pos) = 0;
 
+    /* Interface to the renderers. to be redesigned. */
+    virtual df_texalbum_t *get_album() = 0;
+    virtual void release_album(df_texalbum_t *) = 0;
+
 #if 0
     /* Drop everything, reset index. Note that this is not equivalent to async_cmd::reset_textures,
        which just simply "reuploaded" them, whatevet that meant for the current renderer. For this

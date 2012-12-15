@@ -15,9 +15,12 @@ struct implementation : public itextures {
                                    bool convert_magenta, long *disp_x, long *disp_y);
     long load(const char *filename, bool convert_magenta);
     void delete_texture(long pos);
-    
+
+    df_texalbum_t *get();
+    void release(df_texalbum_t *);
+
     /* --- */
-    
+
     long index;
     iplatform *platform;
     implementation() : index(0) { platform = getplatform(); }
@@ -53,6 +56,16 @@ long implementation::load(const char *filename, bool convert_magenta) {
 void implementation::delete_texture(long pos) {
     platform->log_info("stub_textures::load(%ld)", pos);
 }
+
+df_texalbum_t *implementation::get() {
+    platform->log_info("stub_textures::get()");
+    return NULL;
+}
+
+void implementation::release(df_texalbum_t *p) {
+    platform->log_info("stub_textures::release(%p)", p);
+}
+
 
 void implementation::release() { }
 

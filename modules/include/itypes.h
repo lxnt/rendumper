@@ -340,5 +340,20 @@ struct itc_message_t {
     } d;
 };
 
+#if defined(SDL_INIT_VIDEO)
+struct df_taindex_entry_t {
+    SDL_Rect rect;
+    bool magentic;
+    bool grayscale;
+};
+struct df_texalbum_t {
+    SDL_Surface *album;
+    df_taindex_entry_t *index;
+    uint32_t count;
+    uint32_t height;
+};
+#else
+struct df_texalbum_t;
+#endif
 
 #endif

@@ -14,7 +14,7 @@
 struct df_buffer_t {
     uint32_t w, h;
     uint32_t tail_sizeof;
-    uint32_t allocated;
+    uint32_t required_sz, used_sz;
     uint8_t *ptr;
 
     unsigned char *screen;     // uchar[4] in fact.

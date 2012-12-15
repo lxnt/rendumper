@@ -462,7 +462,7 @@ void gofui_t::render_things(void) {
        object, of course.
     */
 
-    memset(buf->ptr, 0, buf->allocated);
+    memset(buf->ptr, 0, buf->required_sz);
 
     for (uint32_t i = 0; i < buf->w; i++)
         for (uint32_t j = 0; j < buf->h; j++) {

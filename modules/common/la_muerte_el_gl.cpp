@@ -1,7 +1,7 @@
 #include "glew.h"
 #include "iplatform.h"
 
-#define _gl_enum_case(num) case num: return #num
+#define _gl_enum_case(num) case num: return #num;
 
 const char *_gl_enum_str(GLenum num) {
     switch (num) {

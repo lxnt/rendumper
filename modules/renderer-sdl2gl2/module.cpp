@@ -9,6 +9,7 @@
 #include "glew.h"
 
 #include "la_muerte_el_gl.h"
+#include "df_buffer.h"
 
 #define DFMODULE_BUILD
 #include "irenderer.h"
@@ -24,7 +25,7 @@ struct vbstreamer_t {
     df_buffer_t **bufs;
     uint32_t w, h;
     uint32_t pot;   // preferred alignment of data as a power-of-two, in bytes
-    int last_drawn; // hottest vao in our rr
+    unsigned last_drawn; // hottest vao in our rr
 
     const uint32_t tail_sizeof;
 
@@ -37,8 +38,10 @@ struct vbstreamer_t {
     const GLuint cbr_posn;
     const GLuint grid_posn;
 
+    iplatform *platform;
+
     vbstreamer_t(unsigned rr = 3) :
-        rrlen(rr)
+        rrlen(rr),
         va_names(0),
         bo_names(0),
         syncs(0),
@@ -54,13 +57,15 @@ struct vbstreamer_t {
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        grid_posn(6) {}
+        grid_posn(6),
+        platform(0) {}
 
     void initialize();
     df_buffer_t *get_a_buffer();
     void draw(df_buffer_t *);
     void finalize();
-}
+    void remap_buf(int);
+};
 
 /* df_buffer_t::tail data is interleaved, unnormalized:
     - grid position in GL coordinate system, GLushort x2.
@@ -76,10 +81,10 @@ void vbstreamer_t::initialize() {
     va_names = new GLuint[rrlen];
     bo_names = new GLuint[rrlen];
     syncs = new GLsync[rrlen];
-    bufs = new buffer_t*[rrlen];
+    bufs = new df_buffer_t*[rrlen];
     glGenVertexArrays(rrlen, va_names);
     glGenBuffers(rrlen, bo_names);
-    for (int i=0; i<rrlen; i++) {
+    for (unsigned i=0; i<rrlen; i++) {
         glBindVertexArray(va_names[i]);
         glBindBuffer(GL_ARRAY_BUFFER, bo_names[i]);
         glEnableVertexAttribArray(screen_posn);
@@ -103,7 +108,7 @@ df_buffer_t *vbstreamer_t::get_a_buffer() {
 
     /* check if the buf is ready to be mapped */
     if (syncs[which]) {
-        switch (glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0) {
+        switch (glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
             case GL_ALREADY_SIGNALED:
             case GL_CONDITION_SATISFIED:
                 glDeleteSync(syncs[which]);
@@ -117,9 +122,9 @@ df_buffer_t *vbstreamer_t::get_a_buffer() {
                 return NULL;
             case GL_WAIT_FAILED:
                 /* some fuckup with syncs[] */
-                platform->log_fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
+                platform->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
             default:
-                platform->log_fatal("glClientWaitSync(syncs[%d]=%p): unbelievable.", which, syncs[which]);
+                platform->fatal("glClientWaitSync(syncs[%d]=%p): unbelievable.", which, syncs[which]);
         }
     }
 
@@ -128,16 +133,16 @@ df_buffer_t *vbstreamer_t::get_a_buffer() {
 }
 
 void vbstreamer_t::draw(df_buffer_t *buf) {
-    int which;
+    unsigned which;
     for (which = 0; which < rrlen ; which ++)
         if (bufs[which] == buf)
             break;
 
     if (bufs[which] != buf)
-        platform->log_fatal("vbstreamer_t::draw(): bogus buffer supplied.");
+        platform->fatal("vbstreamer_t::draw(): bogus buffer supplied.");
 
-    if (last_submitted == which)
-        platform->log_fatal("vbstreamer_t::draw(): last_submitted == which :wtf.");
+    if (last_drawn == which)
+        platform->fatal("vbstreamer_t::draw(): last_drawn == which :wtf.");
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
     glUnmapBuffer(GL_ARRAY_BUFFER);
@@ -151,7 +156,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         return;
     }
     glBindVertexArray(which);
-    glDrawArrays(GL_POINTS, w*h);
+    glDrawArrays(GL_POINTS, 0, w*h);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -170,23 +175,25 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     Resulting state of *bufs[which]: mapped, pointers valid.
 */
 void vbstreamer_t::remap_buf(int which) {
-    bool reset_vao = ((w != bufs[which]->w) || (h != bufs[which]->h));
+    df_buffer_t *buf = bufs[which];
+    bool reset_vao = ((w != buf->w) || (h != buf->h));
 
     if (reset_vao) {
         buf->ptr = NULL;
-        buf->w = w, buf->h = h, buf->tail_sizeof = tail_sizeof;
+        buf->w = w, buf->h = h;
+        buf->tail_sizeof = tail_sizeof;
         setup_buffer_t(buf, pot);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
-    buf->ptr = glMapBufferRange(GL_ARRAY_BUFFER, 0, bufs[mapped]->required_sz,
+    buf->ptr = (uint8_t *)glMapBufferRange(GL_ARRAY_BUFFER, 0, buf->required_sz,
         GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
 
-    setup_buffer_t(bufs[mapped], pot);
+    setup_buffer_t(buf, pot);
 
     /* generate grid positions */
     for (unsigned i = 0; i < w*h ; i++) {
-        uint16_t *ptr = (uint32_t *)(buf->tail) + 4 * i;
+        uint16_t *ptr = (uint16_t *)(buf->tail) + 4 * i;
         ptr[0] = i / w; // x | this column-major
         ptr[1] = i % h; // y |   major madness
         ptr[2] = 0;     // dim
@@ -195,13 +202,13 @@ void vbstreamer_t::remap_buf(int which) {
 
     if (reset_vao) {
         glBindVertexArray(va_names[which]);
-        glVertexAttribPointer(screen_posn,    4, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(bufs[which], screen));
-        glVertexAttribPointer(texpos_posn,    1, GL_UNSIGNED_INT,   GL_FALSE, 0, DFBUFOFFS(bufs[which], texpos));
-        glVertexAttribPointer(addcolor_posn,  1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(bufs[which], addcolor));
-        glVertexAttribPointer(grayscale_posn, 1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(bufs[which], grayscale));
-        glVertexAttribPointer(cf_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(bufs[which], cf));
-        glVertexAttribPointer(cbr_posn,       1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(bufs[which], cbr));
-        glVertexAttribPointer(grid_posn,      4, GL_UNSIGNED_SHORT, GL_FALSE, 0, DFBUFOFFS(bufs[which], tail));
+        glVertexAttribPointer(screen_posn,    4, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, screen));
+        glVertexAttribPointer(texpos_posn,    1, GL_UNSIGNED_INT,   GL_FALSE, 0, DFBUFOFFS(buf, texpos));
+        glVertexAttribPointer(addcolor_posn,  1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, addcolor));
+        glVertexAttribPointer(grayscale_posn, 1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, grayscale));
+        glVertexAttribPointer(cf_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cf));
+        glVertexAttribPointer(cbr_posn,       1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cbr));
+        glVertexAttribPointer(grid_posn,      4, GL_UNSIGNED_SHORT, GL_FALSE, 0, DFBUFOFFS(buf, tail));
         glBindVertexArray(0);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -211,7 +218,7 @@ void vbstreamer_t::remap_buf(int which) {
 
 /* This will invalidate any storage in use. */
 void vbstreamer_t::finalize() {
-    for (int i = 0; i < rrlen ; i++) {
+    for (unsigned i = 0; i < rrlen ; i++) {
         GLint param;
         glBindBuffer(GL_ARRAY_BUFFER, bo_names[i]);
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &param);
@@ -219,7 +226,7 @@ void vbstreamer_t::finalize() {
             glUnmapBuffer(GL_ARRAY_BUFFER);
         if (syncs[i])
             glDeleteSync(syncs[i]);
-        delete bufs[i]
+        free_buffer_t(bufs[i]);
     }
     glDeleteVertexArrays(rrlen, va_names);
     glDeleteBuffers(rrlen, bo_names);
@@ -262,7 +269,7 @@ struct implementation : public irenderer {
     isimuloop *simuloop;
 
     imqd_t incoming_q;
-    imqd_t ready_buffers_q
+    imqd_t ready_buffers_q;
 
     vbstreamer_t streamer;
 
@@ -293,34 +300,34 @@ void implementation::initialize() {
     /* this GL renderer needs or uses no SDL internal rendering
        or even a window surface. */
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
-    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, '0');
+    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0");
 
     /* hmm. platform does only defaults+timers? or video too?
        but PM:2D might want accelerated render driver.
        and InitSubsystem() calls VideoInit(NULL). Okay,
        let's just InitSubsystem() and see what happens. */
-    if (SDL_InitSubsystem(SDL_INIT_VIDEO))
-        platform->log_fatal("SDL_InitSubsystem(SDL_INIT_VIDEO): %s", SDL_GetError());
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO))
+        platform->fatal("SDL_InitSubsystem(SDL_INIT_VIDEO): %s", SDL_GetError());
 
     struct gl_attr {
-        SDL_GLattr attr; const char *name, int value;
+        SDL_GLattr attr; const char *name; int value;
     } attr_req[] = {
-        (SDL_GL_RED_SIZE, "SDL_GL_RED_SIZE", 8),
-        (SDL_GL_GREEN_SIZE, "SDL_GL_GREEN_SIZE", 8),
-        (SDL_GL_BLUE_SIZE, "SDL_GL_BLUE_SIZE", 8),
-        (SDL_GL_ALPHA_SIZE, "SDL_GL_ALPHA_SIZE", 8),
-        (SDL_GL_DEPTH_SIZE, "SDL_GL_DEPTH_SIZE", 0),
-        (SDL_GL_STENCIL_SIZE, "SDL_GL_STENCIL_SIZE", 0),
-        (SDL_GL_DOUBLEBUFFER, "SDL_GL_DOUBLEBUFFER", 1),
-        (SDL_GL_CONTEXT_MAJOR_VERSION, "SDL_GL_CONTEXT_MAJOR_VERSION", 2),
-        (SDL_GL_CONTEXT_MINOR_VERSION, "SDL_GL_CONTEXT_MINOR_VERSION", 1)
-        //(SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", cmask),
-        //(SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", cflags)
+        {SDL_GL_RED_SIZE, "SDL_GL_RED_SIZE", 8},
+        {SDL_GL_GREEN_SIZE, "SDL_GL_GREEN_SIZE", 8},
+        {SDL_GL_BLUE_SIZE, "SDL_GL_BLUE_SIZE", 8},
+        {SDL_GL_ALPHA_SIZE, "SDL_GL_ALPHA_SIZE", 8},
+        {SDL_GL_DEPTH_SIZE, "SDL_GL_DEPTH_SIZE", 0},
+        {SDL_GL_STENCIL_SIZE, "SDL_GL_STENCIL_SIZE", 0},
+        {SDL_GL_DOUBLEBUFFER, "SDL_GL_DOUBLEBUFFER", 1},
+        {SDL_GL_CONTEXT_MAJOR_VERSION, "SDL_GL_CONTEXT_MAJOR_VERSION", 2},
+        {SDL_GL_CONTEXT_MINOR_VERSION, "SDL_GL_CONTEXT_MINOR_VERSION", 1}
+        //{SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", cmask},
+        //{SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", cflags}
     };
 
-    for (int i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
+    for (unsigned i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
         if (SDL_GL_SetAttribute(attr_req[i].attr, attr_req[i].value))
-            platform->log_fatal("SDL_GL_SetAttribute(%s, %d): %s",
+            platform->fatal("SDL_GL_SetAttribute(%s, %d): %s",
                 attr_req[i].name, attr_req[i].value, SDL_GetError());
     }
 
@@ -329,34 +336,34 @@ void implementation::initialize() {
         pref_w, pref_h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
 
     if (!gl_window)
-        platform->log_fatal("SDL_CreateWindow(...): %s", SDL_GetError());
+        platform->fatal("SDL_CreateWindow(...): %s", SDL_GetError());
 
-    gl_context = SDL_GL_CreateContext(window);
+    gl_context = SDL_GL_CreateContext(gl_window);
 
     if (!gl_context)
-        platform->log_fatal("SDL_GL_CreateContext(...): %s", SDL_GetError());
+        platform->fatal("SDL_GL_CreateContext(...): %s", SDL_GetError());
 
-    for (int i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
+    for (unsigned i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
         int value;
         if (SDL_GL_GetAttribute(attr_req[i].attr, &value))
-            platform->log_fatal("SDL_GL_GetAttribute(%s, ptr): %s",
+            platform->fatal("SDL_GL_GetAttribute(%s, ptr): %s",
                 attr_req[i].name, SDL_GetError());
         platform->log_info("GL context: %s requested %d got %d",
-            attr_req[i].name, attr_req[i].value, value):
+            attr_req[i].name, attr_req[i].value, value);
     }
 
-    GLenum err = glewInit()
+    GLenum err = glewInit();
     if (GLEW_OK != err)
-        platform->log_fatal("glewInit(): %s", glewGetErrorString(err));
+        platform->fatal("glewInit(): %s", glewGetErrorString(err));
 
     if (!glMapBufferRange)
-        platform->log_fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
+        platform->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
 
     if (!glFenceSync)
-        platform->log_fatal("ARB_sync extension or OpenGL 3.2+ is required.");
+        platform->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 
     if (!GLEW_ARB_map_buffer_alignment)
-        platform->log_fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
+        platform->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
 
     /* todo:
 
@@ -393,7 +400,7 @@ void implementation::renderer_thread(void) {
     while(not_done) {
         slurp_keys();
 
-
+        df_buffer_t *buf = NULL;
         unsigned read_timeout_ms = 10;
         while (true) {
             void *vbuf; size_t vlen;
@@ -412,7 +419,7 @@ void implementation::renderer_thread(void) {
                 case itc_message_t::render_buffer:
                     if (buf) {
                         dropped_frames ++;
-                        streamer->remap(buf);
+                        streamer.remap(buf);
                         post_free_buffer(buf);
                     }
                     buf = msg->d.buffer;
@@ -425,7 +432,7 @@ void implementation::renderer_thread(void) {
         }
         if (buf) {
             render_the_buffer(buf);
-            free_buffer(buf);
+            free_buffer_t(buf);
             /* SDL_Flip() or whatever might look better in before render,
                so that previous frame gets rendered while input is being
                processed and other stuff is going on */
@@ -438,21 +445,24 @@ void implementation::renderer_thread(void) {
 
 df_buffer_t *implementation::get_buffer(void) {
     df_buffer_t **bufp;
+    df_buffer_t *buf;
     size_t len;
-    int rv;
-    switch(rv = mqueue->recv(free_buf_q, bufp, &len, -1)) {
+    int irv;
+    switch (irv = mqueue->recv(free_buf_q, bufp, &len, -1)) {
         case IMQ_OK:
-            df_buffer_t *rv = *bufp;
-            mqueue->free(buf);
-            return rv;
+            buf = *bufp;
+            mqueue->free(*bufp);
+            return buf;
         case IMQ_TIMEDOUT:
             return NULL;
         default:
-            platform->log_fatal("%s: %d from mqueue->recv()", __func__, rv);
+            platform->fatal("%s: %d from mqueue->recv()", __func__, irv);
     }
+    /* not reached, wtf gcc doesn't see that */
+    return NULL;
 }
 
-int implementation get_mouse_state(int *x, int *y) {
+int implementation::get_mouse_state(int *x, int *y) {
     int mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
     x = (mouse_x - viewport_offset_x) / Pszx;

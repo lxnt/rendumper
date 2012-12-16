@@ -1,8 +1,8 @@
-#if !defined(IDECLSPEC_H)
-#define IDECLSPEC_H
-
 #if defined(DECLSPEC)
 # undef DECLSPEC
+#endif
+#if defined(APIENTRY)
+# undef APIENTRY
 #endif
 #if defined(__WIN32__) || defined(__CYGWIN__)
 # if defined(DFMODULE_BUILD)
@@ -18,6 +18,4 @@
 #  define DECLSPEC __attribute__((visibility ("default")))
 # endif
 # define APIENTRY
-#endif
-
 #endif

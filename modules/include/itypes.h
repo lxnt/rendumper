@@ -344,7 +344,7 @@ struct itc_message_t {
 struct df_taindex_entry_t {
     SDL_Rect rect;
     bool magentic;
-    bool grayscale;
+    bool gray;
 };
 struct df_texalbum_t {
     SDL_Surface *album;

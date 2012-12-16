@@ -32,7 +32,7 @@ struct implementation : public itextures {
 
     long next_index; // == .size(); next unused index.
     iplatform *platform;
-    implementation() : next_index(0), raws(), clones(), grayscaled(), cmax(0), cmay(0) { platform = getplatform(); }
+    implementation() : next_index(0), pages(), clones(), grays(), cmax(0), cmay(0) { platform = getplatform(); }
 
     struct celpage {
         int w, h, cw, ch;
@@ -221,7 +221,7 @@ long implementation::clone_texture(long src) {
 }
 
 void implementation::grayscale_texture(long pos) {
-    grayscaled.insert(pos);
+    grays.push_front(pos);
 }
 
 void implementation::load_multi_pdim(const char *filename, long *tex_pos, long dimx, long dimy,

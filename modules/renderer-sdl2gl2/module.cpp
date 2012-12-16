@@ -456,7 +456,7 @@ df_buffer_t *implementation::get_buffer(void) {
         case IMQ_TIMEDOUT:
             return NULL;
         default:
-            platform->fatal("%s: %d from mqueue->recv()", __func__, irv);
+            platform->fatal("%s: %d from mqueue->recv()", __func__, rv);
     }
     /* not reached, wtf gcc doesn't see that */
     return NULL;

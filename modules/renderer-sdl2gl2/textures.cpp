@@ -76,7 +76,7 @@ SDL_Surface *load_normalize(const char *filename) {
     SDL_Surface *d = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
 
     if (!d)
-        platform->log_fatal("SDL_ConvertSurfaceFormat() failed : %s", SDL_GetError());
+        platform->fatal("SDL_ConvertSurfaceFormat() failed : %s", SDL_GetError());
 
     SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_NONE);
     return d;
@@ -240,8 +240,8 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos, long d
 
 long implementation::load(const char *filename, bool convert_magenta) {
     SDL_Surface *s = load_normalize(filename);
-    if (!crap) // oh, shit, go die.
-        platform->log_fatal("failed to load %s", filename);
+    if (!s)
+        platform->fatal("failed to load %s", filename);
 
     pages.emplace_front(1, 1, s.w, s.h, s, convert_magenta, next_index);
 

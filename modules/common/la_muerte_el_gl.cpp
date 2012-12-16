@@ -25,5 +25,5 @@ void _gl_fatalize(const char *fi, const int li, const char *foo) {
         getplatform()->log_error("%s", _gl_enum_str(err));
     }
     if (dead)
-        getplatform()->log_fatal("%s:%d in %s: bye.", fi, li, foo);
+        getplatform()->fatal("%s:%d in %s: bye.", fi, li, foo);
 }

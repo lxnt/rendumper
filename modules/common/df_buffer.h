@@ -3,7 +3,7 @@
 
 #include "itypes.h"
 
-#define DFBUFOFFS(buf, wha) ((char *)NULL + ((char *)(buf->##wha) - buf->screen)
+#define DFBUFOFFS(buf, wha) ((uint8_t *)NULL + ((uint8_t *)(buf->wha) - (buf->screen)))
 
 void setup_buffer_t(df_buffer_t *buf, uint32_t pot);
 df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof);

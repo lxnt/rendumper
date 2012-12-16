@@ -53,6 +53,7 @@ pkg_check_modules(PKG_SDL2 QUIET sdl2)
 pkg_check_modules(PKG_OPENAL QUIET openal)
 pkg_check_modules(PKG_SNDFILE QUIET ncurses)
 pkg_check_modules(PKG_NCURSESW QUIET ncursesw)
+pkg_check_modules(PKG_GLEW QUIET glew)
 
 if (NOT PKG_NCURSESW_FOUND)
     pkg_check_modules(PKG_NCURSES QUIET ncurses)
@@ -113,6 +114,10 @@ set(WINDOZE_COMMON
     common/df_buffer.cpp
 )
 
+set(GL_COMMON
+    common/la_muerte_el_gl.cpp
+)
+
 option(SOUND_OPENAL "build sound-openal module" OFF)
 if (SOUND_OPENAL)
     if(NOT OPENAL_DEPS)
@@ -137,6 +142,24 @@ if (PLATFORM_SDL20)
     target_link_libraries(platform_sdl20 ${PKG_SDL2_LIBRARIES})
     set_target_properties(platform_sdl20 PROPERTIES PREFIX "")
     install(TARGETS platform_sdl20 LIBRARY DESTINATION ${DFMOD_DESTDIR})
+endif()
+
+option(RENDERER_SDL2GL2 "build sdl2+gl2 renderer module" ${PKG_SDL2_FOUND})
+if (PLATFORM_SDL20)
+    if(NOT PKG_SDL2_FOUND)
+        message(SEND_ERROR "SDL 2.0 not found.")
+    endif()
+    if(NOT PKG_GLEW_FOUND)
+        message(SEND_ERROR "GLEW not found.")
+    endif()
+    link_directories(${PKG_SDL2_LIBRARY_DIRS})
+    link_directories(${PKG_GLEW_LIBRARY_DIRS})
+    include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
+    include_directories( ${PKG_GLEW_INCLUDE_DIRS} )
+    add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${POSIX_COMMON} ${GL_COMMON})
+    target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES})
+    set_target_properties(renderer_sdl2gl2 PROPERTIES PREFIX "")
+    install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
 endif()
 
 option(RENDERER_NCURSES "build ncurses renderer module" ${HAVE_NCURSES})

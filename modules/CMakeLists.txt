@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(dfmodules)
 
+# kludges
+set(ENV{PKG_CONFIG_PATH} "/home/lxnt/00DFGL/prefix32/lib/pkgconfig/")
+
+
 if (NOT UNIX)
     message(FATAL_ERROR "~")
 endif()
@@ -24,12 +28,14 @@ if (ARCH64)
     if(DF_32BIT_COMPAT)
 #        set(SDL2_PREFIX /home/lxnt/00DFGL/prefix32)
         set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
+        set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE PATH "what it says")
 
         set(CMAKE_CXX_COMPILER g++-4.5)
         set(CMAKE_C_COMPILER g++-4.5)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
         set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
+        link_directories(${LIB32_LINK_DIR})
     else()
 #        set(SDL2_PREFIX CACHE PATH /home/lxnt/00DFGL/fgtestbed/prefix FORCE)
         set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)

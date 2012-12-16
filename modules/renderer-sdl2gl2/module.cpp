@@ -16,6 +16,7 @@
 
 namespace {
 
+//{  vbstreamer_t
 /*  Vertex array object streamer, derived from the fgt.gl.VAO0 and fgt.gl.SurfBunchPBO. */
 struct vbstreamer_t {
     const unsigned rrlen;
@@ -64,7 +65,8 @@ struct vbstreamer_t {
     df_buffer_t *get_a_buffer();
     void draw(df_buffer_t *);
     void finalize();
-    void remap_buf(int);
+    void remap_buf(df_buffer_t *);
+    unsigned find(const df_buffer_t *) const;
 };
 
 /* df_buffer_t::tail data is interleaved, unnormalized:
@@ -128,18 +130,24 @@ df_buffer_t *vbstreamer_t::get_a_buffer() {
         }
     }
 
-    remap_buf(which);
+    remap_buf(bufs[which]);
     return bufs[which];
 }
 
-void vbstreamer_t::draw(df_buffer_t *buf) {
+unsigned vbstreamer_t::find(const df_buffer_t *buf) const {
     unsigned which;
     for (which = 0; which < rrlen ; which ++)
         if (bufs[which] == buf)
             break;
 
     if (bufs[which] != buf)
-        platform->fatal("vbstreamer_t::draw(): bogus buffer supplied.");
+        platform->fatal("vbstreamer_t::find(): bogus buffer supplied.");
+
+    return which;
+}
+
+void vbstreamer_t::draw(df_buffer_t *buf) {
+    unsigned which = find(buf);
 
     if (last_drawn == which)
         platform->fatal("vbstreamer_t::draw(): last_drawn == which :wtf.");
@@ -152,7 +160,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     if ((w != buf->w) || (h != buf->h)) {
         /* discard frame: it's of wrong size anyway. reset vao while at it */
         /* this can cause spikes in fps: maybe don't submit those samples? */
-        remap_buf(which);
+        remap_buf(buf);
         return;
     }
     glBindVertexArray(which);
@@ -174,8 +182,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     Expected state of *bufs[which]: unmapped, pointers invalid.
     Resulting state of *bufs[which]: mapped, pointers valid.
 */
-void vbstreamer_t::remap_buf(int which) {
-    df_buffer_t *buf = bufs[which];
+void vbstreamer_t::remap_buf(df_buffer_t *buf) {
     bool reset_vao = ((w != buf->w) || (h != buf->h));
 
     if (reset_vao) {
@@ -185,7 +192,7 @@ void vbstreamer_t::remap_buf(int which) {
         setup_buffer_t(buf, pot);
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
+    glBindBuffer(GL_ARRAY_BUFFER, bo_names[find(buf)]);
     buf->ptr = (uint8_t *)glMapBufferRange(GL_ARRAY_BUFFER, 0, buf->required_sz,
         GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
 
@@ -201,7 +208,7 @@ void vbstreamer_t::remap_buf(int which) {
     }
 
     if (reset_vao) {
-        glBindVertexArray(va_names[which]);
+        glBindVertexArray(va_names[find(buf)]);
         glVertexAttribPointer(screen_posn,    4, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, screen));
         glVertexAttribPointer(texpos_posn,    1, GL_UNSIGNED_INT,   GL_FALSE, 0, DFBUFOFFS(buf, texpos));
         glVertexAttribPointer(addcolor_posn,  1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, addcolor));
@@ -237,6 +244,7 @@ void vbstreamer_t::finalize() {
 
     GL_DEAD_YET();
 }
+//} vbstreamer_t
 
 /*  OpenGL 2.1 renderer, rewrite of PRINT_MODE:SHADER. */
 
@@ -269,7 +277,7 @@ struct implementation : public irenderer {
     isimuloop *simuloop;
 
     imqd_t incoming_q;
-    imqd_t ready_buffers_q;
+    imqd_t free_buf_q;
 
     vbstreamer_t streamer;
 
@@ -293,6 +301,8 @@ struct implementation : public irenderer {
     int Pszx, Pszy, Psz;                      // Point sprite size as drawn
     int viewport_offset_x, viewport_offset_y; // viewport tracking
     int viewport_w, viewport_h;               // for mouse coordinate transformation
+    int mouse_wx, mouse_wy;                   // mouse window coordinates
+    int mouse_gx, mouse_gy;                   // mouse grid coordinates
 };
 
 void implementation::initialize() {
@@ -321,8 +331,10 @@ void implementation::initialize() {
         {SDL_GL_DOUBLEBUFFER, "SDL_GL_DOUBLEBUFFER", 1},
         {SDL_GL_CONTEXT_MAJOR_VERSION, "SDL_GL_CONTEXT_MAJOR_VERSION", 2},
         {SDL_GL_CONTEXT_MINOR_VERSION, "SDL_GL_CONTEXT_MINOR_VERSION", 1}
-        //{SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", cmask},
-        //{SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", cflags}
+#if 0
+        {SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", cmask},
+        {SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", cflags}
+#endif
     };
 
     for (unsigned i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
@@ -333,7 +345,7 @@ void implementation::initialize() {
 
     gl_window = SDL_CreateWindow("~some title~",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        pref_w, pref_h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
+        1280, 1024, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
 
     if (!gl_window)
         platform->fatal("SDL_CreateWindow(...): %s", SDL_GetError());
@@ -386,16 +398,16 @@ void implementation::initialize() {
 
 void implementation::slurp_keys() {
 
+
+    { // update mouse state
+
+        SDL_GetMouseState(&mouse_wx, &mouse_wy);
+        mouse_gx = (mouse_wx - viewport_offset_x) / Pszx;
+        mouse_gy = (mouse_wy - viewport_offset_y) / Pszy;
+    }
 }
 
 void implementation::do_the_flip() { SDL_GL_SwapWindow(gl_window); }
-
-void implementation::post_free_buffers() {
-    /* to hell with timeouts. */
-    while ((df_buffer_t *buf = streamer.get_a_buffer()) != NULL)
-        mqueue->copy(free_buf_q, &buf, sizeof(df_buffer_t *), -1);
-}
-
 void implementation::renderer_thread(void) {
     while(not_done) {
         slurp_keys();
@@ -419,8 +431,7 @@ void implementation::renderer_thread(void) {
                 case itc_message_t::render_buffer:
                     if (buf) {
                         dropped_frames ++;
-                        streamer.remap(buf);
-                        post_free_buffer(buf);
+                        streamer.remap_buf(buf);
                     }
                     buf = msg->d.buffer;
                     mqueue->free(msg);
@@ -443,30 +454,39 @@ void implementation::renderer_thread(void) {
 
 /* Below go methods intended for other threads */
 
+/* return value of NULL means: skip that render_things() call. */
 df_buffer_t *implementation::get_buffer(void) {
-    df_buffer_t **bufp;
-    df_buffer_t *buf;
-    size_t len;
-    int irv;
-    switch (irv = mqueue->recv(free_buf_q, bufp, &len, -1)) {
+    void *msg = NULL;
+    df_buffer_t *buf = NULL;
+    size_t len = sizeof(void *);
+    int rv;
+    switch (rv = mqueue->recv(free_buf_q, &msg, &len, 0)) {
         case IMQ_OK:
-            buf = *bufp;
-            mqueue->free(*bufp);
+            buf = (df_buffer_t *)msg;
+            mqueue->free(msg);
             return buf;
         case IMQ_TIMEDOUT:
-            return NULL;
+            break;
         default:
             platform->fatal("%s: %d from mqueue->recv()", __func__, rv);
     }
-    /* not reached, wtf gcc doesn't see that */
-    return NULL;
+    /* whoops, free_buf_q is empty. try to fill it */
+
+    if ((buf = streamer.get_a_buffer()) != NULL) {
+        /* whoa, streamer got buffers: rid it of them */
+        df_buffer_t *tbuf;
+        while ((tbuf = streamer.get_a_buffer()) != NULL)
+            if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
+                platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
+    }
+
+    return buf;
 }
 
-int implementation::get_mouse_state(int *x, int *y) {
-    int mouse_x, mouse_y;
-    SDL_GetMouseState(&mouse_x, &mouse_y);
-    x = (mouse_x - viewport_offset_x) / Pszx;
-    y = (mouse_y - viewport_offset_y) / Pszy;
+int implementation::mouse_state(int *x, int *y) {
+    /* race-prone. convert to uint32_t mouse_gxy if it causes problems. */
+    *x = mouse_gx;
+    *y = mouse_gy;
     return 42;
 }
 

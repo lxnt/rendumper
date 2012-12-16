@@ -1,7 +1,9 @@
 #include <cstring>
+#include <forward_list>
 #include "iplatform.h"
 
 #include "SDL.h"
+#include "SDL_pnglite.h"
 
 #define DFMODULE_BUILD
 #include "itextures.h"
@@ -40,10 +42,10 @@ struct implementation : public itextures {
         bool magentic;
         int start_index;
 
-        celpage(int w, int h, int cw, int ch, SDL_Surface s, bool m, int si):
-            w(w), h(h), cw(cw), ch(ch), s(s), magentic(m), start_index(fi) {}
+        celpage(int w, int h, int cw, int ch, SDL_Surface *s, bool m, int si):
+            w(w), h(h), cw(cw), ch(ch), s(s), magentic(m), start_index(si) {}
 
-        bool operator<(celpage& l, celbage& r) { return l.h < r.h; }
+        bool operator < (celpage r) const { return h < r.h; }
     };
 
     std::forward_list<celpage> pages;
@@ -52,9 +54,12 @@ struct implementation : public itextures {
     int cmax, cmay;
 };
 
+iplatform *platform = NULL;
+
 /* pieces of fgt.gl.rgba_surface */
 SDL_Surface *beloved_surface(int w, int h) {
-    Uint32 Rmask, Bmask, Amask, Gmask, bpp;
+    int bpp;
+    Uint32 Rmask, Bmask, Amask, Gmask;
 
     SDL_PixelFormatEnumToMasks(SDL_PIXELFORMAT_ABGR8888,
         &bpp, &Rmask, &Gmask, &Bmask, &Amask);
@@ -69,9 +74,11 @@ SDL_Surface *beloved_surface(int w, int h) {
 
 /* make sure it's of our belowed pixelformat and blendmode is none */
 SDL_Surface *load_normalize(const char *filename) {
-    SDL_Surface *s = IMG_Load(filename);
+    SDL_Surface *s = SDL_LoadPNG(filename);
     if (!s)
-        platform->log_fatal("IMG_Load(%s) failed : %s", filename, SDL_GetError());
+        s = SDL_LoadBMP(filename);
+    if (!s)
+        platform->fatal("%s: neither PNG nor BMP, or corrupted.", filename);
 
     SDL_Surface *d = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
 
@@ -87,7 +94,7 @@ int gcd(int n, int m) { return m == 0 ? n: gcd(m, n%m); }
 int lcm(int a, int b) { return a * b / gcd(a, b); }
 
 SDL_Surface *grow_album(SDL_Surface *album, int min_h, bool fill = false) {
-    if (min_h > album_h) { // grow it
+    if (min_h > album->h) { // grow it
         SDL_Surface *a = beloved_surface(album->w, album->h*2);
 
         if (fill) { // hmm. can't hurt, but at the same time, no one cares.
@@ -105,17 +112,18 @@ SDL_Surface *grow_album(SDL_Surface *album, int min_h, bool fill = false) {
     return album;
 }
 
-/*  hmmm. GL_EXT_texture RGBA16_EXT - 16-bit components ? test its resolution. */
+/* C++ ugliness forces some typedef names .. */
+typedef std::forward_list<implementation::celpage>::iterator piter_t;
+typedef std::forward_list<std::pair<long, long>>::iterator cliter_t;
+typedef std::forward_list<long>::iterator griter_t;
 
 /* see fgtestbed fgt.raw.Pageman */
-df_texalbum_t *implementation::get() {
+df_texalbum_t *implementation::get_album() {
     int album_w = 1024; // it's pot; and dumps are manageable in a viewer.
     int w_lcm = 1;
 
-    for (pages.iterator p = pages.begin(); p != pages.end(); p++) {
+    for (piter_t p(pages.begin()); p != pages.end(); p++)
         w_lcm = lcm(w_lcm, p->cw);
-        count += p->w * p->h;
-    }
 
     pages.sort(); // in order of ascending cel-height.
 
@@ -126,12 +134,11 @@ df_texalbum_t *implementation::get() {
     rv->index = (df_taindex_entry_t *) calloc(rv->count, sizeof(df_taindex_entry_t));
 
     rv->album = beloved_surface(album_w, album_w / 8);
-    int pref_page_cel_count = 0;
 
-    int cx = 0, cy = 0, row_h = pages[0].ch;
+    int cx = 0, cy = 0, row_h = pages.begin()->ch;
 
-    for (pages.iterator p = pages.begin(); p != pages.end(); p++) {
-        index = p.start_index;
+    for (piter_t p(pages.begin()); p != pages.end(); p++) {
+        unsigned index = p->start_index;
         /*  When to start new rows - when this minimizes wasted space.
 
             waste_start_new_row = (album_w - cx) * old_row_h
@@ -155,7 +162,7 @@ df_texalbum_t *implementation::get() {
             restriction that cels from one cel page always follow each other ..
                 --  is very not worth it. */
 
-        int wasted = (album_w - cx) * old_row_h; // when starting new row
+        int wasted = (album_w - cx) * row_h; // when starting new row
         if (p->ch > row_h) {
             if ( wasted < (p->ch - row_h) * cx ) {
                 cx = 0;
@@ -186,9 +193,12 @@ df_texalbum_t *implementation::get() {
                     rv->album = grow_album(rv->album, cy + row_h);
                 }
                 SDL_Rect src = { i*p->cw, j*p->ch, p->cw, p->ch };
-                rv->index[index].rect = { cx, cy, p->cw, p->ch };
-                SDL_BlitSurface(p->s, &src, album, &dst);
-                rv->index[index].magentic = magentic;
+                rv->index[index].rect.x = cx;
+                rv->index[index].rect.y = cy;
+                rv->index[index].rect.w = p->cw;
+                rv->index[index].rect.h = p->ch;
+                SDL_BlitSurface(p->s, &src, rv->album, &rv->index[index].rect);
+                rv->index[index].magentic = p->magentic;
                 cx += p->cw;
                 index ++;
             }
@@ -199,11 +209,11 @@ df_texalbum_t *implementation::get() {
     rv->height = cy + row_h;
 
     /* execute clone requests */
-    for (clones.iterator ci = clones.begin(); ci != clones.end(); ci++)
+    for (cliter_t ci(clones.begin()); ci != clones.end(); ci++)
         rv->index[ci->first] = rv->index[ci->second];
 
     /* execute grayscaling requests */
-    for (grays.iterator gi = grays.begin(); gi != grays.end(); gi++)
+    for (griter_t gi(grays.begin()); gi != grays.end(); gi++)
         rv->index[*gi].gray = true;
 
     return rv;
@@ -216,7 +226,7 @@ void implementation::release_album(df_texalbum_t *a) {
 }
 
 long implementation::clone_texture(long src) {
-    clones.insert(std::pair<long, long>(index, src));
+    clones.push_front(std::pair<long, long>(next_index, src));
     return next_index++;
 }
 
@@ -228,14 +238,14 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos, long d
 			       bool convert_magenta, long *disp_x, long *disp_y) {
 
     SDL_Surface *s = load_normalize(filename);
-    *disp_x = s.w/dimx, *disp_y = s.h/dimy
+    *disp_x = s->w/dimx, *disp_y = s->h/dimy;
     pages.emplace_front(dimx, dimy, *disp_x, *disp_y, s, convert_magenta, next_index);
 
     for (int i = 0; i < dimx*dimy; i++)
-        tex_pos[next_index - start] = next_index++;
+        tex_pos[i] = next_index++;
 
-    if (*disp_x > cmax) cmax = *dispx;
-    if (*disp_y > cmay) cmay = *dispy;
+    if (*disp_x > cmax) cmax = *disp_x;
+    if (*disp_y > cmay) cmay = *disp_y;
 }
 
 long implementation::load(const char *filename, bool convert_magenta) {
@@ -243,19 +253,19 @@ long implementation::load(const char *filename, bool convert_magenta) {
     if (!s)
         platform->fatal("failed to load %s", filename);
 
-    pages.emplace_front(1, 1, s.w, s.h, s, convert_magenta, next_index);
+    pages.emplace_front(1, 1, s->w, s->h, s, convert_magenta, next_index);
 
     return next_index++;
 }
 
-void implementation::delete_texture(long pos) { /* fuck off and die. */ }
+void implementation::delete_texture(long) { }
 
-void implementation::release() { } // also. forget allocations, too.
+void implementation::release() { }
 
 static implementation *impl = NULL;
 extern "C" DECLSPEC itextures * APIENTRY gettextures(void) {
     if (!impl) {
-        IMG_init(0xF); // well, at least we'll get BMP and company.
+        platform = getplatform();
         impl = new implementation();
     }
     return impl;

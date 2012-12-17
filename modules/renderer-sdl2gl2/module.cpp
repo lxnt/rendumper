@@ -1,13 +1,15 @@
 #include <cstdlib>
 #include <map>
-
-#include "iplatform.h"
-#include "imqueue.h"
-#include "isimuloop.h"
+#include <ios>
+#include <fstream>
 
 #include "SDL.h"
 #include "glew.h"
 
+#include "iplatform.h"
+#include "imqueue.h"
+#include "isimuloop.h"
+#include "itextures.h"
 #include "la_muerte_el_gl.h"
 #include "df_buffer.h"
 
@@ -15,6 +17,19 @@
 #include "irenderer.h"
 
 namespace {
+
+iplatform *platform;
+
+const int MIN_GRID_X = 80;
+const int MAX_GRID_X = 256;
+const int MIN_GRID_Y = 25;
+const int MAX_GRID_Y = 256;
+
+#define MIN(a, b) ((a)<(b)?(a):(b))
+#define MAX(a, b) ((a)>(b)?(a):(b))
+#define CLAMP(a, a_floor, a_ceil) ( MIN( (a_floor), MAX( (a), (a_ceil) ) ) )
+#define CLAMP_GW(w) CLAMP(w, MIN_GRID_X, MAX_GRID_X)
+#define CLAMP_GH(h) CLAMP(h, MIN_GRID_Y, MAX_GRID_Y)
 
 //{  vbstreamer_t
 /*  Vertex array object streamer, derived from the fgt.gl.VAO0 and fgt.gl.SurfBunchPBO. */
@@ -39,8 +54,6 @@ struct vbstreamer_t {
     const GLuint cbr_posn;
     const GLuint grid_posn;
 
-    iplatform *platform;
-
     vbstreamer_t(unsigned rr = 3) :
         rrlen(rr),
         va_names(0),
@@ -58,8 +71,7 @@ struct vbstreamer_t {
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        grid_posn(6),
-        platform(0) {}
+        grid_posn(6) {}
 
     void initialize();
     df_buffer_t *get_a_buffer();
@@ -246,6 +258,134 @@ void vbstreamer_t::finalize() {
 }
 //} vbstreamer_t
 
+//{  shader_t
+/*  Shader container, derived from fgt.gl.GridShader. */
+struct shader_t {
+    GLuint program;
+
+    const int tu_ansi, tu_font, tu_findex;
+    int u_ansi_sampler;
+    int u_font_sampler;
+    int u_findex_sampler;
+    int u_final_alpha;
+    int u_pszar;
+    int u_viewpoint;
+
+    shader_t(): program(0), tu_ansi(0), tu_font(1), tu_findex(2) { }
+
+    void initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& );
+    GLuint compile(const char *fname,  GLuint type);
+    void use(float psz, float parx, float pary, int vp_x, int vp_y, float alpha);
+    void finalize();
+
+};
+
+GLuint shader_t::compile(const char *fname, GLuint type) {
+    GLuint target = glCreateShader(type);
+    GLchar *buf;
+    long len;
+
+    std::ifstream f;
+    f.open(fname, std::ios::binary);
+    if (!f.is_open())
+        platform->fatal("f.open(%s) failed.", fname);
+    len = f.seekg(0, std::ios::end).tellg();
+    f.seekg(0, std::ios::beg);
+    buf = new GLchar[len + 1];
+    f.read(buf, len);
+    f.close();
+    buf[len] = 0;
+
+    glShaderSource(target, 1, const_cast<const GLchar**>(&buf), NULL);
+    delete buf;
+    GL_DEAD_YET();
+    glCompileShader(target);
+    GL_DEAD_YET();
+
+    return target;
+}
+
+void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& vbs) {
+    program = glCreateProgram();
+    GLuint vs = compile(vsfname, GL_VERTEX_SHADER);
+    GLuint fs = compile(fsfname, GL_FRAGMENT_SHADER);
+
+    glAttachShader(program, vs);
+    glDeleteShader(vs);
+    glAttachShader(program, fs);
+    glDeleteShader(fs);
+    GL_DEAD_YET();
+
+    glBindAttribLocation(program, vbs.screen_posn, "screen");
+    glBindAttribLocation(program, vbs.texpos_posn, "texpos");
+    glBindAttribLocation(program, vbs.addcolor_posn, "addcolor");
+    glBindAttribLocation(program, vbs.grayscale_posn, "grayscale");
+    glBindAttribLocation(program, vbs.cf_posn, "cf");
+    glBindAttribLocation(program, vbs.cbr_posn, "cbr");
+    glBindAttribLocation(program, vbs.grid_posn, "grid");
+
+    glBindFragDataLocation(program, 0, "frag");
+
+    GL_DEAD_YET();
+
+    glLinkProgram(program);
+
+    GLint stuff;
+    GLchar strbuf[8192];
+    glGetProgramiv(program, GL_LINK_STATUS, &stuff);
+    if (stuff == GL_FALSE) {
+        glGetProgramInfoLog(program, 8192, NULL, strbuf);
+        platform->fatal("%s", strbuf);
+    }
+
+    u_ansi_sampler      = glGetUniformLocation(program, "ansi");
+    u_font_sampler      = glGetUniformLocation(program, "font");
+    u_findex_sampler    = glGetUniformLocation(program, "findex");
+    u_final_alpha       = glGetUniformLocation(program, "final_alpha");
+    u_pszar             = glGetUniformLocation(program, "pszar");
+    u_viewpoint         = glGetUniformLocation(program, "viewpoint");
+
+    GL_DEAD_YET();
+}
+
+void shader_t::use(float psz, float parx, float pary, int vp_x, int vp_y, float alpha) {
+    glUseProgram(program);
+    glUniform1i(u_ansi_sampler, tu_ansi);
+    glUniform1i(u_font_sampler, tu_font);
+    glUniform1i(u_findex_sampler, tu_findex);
+    glUniform3f(u_pszar, psz, parx, pary);
+    glUniform1f(u_final_alpha, alpha);
+    glUniform2i(u_viewpoint, vp_x, vp_y);
+}
+
+void shader_t::finalize() {
+
+}
+
+//} shader_t
+
+GLuint makeansitex(GLenum texture, float ccolor[16][3]) {
+    GLuint texname;
+    GLfloat ansi_stuff[16 * 4];
+    for (int i = 0; i < 16; i++) {
+        ansi_stuff[4 * i + 0] = ccolor[i][0];
+        ansi_stuff[4 * i + 1] = ccolor[i][1];
+        ansi_stuff[4 * i + 2] = ccolor[i][2];
+        ansi_stuff[4 * i + 3] = 1.0;
+    }
+    glGenTextures(1, &texname);
+    glActiveTexture(texture);
+    glBindTexture(GL_TEXTURE_2D, texname);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_FLOAT, ansi_stuff);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    GL_DEAD_YET();
+    return texname;
+}
+
 /*  OpenGL 2.1 renderer, rewrite of PRINT_MODE:SHADER. */
 
 struct implementation : public irenderer {
@@ -258,9 +398,10 @@ struct implementation : public irenderer {
     void override_grid_size(unsigned, unsigned);
     void release_grid_size();
     int mouse_state(int *mx, int *my);
+    void reset_textures();
 
-    void set_gridsize(unsigned w, unsigned h) { dimx = w, dimy = h; }
-    uint32_t get_gridsize(void) { return (dimx << 16) | (dimy & 0xFFFF); }
+    void set_gridsize(unsigned w, unsigned h) { grid_w = w, grid_h = h; }
+    uint32_t get_gridsize(void) { return (grid_w << 16) | (grid_h & 0xFFFF); }
 
     df_buffer_t *get_buffer();
     void submit_buffer(df_buffer_t *buf);
@@ -275,15 +416,19 @@ struct implementation : public irenderer {
     iplatform *platform;
     imqueue *mqueue;
     isimuloop *simuloop;
+    itextures *textures;
 
     imqd_t incoming_q;
     imqd_t free_buf_q;
 
     vbstreamer_t streamer;
+    shader_t shader;
+
+    df_texalbum_t *album;
 
     implementation();
 
-    unsigned dimx, dimy;
+    unsigned grid_w, grid_h;
     unsigned dropped_frames;
     bool not_done;
     void renderer_thread();
@@ -294,15 +439,21 @@ struct implementation : public irenderer {
 
     void slurp_keys();
     void initialize();
+    void finalize();
     void render_the_buffer(const df_buffer_t *buf);
     void do_the_flip();
-    void post_free_buffer(df_buffer_t *);
+    void reshape(int w, int h, int psz);
 
-    int Pszx, Pszy, Psz;                      // Point sprite size as drawn
-    int viewport_offset_x, viewport_offset_y; // viewport tracking
-    int viewport_w, viewport_h;               // for mouse coordinate transformation
-    int mouse_wx, mouse_wy;                   // mouse window coordinates
-    int mouse_gx, mouse_gy;                   // mouse grid coordinates
+    float Parx, Pary;               // cel aspect ratio
+    int Psz_native, Psz;            // larger dimension of cel 0
+    int viewport_x, viewport_y;     // viewport tracking
+    int viewport_w, viewport_h;     // for mouse coordinate transformation
+    int mouse_xw, mouse_yw;         // mouse window coordinates
+    int mouse_xg, mouse_yg;         // mouse grid coordinates
+    GLuint ansitex;
+    GLuint fonttex;
+    GLuint findextex;
+    bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
 };
 
 void implementation::initialize() {
@@ -390,27 +541,179 @@ void implementation::initialize() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
 
+    glGenTextures(1, &fonttex);
+    glGenTextures(1, &findextex);
+
     GL_DEAD_YET();
 
+    ansitex = makeansitex(GL_TEXTURE0, NULL);
     streamer.initialize();
+    shader.initialize("lib/pms.vs", "lib/pms.fs", streamer);
+
+    cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = cmd_tex_reset = false;
+    album = NULL;
 }
 
+void implementation::finalize() {
+    glDeleteTextures(1, &ansitex);
+    glDeleteTextures(1, &fonttex);
+    glDeleteTextures(1, &findextex);
+    shader.finalize();
+    streamer.finalize();
+}
+
+DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
+uint16_t translate_sdl2_mod(uint16_t mod) { return mod; }
 
 void implementation::slurp_keys() {
+    SDL_Event sdl_event;
+    df_input_event_t df_event;
+    uint32_t now = platform->GetTickCount();
 
+    while (SDL_PollEvent(&sdl_event)) {
+        bool submit = true;
+
+        df_event.now = now;
+        df_event.mod = DFMOD_NONE;
+        df_event.reports_release = true;
+        df_event.sym = DFKS_UNKNOWN;
+        df_event.unicode = 0;
+
+        switch(sdl_event.type) {
+        case SDL_TEXTINPUT:
+            platform->log_info("SDL_TEXTINPUT: '%s'", sdl_event.text.text);
+            submit = false;
+            break;
+        case SDL_KEYDOWN:
+            df_event.type = df_input_event_t::DF_KEY_DOWN;
+            df_event.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
+            df_event.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
+            df_event.unicode = sdl_event.key.keysym.unicode;
+            break;
+        case SDL_KEYUP:
+            df_event.type = df_input_event_t::DF_KEY_UP;
+            df_event.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
+            df_event.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
+            df_event.unicode = sdl_event.key.keysym.unicode;
+            break;
+        case SDL_MOUSEMOTION:
+            submit = false;
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONUP:
+            switch (sdl_event.button.button) {
+            case SDL_BUTTON_LEFT:
+                df_event.button = df_input_event_t::DF_BUTTON_LEFT;
+                break;
+            case SDL_BUTTON_MIDDLE:
+                df_event.button = df_input_event_t::DF_BUTTON_RIGHT;
+                break;
+            case SDL_BUTTON_RIGHT:
+                df_event.button = df_input_event_t::DF_BUTTON_MIDDLE;
+                break;
+            case SDL_BUTTON_X1:
+                platform->log_info("SDL_BUTTON_X1: '%s'", sdl_event.text.text);
+                submit = false;
+                break;
+            case SDL_BUTTON_X2:
+                platform->log_info("SDL_BUTTON_X2: '%s'", sdl_event.text.text);
+                submit = false;
+                break;
+            default:
+                submit = false;
+                break;
+            }
+            if (sdl_event.type == SDL_MOUSEBUTTONDOWN)
+                df_event.type = df_input_event_t::DF_BUTTON_DOWN;
+            else
+                df_event.type = df_input_event_t::DF_BUTTON_UP;
+            break;
+        case SDL_MOUSEWHEEL:
+            platform->log_info("SDL_MOUSEWHEEL: x=%d y=%d", sdl_event.wheel.x, sdl_event.wheel.y);
+            if (sdl_event.wheel.y < 0) {
+                df_event.type = df_input_event_t::DF_BUTTON_DOWN;
+                df_event.button = df_input_event_t::DF_WHEEL_UP;
+            } else if (sdl_event.wheel.y > 0) {
+                df_event.type = df_input_event_t::DF_BUTTON_DOWN;
+                df_event.button = df_input_event_t::DF_WHEEL_DOWN;
+            } else if (sdl_event.wheel.y == 0) {
+                submit = false;
+            }
+            break;
+        case SDL_WINDOWEVENT:
+            switch (sdl_event.window.event) {
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+            case SDL_WINDOWEVENT_SHOWN:
+            case SDL_WINDOWEVENT_EXPOSED:
+                break;
+            case SDL_WINDOWEVENT_RESIZED:
+                reshape(sdl_event.window.data1, sdl_event.window.data2, -1);
+            default:
+                break;
+            }
+            submit = false;
+            break;
+        case SDL_WINDOWEVENT_CLOSE:
+            platform->log_info("SDL_WINDOWEVENT_CLOSE");
+            submit = false;
+            break;
+        case SDL_QUIT:
+            df_event.type = df_input_event_t::DF_QUIT;
+            break;
+
+        default:
+            submit = false;
+            break;
+        }
+        if (submit)
+            simuloop->add_input_event(&df_event);
+    }
 
     { // update mouse state
-
-        SDL_GetMouseState(&mouse_wx, &mouse_wy);
-        mouse_gx = (mouse_wx - viewport_offset_x) / Pszx;
-        mouse_gy = (mouse_wy - viewport_offset_y) / Pszy;
+        SDL_GetMouseState(&mouse_xw, &mouse_yw);
+        mouse_xg = (mouse_xw - viewport_x) / (Parx * Psz);
+        mouse_yg = (mouse_yw - viewport_y) / (Pary * Psz);
     }
+
 }
 
 void implementation::do_the_flip() { SDL_GL_SwapWindow(gl_window); }
 void implementation::renderer_thread(void) {
     while(not_done) {
+
         slurp_keys();
+
+        if (cmd_zoom_in) {
+            cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
+            reshape(-1, -1, Psz + 1);
+        }
+        if (cmd_zoom_out) {
+            cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
+            if (Psz > 3) // don't be ridiculous
+                reshape(-1, -1, Psz - 1);
+        }
+        if (cmd_zoom_reset) {
+            cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
+            reshape(-1, -1, Psz_native);
+        }
+        if (cmd_tex_reset) {
+            cmd_tex_reset = false;
+            if (album)
+                textures->release_album(album);
+            album = textures->get_album();
+            int cw = album->index[0].rect.w;
+            int ch = album->index[0].rect.h;
+            if (cw > ch) {
+                Parx = 1.0;
+                Pary = (float)ch/(float)cw;
+                Psz = Psz_native = cw;
+            } else {
+                Parx = (float)cw/(float)ch;
+                Pary = 1.0;
+                Psz = Psz_native = ch;
+            }
+            reshape(-1, -1, Psz);
+        }
 
         df_buffer_t *buf = NULL;
         unsigned read_timeout_ms = 10;
@@ -452,6 +755,44 @@ void implementation::renderer_thread(void) {
     }
 }
 
+/*
+
+resize: just make grid fit into the window; adjust viewport to center it.
+zoom: same, only psz changes, not window size.
+
+all based on proportions of the base celpage, rest of cels get shrunk or stretched.
+
+see fgt.gl.rednerer.reshape()
+
+*/
+void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
+    platform->log_info("reshape(): got window %dx%d psz %d",new_window_w, new_window_h, new_psz);
+
+    if (!album || !album->count) // can't draw anything without textures anyway
+        return;
+
+    if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
+        if (new_psz > 0)
+            platform->fatal("reshape + zoom : can't");
+    } else { // a zoom
+        SDL_GetWindowSize(gl_window, &new_window_w, &new_window_h);
+        Psz = new_psz;
+    }
+
+    int new_grid_w = new_window_w / (Psz * Parx);
+    int new_grid_h = new_window_h / (Psz * Pary);
+
+    grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
+    grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
+
+    viewport_w = grid_w * Psz * Parx;
+    viewport_h = grid_h * Psz * Pary;
+    viewport_x = ( new_window_w - viewport_w ) / 2;
+    viewport_y = ( new_window_h - viewport_h ) / 2;
+
+    glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
+}
+
 /* Below go methods intended for other threads */
 
 /* return value of NULL means: skip that render_things() call. */
@@ -483,10 +824,18 @@ df_buffer_t *implementation::get_buffer(void) {
     return buf;
 }
 
+
+void implementation::zoom_in() { cmd_zoom_in = true; }
+void implementation::zoom_out() { cmd_zoom_out = true; }
+void implementation::zoom_reset() { cmd_zoom_reset = true;  }
+void implementation::toggle_fullscreen() { platform->log_info("toggle_fullscreen(): stub"); }
+void implementation::override_grid_size(unsigned, unsigned)  { platform->log_info("override_grid_size(): stub"); }
+void implementation::release_grid_size() { platform->log_info("release_grid_size(): stub"); }
+void implementation::reset_textures() { cmd_tex_reset = true;  }
 int implementation::mouse_state(int *x, int *y) {
     /* race-prone. convert to uint32_t mouse_gxy if it causes problems. */
-    *x = mouse_gx;
-    *y = mouse_gy;
+    *x = mouse_xg;
+    *y = mouse_yg;
     return 42;
 }
 
@@ -494,7 +843,7 @@ implementation::implementation() {
     started = false;
     not_done = true;
     dropped_frames = 0;
-    platform = getplatform();
+    textures = gettextures();
     simuloop = getsimuloop();
     mqueue = getmqueue();
     incoming_q = mqueue->open("renderer", 1<<10);
@@ -545,6 +894,7 @@ void implementation::release(void) { }
 static implementation *impl = NULL;
 extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void) {
     if (!impl)
+        platform = getplatform();
         impl = new implementation();
     return impl;
 }

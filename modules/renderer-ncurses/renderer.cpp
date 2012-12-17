@@ -29,6 +29,8 @@ struct implementation : public irenderer {
     df_buffer_t *get_buffer();
     void submit_buffer(df_buffer_t *buf);
 
+    void reset_textures();
+
     void acknowledge(const itc_message_t&) {}
 
     void start();
@@ -67,6 +69,7 @@ implementation::implementation() {
     this->set_gridsize(x, y);
 }
 #define NOT_IMPLEMENTED(foo) getplatform()->log_error("renderer_ncurses::" #foo " not implemented.\n")
+void implementation::reset_textures() { NOT_IMPLEMENTED(reset_textures); }
 void implementation::zoom_in() { NOT_IMPLEMENTED(zoom_in); }
 void implementation::zoom_out() { NOT_IMPLEMENTED(zoom_out); }
 void implementation::zoom_reset() { NOT_IMPLEMENTED(zoom_reset); }

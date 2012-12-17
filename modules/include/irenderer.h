@@ -175,6 +175,9 @@ struct irenderer : public imessagesender {
 
     /* notifies of */
     virtual void simuloop_quit() = 0;
+
+    /* signals to grab new texalbum */
+    virtual void reset_textures() = 0;
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)

@@ -117,7 +117,12 @@ typedef std::forward_list<implementation::celpage>::iterator piter_t;
 typedef std::forward_list<std::pair<long, long>>::iterator cliter_t;
 typedef std::forward_list<long>::iterator griter_t;
 
-/* see fgtestbed fgt.raw.Pageman */
+/* see fgtestbed fgt.raw.Pageman
+
+   This gets called from renderer thread while the load_* stuff
+   gets called from simu thread. There is no sync atm, just hope it
+   doesn't crash and burn for now.
+*/
 df_texalbum_t *implementation::get_album() {
     int album_w = 1024; // it's pot; and dumps are manageable in a viewer.
     int w_lcm = 1;
@@ -234,8 +239,8 @@ void implementation::grayscale_texture(long pos) {
     grays.push_front(pos);
 }
 
-void implementation::load_multi_pdim(const char *filename, long *tex_pos, long dimx, long dimy,
-			       bool convert_magenta, long *disp_x, long *disp_y) {
+void implementation::load_multi_pdim(const char *filename, long *tex_pos,
+      long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y) {
 
     SDL_Surface *s = load_normalize(filename);
     *disp_x = s->w/dimx, *disp_y = s->h/dimy;

@@ -274,13 +274,12 @@ struct shader_t {
     int u_findex_sampler;
     int u_final_alpha;
     int u_pszar;
-    int u_viewpoint;
 
     shader_t(): program(0), tu_ansi(0), tu_font(1), tu_findex(2) { }
 
     void initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& );
     GLuint compile(const char *fname,  GLuint type);
-    void use(float psz, float parx, float pary, int vp_x, int vp_y, float alpha);
+    void use(int psz, float parx, float pary, float alpha);
     void finalize();
 
 };
@@ -348,19 +347,19 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
     u_findex_sampler    = glGetUniformLocation(program, "findex");
     u_final_alpha       = glGetUniformLocation(program, "final_alpha");
     u_pszar             = glGetUniformLocation(program, "pszar");
-    u_viewpoint         = glGetUniformLocation(program, "viewpoint");
 
     GL_DEAD_YET();
 }
 
-void shader_t::use(float psz, float parx, float pary, int vp_x, int vp_y, float alpha) {
+void shader_t::use(int psz, float parx, float pary, float alpha) {
     glUseProgram(program);
-    glUniform1i(u_ansi_sampler, tu_ansi);
-    glUniform1i(u_font_sampler, tu_font);
-    glUniform1i(u_findex_sampler, tu_findex);
-    glUniform3f(u_pszar, psz, parx, pary);
-    glUniform1f(u_final_alpha, alpha);
-    glUniform2i(u_viewpoint, vp_x, vp_y);
+    glUniform1i(u_ansi_sampler, tu_ansi); GL_DEAD_YET();
+    glUniform1i(u_font_sampler, tu_font); GL_DEAD_YET();
+    glUniform1i(u_findex_sampler, tu_findex); GL_DEAD_YET();
+    glUniform3f(u_pszar, psz, parx, pary); GL_DEAD_YET();
+    glUniform1f(u_final_alpha, alpha); GL_DEAD_YET();
+
+    GL_DEAD_YET();
 }
 
 void shader_t::finalize() {

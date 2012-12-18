@@ -527,11 +527,11 @@ int main (int argc, char* argv[]) {
 
     int w = 128, h = 32;
     bool toroidal = false;
-    if (argc >= 5) {
-        w = atoi(argv[3]);
-        h = atoi(argv[4]);
+    if (argc >= 4) {
+        w = atoi(argv[2]);
+        h = atoi(argv[3]);
     }
-    if (argc == 6)
+    if (argc == 5)
         toroidal = true;
 
     sim = new gofsim_t(w, h, toroidal);
@@ -544,6 +544,11 @@ int main (int argc, char* argv[]) {
     platform = getplatform();
     irenderer *renderer = getrenderer();
     isimuloop *simuloop = getsimuloop();
+    itextures *textures = gettextures();
+    //const char *filename, long *tex_pos, long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y
+    long tex_pos[256], tdispy, tdispx;
+    textures->load_multi_pdim("curses_800x600.png", tex_pos, 16, 16, true, &tdispx, &tdispy);
+    renderer->reset_textures();
 
     // set up the simuloop
     simuloop->set_callbacks(mainloop, render_things, assimilate_buffer, add_input_event);

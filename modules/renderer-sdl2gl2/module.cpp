@@ -719,10 +719,20 @@ void implementation::renderer_thread(void) {
         }
 
         df_buffer_t *buf = NULL;
+        int rv;
+
+        if ((buf = streamer.get_a_buffer()) != NULL) {
+            /* whoa, streamer got buffers: rid it of them */
+            df_buffer_t *tbuf;
+            while ((tbuf = streamer.get_a_buffer()) != NULL)
+                if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
+                    platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
+        }
+
         unsigned read_timeout_ms = 10;
         while (true) {
             void *vbuf; size_t vlen;
-            int rv = mqueue->recv(incoming_q, &vbuf, &vlen, read_timeout_ms);
+            rv = mqueue->recv(incoming_q, &vbuf, &vlen, read_timeout_ms);
             read_timeout_ms = 0;
 
             if (rv == IMQ_TIMEDOUT)
@@ -813,20 +823,10 @@ df_buffer_t *implementation::get_buffer(void) {
             mqueue->free(msg);
             return buf;
         case IMQ_TIMEDOUT:
-            break;
+            return NULL;
         default:
             platform->fatal("%s: %d from mqueue->recv()", __func__, rv);
     }
-    /* whoops, free_buf_q is empty. try to fill it */
-
-    if ((buf = streamer.get_a_buffer()) != NULL) {
-        /* whoa, streamer got buffers: rid it of them */
-        df_buffer_t *tbuf;
-        while ((tbuf = streamer.get_a_buffer()) != NULL)
-            if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
-                platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
-    }
-
     return buf;
 }
 

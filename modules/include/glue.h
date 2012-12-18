@@ -15,4 +15,6 @@ int load_module(const char *soname);
 
 bool load_platform(const char *platname, const char *modpath);
 
+bool lock_and_load(const char *printmode, const char *modpath);
+
 #endif

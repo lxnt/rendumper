@@ -139,15 +139,16 @@ int load_module(const char *soname) {
     return rv;
 }
 
-bool load_platform(const char *platname, const char *modpath) {
+bool load_platform(const char *platform, const char *modpath) {
     if (modpath)
         set_modpath(modpath);
+    else if ((modpath = getenv("DF_MODULES_PATH")))
+        set_modpath(modpath);
 
-    std::string soname("platform_");
-    soname += platname;
+    std::string soname = "platform_";
+    soname += platform;
 
     if (!load_module(soname.c_str())) {
-        fprintf(stderr, "Failed to load platform module '%s'", soname.c_str());
         return false;
     }
 
@@ -156,11 +157,38 @@ bool load_platform(const char *platname, const char *modpath) {
         return false;
     }
 
-    soname = "renderer_";
-    soname += platname;
-    if (!load_module(soname.c_str())) {
-        getplatform()->log_error("Failed to load renderer module %s", soname.c_str());
+    return true;
+}
+
+bool lock_and_load(const char *printmode, const char *modpath) {
+    if (!printmode)
+        printmode = getenv("DF_PRINTMODE");
+    if (!printmode)
+        return false;
+
+    std::string pm(printmode);
+    std::string platform;
+
+    if (pm == "ncurses") {
+        platform = pm;
+    } else if (pm.find("sdl2") == 0) { // str.startswith()
+        platform = "sdl2";
+    } else if (pm.find("sdl") == 0) {
+        platform = "sdl";
+    }
+
+    if (!load_platform(platform.c_str(), modpath))
+        return false;
+
+    std::string renreder = "renderer_";
+    renreder += printmode;
+
+    if (!load_module(renreder.c_str())) {
+        getplatform()->log_error("Failed to load renderer module %s\n", renreder.c_str());
         return false;
     }
+
+    /* also load some non-stub sound, when we have any working */
+
     return true;
 }

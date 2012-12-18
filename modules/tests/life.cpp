@@ -15,8 +15,12 @@
 #include "irenderer.h"
 #include "isimuloop.h"
 #include "itypes.h"
+#include "itextures.h"
+
 
 #include "glue.h"
+
+//{ guts
 
 iplatform *platform = NULL;
 
@@ -507,19 +511,19 @@ void gofui_t::render_things(void) {
     }
 }
 
+//}
+
 int main (int argc, char* argv[]) {
 #if defined(WIN32)
     windoze_crap();
 #endif
-    if (argc < 3) {
-	fprintf(stderr, "Usage: %s module-path platform-name [w h] [tor]\n", argv[0]);
-	return 1;
-    }
-
-    if (!load_platform(argv[2], argv[1])) {
-        fprintf(stderr, "loadplatform(%s, %s) failed.\n", argv[2], argv[1]);
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s print_mode [w h] [tor]\n", argv[0]);
         return 1;
     }
+
+    if (!lock_and_load(argv[1], NULL))
+        return 1;
 
     int w = 128, h = 32;
     bool toroidal = false;

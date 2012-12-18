@@ -4,6 +4,7 @@
 #include "imqueue.h"
 #include "irenderer.h"
 #include "emafilter.h"
+#include "df_buffer.h"
 
 #define DFMODULE_BUILD
 #include "isimuloop.h"
@@ -166,16 +167,17 @@ void implementation::simulation_thread() {
     incoming_q  = mqueue->open("simuloop", 1<<10);
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
-    df_buffer_t *renderbuf = renderer->get_buffer();
-    platform->log_info("got renderbuf %dx%d", renderbuf->w, renderbuf->h);
-    assimilate_buffer_cb(renderbuf);
-
+    df_buffer_t *renderbuf = NULL;
+    df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
+    assimilate_buffer_cb(backup_buf);
 
     uint32_t last_renderth_at = 0;
     uint32_t last_mainloop_at = 0;
     int32_t read_timeout_ms = 0;
+    bool force_renderth = false;  // got a command to render (from whom?)
+    bool due_renderth = false;    // next frame is due
+
     while (true) {
-        bool force_renderth = false;
 
         //platform->log_info("read_timeout_ms=%d", read_timeout_ms);
         while (true) {
@@ -251,20 +253,28 @@ void implementation::simulation_thread() {
         }
 
         if ((platform->GetTickCount() - last_renderth_at) > target_renderth_ms)
-            force_renderth = true;
+            due_renderth = true;
 
-        if (force_renderth) {
-            force_renderth = false;
-            uint32_t rt_start_ms = platform->GetTickCount();
-            render_things_cb();
-            renderer->submit_buffer(renderbuf);
-            renderbuf = renderer->get_buffer();
-            assimilate_buffer_cb(renderbuf);
-            renders ++;
-            uint32_t rt_end_ms = platform->GetTickCount();
-            render_things_period_ms.update(rt_end_ms - last_renderth_at);
-            render_things_time_ms.update(rt_end_ms - rt_start_ms);
-            last_renderth_at = rt_end_ms;
+        /* if we're forced to render instead of it being due; do we really
+           force a buffer from the renderer, or just skip? */
+        if (force_renderth or due_renderth) {
+            due_renderth = false;
+            if ((renderbuf = renderer->get_buffer()) != NULL) {
+                force_renderth = false;
+                assimilate_buffer_cb(renderbuf);
+                uint32_t rt_start_ms = platform->GetTickCount();
+                render_things_cb();
+                uint32_t rt_end_ms = platform->GetTickCount();
+                renderer->submit_buffer(renderbuf);
+                assimilate_buffer_cb(backup_buf); // so that gps pointers stay valid: is this really needed?
+                renders ++;
+                render_things_period_ms.update(rt_end_ms - last_renderth_at);
+                render_things_time_ms.update(rt_end_ms - rt_start_ms);
+                last_renderth_at = rt_end_ms;
+            } else {
+                platform->log_info("[%d] graphics frame skipped: no buffer from the renderer", events_done_at);
+                last_renderth_at = events_done_at;
+            }
         }
 
         /* here calculate how long can we sleep in mq->read()

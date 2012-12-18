@@ -108,7 +108,7 @@ set(HEADERS
     include/imusicsound.h
     include/itextures.h
     include/irenderer.h )
-install(FILES ${HEADERS} DESTINATION include)
+install(FILES ${HEADERS} DESTINATION include/dfmodules)
 
 set(POSIX_COMMON
     common/posix_glob.cpp
@@ -204,7 +204,7 @@ install(TARGETS common_code LIBRARY DESTINATION ${DFMOD_DESTDIR})
 
 # the glue
 add_library(glue glue.cpp)
-install(TARGETS glue ARCHIVE DESTINATION lib)
+install(TARGETS glue ARCHIVE DESTINATION lib/dfmodules)
 
 # tests
 add_executable(test-alert tests/alert.cpp)

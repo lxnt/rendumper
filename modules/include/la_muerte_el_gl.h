@@ -3,6 +3,6 @@
 
 void _gl_fatalize(const char *, const int, const char *);
 
-#define GL_DEAD_YET(where) _gl_fatalize(__FILE__, __LINE__, __func__)
+#define GL_DEAD_YET() _gl_fatalize(__FILE__, __LINE__, __func__)
 
 #endif

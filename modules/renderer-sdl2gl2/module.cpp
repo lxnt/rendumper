@@ -95,6 +95,7 @@ void vbstreamer_t::initialize() {
     va_names = new GLuint[rrlen];
     bo_names = new GLuint[rrlen];
     syncs = new GLsync[rrlen];
+    memset(syncs, 0, sizeof(GLsync)*rrlen);
     bufs = new df_buffer_t*[rrlen];
     glGenVertexArrays(rrlen, va_names);
     glGenBuffers(rrlen, bo_names);
@@ -173,8 +174,11 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         /* discard frame: it's of wrong size anyway. reset vao while at it */
         /* this can cause spikes in fps: maybe don't submit those samples? */
         remap_buf(buf);
+        platform->log_info("vbstreamer_t::draw(): remapped %d: grid mismatch", which);
         return;
     }
+    platform->log_info("vbstreamer_t::draw(): drawing %d", which);
+
     glBindVertexArray(which);
     glDrawArrays(GL_POINTS, 0, w*h);
 
@@ -182,7 +186,6 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     syncs[which] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-
     last_drawn = which;
 
     GL_DEAD_YET();
@@ -297,7 +300,7 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
     buf[len] = 0;
 
     glShaderSource(target, 1, const_cast<const GLchar**>(&buf), NULL);
-    delete buf;
+    delete []buf;
     GL_DEAD_YET();
     glCompileShader(target);
     GL_DEAD_YET();
@@ -414,7 +417,6 @@ struct implementation : public irenderer {
     void simuloop_quit() { not_done = false; }
     bool started;
 
-    iplatform *platform;
     imqueue *mqueue;
     isimuloop *simuloop;
     itextures *textures;
@@ -442,7 +444,6 @@ struct implementation : public irenderer {
     void initialize();
     void finalize();
     void render_the_buffer(const df_buffer_t *buf);
-    void do_the_flip();
     void reshape(int w, int h, int psz);
 
     float Parx, Pary;               // cel aspect ratio
@@ -678,7 +679,6 @@ void implementation::slurp_keys() {
 
 }
 
-void implementation::do_the_flip() { SDL_GL_SwapWindow(gl_window); }
 void implementation::renderer_thread(void) {
     while(not_done) {
 
@@ -746,12 +746,6 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
-            render_the_buffer(buf);
-            free_buffer_t(buf);
-            /* SDL_Flip() or whatever might look better in before render,
-               so that previous frame gets rendered while input is being
-               processed and other stuff is going on */
-            do_the_flip();
         }
     }
 }
@@ -769,8 +763,10 @@ see fgt.gl.rednerer.reshape()
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     platform->log_info("reshape(): got window %dx%d psz %d",new_window_w, new_window_h, new_psz);
 
-    if (!album || !album->count) // can't draw anything without textures anyway
+    if (!album || !album->count) { // can't draw anything without textures anyway
+        platform->log_info("reshape(): no textures.");
         return;
+    }
 
     if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
         if (new_psz > 0)
@@ -847,10 +843,11 @@ implementation::implementation() {
     textures = gettextures();
     simuloop = getsimuloop();
     mqueue = getmqueue();
-    incoming_q = mqueue->open("renderer", 1<<10);
-    free_buf_q = mqueue->open("free_buffers", 1<<10);
+    if ((incoming_q = mqueue->open("renderer", 1<<10)) < 0)
+        platform->fatal("%s: %d from mqueue->open(renderer)", __func__, incoming_q);
 
-    initialize();
+    if ((free_buf_q = mqueue->open("free_buffers", 1<<10)) < 0)
+        platform->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
 }
 
 /* Below is code copied from renderer_ncurses.
@@ -858,7 +855,7 @@ implementation::implementation() {
    ripped out. All SDL/GL specific code is to be
    put into other methods or helper functions. */
 
-/*  All those methods want to go into a parent class. */
+//{  All those methods want to go into a parent class.
 
 void implementation::submit_buffer(df_buffer_t *buf) {
     itc_message_t msg;
@@ -900,6 +897,8 @@ void implementation::join() {
     }
     platform->thread_join(thread_id, NULL);
 }
+
+//}
 
 void implementation::release(void) { }
 

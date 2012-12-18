@@ -6,7 +6,7 @@
 #include "ideclspec.h"
 /* Interthread message queues */
 
-typedef size_t imqd_t;
+typedef int imqd_t;
 enum mq_errors {
     IMQ_OK               = 0,
     IMQ_EXIST            = -17,    /* open() with maxmsg > 0  and queue already exists. */

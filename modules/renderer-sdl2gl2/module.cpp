@@ -304,6 +304,19 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
     delete []buf;
     GL_DEAD_YET();
     glCompileShader(target);
+
+    GLint param;
+    glGetShaderiv(target, GL_COMPILE_STATUS, &param);
+    if (param != GL_TRUE) {
+        glGetShaderiv(target, GL_INFO_LOG_LENGTH, &param);
+        buf = new GLchar[param + 1];
+        glGetShaderInfoLog(target, param, NULL, buf);
+        platform->log_error("'%s' compile: %s", fname, buf);
+        delete []buf;
+    } else {
+        platform->log_info("'%s' compiled ok.", fname);
+    }
+
     GL_DEAD_YET();
 
     return target;

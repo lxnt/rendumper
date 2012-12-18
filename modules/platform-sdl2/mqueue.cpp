@@ -184,7 +184,7 @@ struct implementation : public imqueue {
     int send(imqd_t qd, void *buf, size_t len, int timeout);
     int copy(imqd_t qd, void *buf, size_t len, int timeout);
     int recv(imqd_t qd, void **buf, size_t *len, int timeout);
-    void free(void *buf) { free(buf); }
+    void free(void *buf) { ::free(buf); }
 };
 
 the_queue *implementation::find_queue(const char *name) {

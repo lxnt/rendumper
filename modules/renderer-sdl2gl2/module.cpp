@@ -12,6 +12,7 @@
 #include "itextures.h"
 #include "la_muerte_el_gl.h"
 #include "df_buffer.h"
+#include "ansi_colors.h"
 
 #define DFMODULE_BUILD
 #include "irenderer.h"
@@ -367,13 +368,13 @@ void shader_t::finalize() {
 
 //} shader_t
 
-GLuint makeansitex(GLenum texture, float ccolor[16][3]) {
+GLuint makeansitex(GLenum texture, ansi_colors_t ccolor) {
     GLuint texname;
     GLfloat ansi_stuff[16 * 4];
     for (int i = 0; i < 16; i++) {
-        ansi_stuff[4 * i + 0] = ccolor[i][0];
-        ansi_stuff[4 * i + 1] = ccolor[i][1];
-        ansi_stuff[4 * i + 2] = ccolor[i][2];
+        ansi_stuff[4 * i + 0] = ccolor[i][0] / 255.0;
+        ansi_stuff[4 * i + 1] = ccolor[i][1] / 255.0;
+        ansi_stuff[4 * i + 2] = ccolor[i][2] / 255.0;
         ansi_stuff[4 * i + 3] = 1.0;
     }
     glGenTextures(1, &texname);

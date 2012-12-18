@@ -122,6 +122,7 @@ set(WINDOZE_COMMON
 
 set(GL_COMMON
     common/la_muerte_el_gl.cpp
+    common/df_buffer.cpp
 )
 
 option(SOUND_OPENAL "build sound-openal module" OFF)
@@ -197,6 +198,7 @@ set(COMMON_SRC
     common/simuloop.cpp
     common/sound-stub.cpp
     common/textures-stub.cpp
+    common/df_buffer.cpp
     )
 add_library(common_code SHARED ${COMMON_SRC})
 set_target_properties(common_code PROPERTIES PREFIX "")

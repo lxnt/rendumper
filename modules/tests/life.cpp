@@ -551,9 +551,14 @@ int main (int argc, char* argv[]) {
     simuloop->set_target_rfps(4);
 
     // run the loops
-    renderer->start();
-    simuloop->start();
-    renderer->join();
+    if (!getenv("RENDER_IN_MAIN")) {
+        renderer->start();
+        simuloop->start();
+        renderer->join();
+    } else {
+        simuloop->start();
+        renderer->run_here();
+    }
 
     delete sim;
     return 0;

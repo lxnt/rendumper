@@ -173,6 +173,9 @@ struct irenderer : public imessagesender {
     virtual void start() = 0;
     virtual void join() = 0;
 
+    /* runs the loop in the current thread */
+    virtual void run_here() = 0;
+
     /* notifies of */
     virtual void simuloop_quit() = 0;
 

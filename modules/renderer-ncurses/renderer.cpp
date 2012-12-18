@@ -35,6 +35,7 @@ struct implementation : public irenderer {
 
     void start();
     void join();
+    void run_here();
     void simuloop_quit() { not_done = false; }
     bool started;
 
@@ -109,6 +110,10 @@ static int thread_stub(void *data) {
     implementation *owner = (implementation *) data;
     owner->renderer_thread();
     return 0;
+}
+
+void implementation::run_here() {
+    renderer_thread();
 }
 
 void implementation::start() {

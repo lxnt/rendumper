@@ -410,6 +410,7 @@ struct implementation : public irenderer {
 
     void start();
     void join();
+    void run_here();
     void simuloop_quit() { not_done = false; }
     bool started;
 
@@ -868,8 +869,19 @@ void implementation::submit_buffer(df_buffer_t *buf) {
 
 static int thread_stub(void *data) {
     implementation *owner = (implementation *) data;
+    owner->initialize();
     owner->renderer_thread();
     return 0;
+}
+
+void implementation::run_here() {
+    if (started) {
+        platform->log_error("second renderer start ignored\n");
+        return;
+    }
+    started = true;
+    initialize();
+    renderer_thread();
 }
 
 void implementation::start() {
@@ -893,9 +905,10 @@ void implementation::release(void) { }
 
 static implementation *impl = NULL;
 extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void) {
-    if (!impl)
+    if (!impl) {
         platform = getplatform();
         impl = new implementation();
+    }
     return impl;
 }
 } /* ns */

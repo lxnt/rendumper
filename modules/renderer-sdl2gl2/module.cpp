@@ -79,6 +79,7 @@ struct vbstreamer_t {
     void draw(df_buffer_t *);
     void finalize();
     void remap_buf(df_buffer_t *);
+    void set_grid(uint32_t, uint32_t);
     unsigned find(const df_buffer_t *) const;
 };
 
@@ -789,6 +790,13 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     viewport_y = ( new_window_h - viewport_h ) / 2;
 
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
+
+    streamer.set_grid(grid_w, grid_h);
+
+    platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %dx%d",
+                        viewport_w, viewport_h, viewport_x, viewport_y,
+                        grid_w, grid_h, (int)(Psz*Parx), (int)(Psz*Pary));
+
 }
 
 /* Below go methods intended for other threads */

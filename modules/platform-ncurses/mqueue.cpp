@@ -291,7 +291,7 @@ imqd_t implementation::open(const char *name, int max_messages) {
 
 int implementation::close(imqd_t qd) {
     mutex_lock(&queues_mtx);
-    if (qd >= queues.size()) {
+    if (qd >= (int)queues.size()) {
         mutex_unlock(&queues_mtx);
         return IMQ_BADF;
     }
@@ -325,7 +325,7 @@ int implementation::unlink(const char *name) {
 
 the_queue *implementation::get_queue(imqd_t qd) {
     mutex_lock(&queues_mtx);
-    if (qd >= queues.size()) {
+    if (qd >= (int)queues.size()) {
         mutex_unlock(&queues_mtx);
         return NULL;
     }

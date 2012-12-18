@@ -75,10 +75,14 @@ SDL_Surface *beloved_surface(int w, int h) {
 /* make sure it's of our belowed pixelformat and blendmode is none */
 SDL_Surface *load_normalize(const char *filename) {
     SDL_Surface *s = SDL_LoadPNG(filename);
-    if (!s)
+    if (!s) {
+        platform->log_info("SDL_LoadPNG(): %s", SDL_GetError());
         s = SDL_LoadBMP(filename);
-    if (!s)
+    }
+    if (!s) {
+        platform->log_info("SDL_LoadBMP(): %s", SDL_GetError());
         platform->fatal("%s: neither PNG nor BMP, or corrupted.", filename);
+    }
 
     SDL_Surface *d = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
 

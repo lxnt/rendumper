@@ -122,32 +122,62 @@ void vbstreamer_t::initialize() {
 df_buffer_t *vbstreamer_t::get_a_buffer() {
     /* this defines the order of buffer submission */
     int which = last_drawn < rrlen - 1 ? last_drawn + 1 : 0;
+    GLenum srv;
+    GLint param;
 
-    /* check if the buf is ready to be mapped */
+    glBindBuffer(GL_COPY_READ_BUFFER, bo_names[which]);
+    glGetBufferParameteriv(GL_COPY_READ_BUFFER, GL_BUFFER_MAPPED, &param);
+    glBindBuffer(GL_COPY_READ_BUFFER, 0);
+    GL_DEAD_YET();
+
+    if (param)
+        return NULL;
+
     if (syncs[which]) {
-        switch (glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
+        switch (srv = glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
             case GL_ALREADY_SIGNALED:
             case GL_CONDITION_SATISFIED:
                 glDeleteSync(syncs[which]);
                 syncs[which] = NULL;
                 break;
             case GL_TIMEOUT_EXPIRED:
-                /*  No buffers to map, GPU got stuffed.
-                    We don't want to wait here, since that's going to
-                    block simuloop() in before render_things().
-                    It should take this fail as a hint to submit less frames. */
                 return NULL;
             case GL_WAIT_FAILED:
                 /* some fuckup with syncs[] */
                 platform->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
             default:
-                platform->fatal("glClientWaitSync(syncs[%d]=%p): unbelievable.", which, syncs[which]);
+                GL_DEAD_YET();
+                platform->fatal("glClientWaitSync(syncs[%d]=%p): %x : unbelievable.", which, syncs[which], srv);
         }
     }
 
     remap_buf(bufs[which]);
+    platform->log_info("vbstreamer_t::get_a_buffer(): returning #%d: %dx%d, ", which, bufs[which]->w, bufs[which]->h);
     return bufs[which];
 }
+
+void vbstreamer_t::set_grid(uint32_t _w, uint32_t _h) {
+    platform->log_info("vbstreamer_t: setting grid %ux%u -> %ux%u",w, h, _w, _h);
+    w = _w, h = _h;
+}
+
+/* buffer states:
+    - unmapped, not in any use - initial state.
+    - mapped, not in any use
+    - mapped, in free_buffers queue
+    - mapped, given out to simuthread
+    - mapped, submitted to renderer - in inbound_q
+    - unmapped, fence object not signalled - being drawn
+    - unmapped, fence object signalled - drawing finished, can be remapped.
+
+okay, kill free_buf_q.
+
+    - unmapped, not in any use - initial state. ptr = NULL, w = h = 0;
+    - mapped, given out to simuthread/submitted to renderer
+    - unmapped, fence object not signalled - being drawn
+    - unmapped, fence object signalled - drawing finished, can be remapped.
+*/
+
 
 unsigned vbstreamer_t::find(const df_buffer_t *buf) const {
     unsigned which;
@@ -201,17 +231,26 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 */
 void vbstreamer_t::remap_buf(df_buffer_t *buf) {
     bool reset_vao = ((w != buf->w) || (h != buf->h));
+    unsigned which = find(buf);
+    platform->log_info("vbstreamer_t::get_a_buffer(%d): reset_vao = %s", which, reset_vao ? "true": "false");
+    glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
     if (reset_vao) {
         buf->ptr = NULL;
         buf->w = w, buf->h = h;
         buf->tail_sizeof = tail_sizeof;
         setup_buffer_t(buf, pot);
+        //glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, bo_names[find(buf)]);
     buf->ptr = (uint8_t *)glMapBufferRange(GL_ARRAY_BUFFER, 0, buf->required_sz,
-        GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+//        GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT ); <- invalid flags in Mesa. Why?
+//        GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+        GL_MAP_READ_BIT | GL_MAP_WRITE_BIT );
+
+    GL_DEAD_YET();
+
 
     setup_buffer_t(buf, pot);
 
@@ -562,12 +601,14 @@ void implementation::initialize() {
 
     GL_DEAD_YET();
 
-    ansitex = makeansitex(GL_TEXTURE0, NULL);
-    streamer.initialize();
-    shader.initialize("lib/pms.vs", "lib/pms.fs", streamer);
+    ansi_colors_t ccolors = ANSI_COLORS_VGA;
 
-    cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = cmd_tex_reset = false;
-    album = NULL;
+    ansitex = makeansitex(GL_TEXTURE0, ccolors);
+    streamer.initialize();
+    shader.initialize("pms.vs", "pms.fs", streamer);
+
+    cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
+    album = NULL;cmd_tex_reset = true;
 }
 
 void implementation::finalize() {
@@ -770,6 +811,10 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
+            shader.use(Psz, Parx, Pary, 1.0);
+            streamer.draw(buf);
+            SDL_GL_SwapWindow(gl_window);
+            puts("frame.\n");
         }
     }
 }

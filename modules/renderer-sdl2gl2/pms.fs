@@ -1,18 +1,15 @@
 #version 120
 #line 2 0
 
-uniform sampler2D ansi;
 uniform sampler2D font;
 uniform sampler2D findex;
 uniform float final_alpha;
 uniform vec3 pszar;             // { Parx, Pary, Psz }
 uniform vec4 fofindex_wh;       // texture sizes
+uniform vec4 colors[16];
 
-// Total 8 uniform floats, 3 samplers
 varying vec4 ansicolors;        // tile: computed foreground and background color indices for tile and creature
 varying vec2 tilecrea;         	// floor and creature tile indexes
-
-// Total 6 float varyings (8 on Mesa)
 
 vec4 idx2texco(float idx, out vec2 magray) {
     vec4 tile_size;
@@ -94,12 +91,12 @@ void main() {
                            creature.x + pc.x*creature.z,
                            creature.y + pc.y*creature.w);
     vec4 tile_color = mg_process(texture2D(font, texcoords.xy), tile_mg);
-#if 0
+#if 1
     vec4 crea_color = mg_process(texture2D(font, texcoords.zw), crea_mg);
-    vec4 fg_color = texture2D(ansi, vec2(ansicolors.x, 0.0));
-    vec4 bg_color = texture2D(ansi, vec2(ansicolors.y, 0.0));
-    vec4 cf_color = texture2D(ansi, vec2(ansicolors.z, 0.0));
-    vec4 cb_color = texture2D(ansi, vec2(ansicolors.w, 0.0));
+    vec4 fg_color = colors[int(ansicolors.x)];
+    vec4 bg_color = colors[int(ansicolors.y)];
+    vec4 cf_color = colors[int(ansicolors.z)];
+    vec4 cb_color = colors[int(ansicolors.w)];
 
     if (tilecrea.y > 0) // no creatures with idx==0 atm.
         gl_FragColor = mix(crea_color*cf_color, cb_color, 1.0 - crea_color.a);

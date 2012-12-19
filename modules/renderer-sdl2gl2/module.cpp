@@ -306,7 +306,6 @@ void vbstreamer_t::finalize() {
 struct shader_t {
     GLuint program;
 
-    const int tu_ansi, tu_font, tu_findex;
     int u_ansi_sampler;
     int u_font_sampler;
     int u_findex_sampler;
@@ -314,12 +313,15 @@ struct shader_t {
     int u_pszar;
     int u_fofindex_wh;
     int u_grid_wh;
+    int u_colors;
 
-    shader_t(): program(0), tu_ansi(0), tu_font(1), tu_findex(2) { }
+    shader_t(): program(0) { }
 
     void initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& );
     GLuint compile(const char *fname,  GLuint type);
-    void use(int, float, float, float, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned);
+    void set_at_frame(float);
+    void set_at_resize(float, float, int, unsigned, unsigned);
+    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, ansi_colors_t);
     void finalize();
 
 };
@@ -402,6 +404,9 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
     u_pszar             = glGetUniformLocation(program, "pszar");
     u_fofindex_wh       = glGetUniformLocation(program, "fofindex_wh");
     u_grid_wh           = glGetUniformLocation(program, "grid_wh");
+    u_colors            = glGetUniformLocation(program, "colors");
+    if (u_colors == -1)
+        u_colors        = glGetUniformLocation(program, "colors[0]");
 
     GL_DEAD_YET();
 
@@ -418,51 +423,47 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
     platform->log_info("%s: %d", "u_final_alpha", u_final_alpha);
     platform->log_info("%s: %d", "u_pszar", u_pszar);
     platform->log_info("%s: %d", "u_fofindex_wh", u_fofindex_wh);
-}
-
-void shader_t::use(int psz, float parx, float pary, float alpha,
-                    unsigned grid_w, unsigned grid_h,
-                    unsigned font_w, unsigned font_h,
-                    unsigned findex_w, unsigned findex_h) {
-    glUseProgram(program);
-    glUniform1i(u_ansi_sampler, tu_ansi); GL_DEAD_YET();
-    glUniform1i(u_font_sampler, tu_font); GL_DEAD_YET();
-    glUniform1i(u_findex_sampler, tu_findex); GL_DEAD_YET();
-    glUniform3f(u_pszar, parx, pary, psz); GL_DEAD_YET();
-    glUniform1f(u_final_alpha, alpha); GL_DEAD_YET();
-    glUniform4f(u_fofindex_wh, font_w, font_h, findex_w, findex_h);
-    glUniform2f(u_grid_wh, grid_w, grid_h);
-
-    GL_DEAD_YET();
+    platform->log_info("%s: %d", "u_colors", u_colors);
 }
 
 void shader_t::finalize() {
+    glDeleteProgram(program);
+    GL_DEAD_YET();
+}
 
+void shader_t::set_at_frame(float alpha) {
+    glUseProgram(program);
+    glUniform1f(u_final_alpha, alpha); GL_DEAD_YET();
+}
+
+void shader_t::set_at_resize(float parx, float pary, int psz,
+                                unsigned grid_w, unsigned grid_h) {
+    glUseProgram(program);
+    glUniform3f(u_pszar, parx, pary, psz);      GL_DEAD_YET();
+    glUniform2f(u_grid_wh, grid_w, grid_h);     GL_DEAD_YET();
+}
+
+void shader_t::set_at_font(int tu_font, int tu_findex,
+                         unsigned font_w, unsigned font_h,
+                         unsigned findex_w, unsigned findex_h,
+                                         ansi_colors_t ccolors) {
+
+    GLfloat fcolors[16*4];
+    for (int i = 0; i <16 ; i++) {
+        fcolors[4*i + 0] = (float) (ccolors[i][0]) / 255.0;
+        fcolors[4*i + 1] = (float) (ccolors[i][1]) / 255.0;
+        fcolors[4*i + 2] = (float) (ccolors[i][2]) / 255.0;
+        fcolors[4*i + 3] = 1.0f;
+    }
+
+    glUseProgram(program);
+    glUniform1i(u_font_sampler, tu_font);       GL_DEAD_YET();
+    glUniform1i(u_findex_sampler, tu_findex);   GL_DEAD_YET();
+    glUniform4f(u_fofindex_wh, font_w, font_h, findex_w, findex_h); GL_DEAD_YET();
+    glUniform4fv(u_colors, 16, fcolors);        GL_DEAD_YET();
 }
 
 //} shader_t
-
-GLuint makeansitex(GLenum texture, ansi_colors_t ccolor) {
-    GLuint texname;
-    GLfloat ansi_stuff[16 * 4];
-    for (int i = 0; i < 16; i++) {
-        ansi_stuff[4 * i + 0] = ccolor[i][0] / 255.0;
-        ansi_stuff[4 * i + 1] = ccolor[i][1] / 255.0;
-        ansi_stuff[4 * i + 2] = ccolor[i][2] / 255.0;
-        ansi_stuff[4 * i + 3] = 1.0;
-    }
-    glGenTextures(1, &texname);
-    glActiveTexture(texture);
-    glBindTexture(GL_TEXTURE_2D, texname);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 16, 16, 0, GL_RGBA, GL_FLOAT, ansi_stuff);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    GL_DEAD_YET();
-    return texname;
-}
 
 /*  OpenGL 2.1 renderer, rewrite of PRINT_MODE:SHADER. */
 
@@ -529,7 +530,6 @@ struct implementation : public irenderer {
     int viewport_w, viewport_h;     // for mouse coordinate transformation
     int mouse_xw, mouse_yw;         // mouse window coordinates
     int mouse_xg, mouse_yg;         // mouse grid coordinates
-    GLuint ansitex;
     GLuint fonttex;
     GLuint findextex;
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
@@ -628,9 +628,6 @@ void implementation::initialize() {
 
     GL_DEAD_YET();
 
-    ansi_colors_t ccolors = ANSI_COLORS_VGA;
-
-    ansitex = makeansitex(GL_TEXTURE0, ccolors);
     streamer.initialize();
     shader.initialize("pms.vs", "pms.fs", streamer);
 
@@ -639,7 +636,6 @@ void implementation::initialize() {
 }
 
 void implementation::finalize() {
-    glDeleteTextures(1, &ansitex);
     glDeleteTextures(1, &fonttex);
     glDeleteTextures(1, &findextex);
     shader.finalize();
@@ -647,7 +643,7 @@ void implementation::finalize() {
 }
 
 void implementation::upload_album() {
-    glActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fonttex);
     font_w = album->album->w;
     font_h = album->height;
@@ -671,7 +667,7 @@ void implementation::upload_album() {
         data[4*i + 0] = album->index[i].rect.h + 8192 * ( album->index[i].gray ? 1 : 0);
     }
 
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, findextex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, findex_w, findex_h, 0, GL_RGBA, GL_UNSIGNED_SHORT, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -683,6 +679,10 @@ void implementation::upload_album() {
 
     GL_DEAD_YET();
     platform->log_info("upload_album(): font %dx%d findex %dx%d, %d", font_w, font_h, findex_w, findex_h, album->count);
+
+    ansi_colors_t ccolors = ANSI_COLORS_VGA;
+
+    shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, ccolors);
 }
 
 DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
@@ -880,7 +880,7 @@ void implementation::renderer_thread(void) {
         if (buf) {
             glClearColor(0.25,0.75,0.25,1);
             glClear(GL_COLOR_BUFFER_BIT);
-            shader.use(Psz, Parx, Pary, 1.0, grid_w, grid_h, font_w, font_h, findex_w, findex_h);
+            shader.set_at_frame(1.0);
             streamer.draw(buf);
             SDL_GL_SwapWindow(gl_window);
             platform->log_info("[%d] frame", platform->GetTickCount());
@@ -928,6 +928,8 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 
     streamer.set_grid(grid_w, grid_h);
+
+    shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
     platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %dx%d",
                         viewport_w, viewport_h, viewport_x, viewport_y,

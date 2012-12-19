@@ -27,8 +27,8 @@ vec2 ansiconvert(vec3 c) { // { fg, bg, bold }, returns {fg_idx, bg_idx}
     if (c.z > 0.1)
         bold_factor = 8.0;
 
-    rv.x = mod(c.x + bold_factor, ANSI_CC)/ANSI_CC;
-    rv.y = mod(c.y, ANSI_CC)/ANSI_CC;
+    rv.x = mod(c.x + bold_factor, ANSI_CC);
+    rv.y = mod(c.y, ANSI_CC);
     return rv;
 }
 

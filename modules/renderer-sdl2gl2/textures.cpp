@@ -1,9 +1,12 @@
 #include <cstring>
+#include <string>
+#include <fstream>
 #include <forward_list>
-#include "iplatform.h"
 
 #include "SDL.h"
 #include "SDL_pnglite.h"
+
+#include "iplatform.h"
 
 #define DFMODULE_BUILD
 #include "itextures.h"
@@ -33,8 +36,13 @@ struct implementation : public itextures {
     /* --- */
 
     long next_index; // == .size(); next unused index.
-    iplatform *platform;
-    implementation() : next_index(0), pages(), clones(), grays(), cmax(0), cmay(0) { platform = getplatform(); }
+    implementation() :
+        next_index(0),
+        pages(),
+        clones(),
+        grays(),
+        cmax(0),
+        cmay(0) { }
 
     struct celpage {
         int w, h, cw, ch;
@@ -114,6 +122,28 @@ SDL_Surface *grow_album(SDL_Surface *album, int min_h, bool fill = false) {
         SDL_FreeSurface(tmp);
     }
     return album;
+}
+
+void dump_album(df_texalbum_t *ta, const char *name) {
+    std::string fn(name);
+    std::fstream dump;
+    fn += ".png";
+    SDL_SavePNG(ta->album, fn.c_str());
+    fn = name;
+    fn += ".index";
+    dump.open(fn.c_str(), std::ios::out);
+    dump<<"count: "<<ta->count<<"\n";
+    dump<<"height: "<<ta->height<<"\n";
+    for (unsigned i=0; i < ta->count ; i++ ) {
+        df_taindex_entry_t& e = ta->index[i];
+        dump<<i<<' '<<e.rect.w<<'x'<<e.rect.h<<'+'<<e.rect.x<<'+'<<e.rect.y;
+        if (e.magentic)
+            dump<<" m";
+        if (e.gray)
+            dump<<" g";
+        dump<<'\n';
+    }
+    dump.close();
 }
 
 /* C++ ugliness forces some typedef names .. */
@@ -226,6 +256,7 @@ df_texalbum_t *implementation::get_album() {
     for (griter_t gi(grays.begin()); gi != grays.end(); gi++)
         rv->index[*gi].gray = true;
 
+    dump_album(rv, "texalbum");
     return rv;
 }
 

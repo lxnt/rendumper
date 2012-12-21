@@ -136,13 +136,14 @@ df_texalbum_t *implementation::get_album() {
 
     pages.sort(); // in order of ascending cel-height.
 
-    album_w -= album_w % w_lcm;
-
     df_texalbum_t *rv = (df_texalbum_t *) calloc(1, sizeof(df_texalbum_t));
     rv->count = next_index;
     rv->index = (df_taindex_entry_t *) calloc(rv->count, sizeof(df_taindex_entry_t));
 
     rv->album = beloved_surface(album_w, album_w / 8);
+
+    album_w -= album_w % w_lcm; // actual surface width stays power-of-two.
+
 
     int cx = 0, cy = 0, row_h = pages.begin()->ch;
 

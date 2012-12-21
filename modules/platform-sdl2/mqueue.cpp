@@ -1,5 +1,6 @@
 #include <vector>
 #include <queue>
+#include <sstream>
 
 #include "SDL_thread.h"
 #include "SDL_mutex.h"
@@ -11,6 +12,35 @@
 #include "imqueue.h"
 
 namespace {
+
+iplatform *platform = NULL;
+
+
+
+void mq_trace(const char *wha, imqd_t qd, void *vbuf, size_t len) {
+    if (true)
+        return;
+    uint8_t *buf = (uint8_t *)vbuf;
+    std::stringstream hexdump(std::stringstream::in|std::stringstream::out);
+
+    //hexdump.width(2);
+    hexdump<<std::hex;
+    for (unsigned i = 0; i < ( len < 8 ? len : 8 ); i++) {
+        platform->log_info("0x%02hhx", buf[i]);
+        hexdump<<( (int)(buf[i]) );
+    }
+
+    std::string hd;
+
+    hexdump.str(hd);
+
+    if (sizeof(void *) > len) {
+        platform->log_info("mq_%s(%d): %p[%u] '%s'", wha, qd, buf, len, hd.c_str());
+    } else {
+        void *p = *( (void **) buf );
+        platform->log_info("mq_%s(%d): %p[%u] (asptr %p) '%s'", wha, qd, buf, len, p, hd.c_str());
+    }
+}
 
 struct the_message {
     void *buf;
@@ -267,6 +297,7 @@ the_queue *implementation::get_queue(imqd_t qd) {
 }
 
 int implementation::send(imqd_t qd, void *buf, size_t len, int timeout) {
+    mq_trace("send", qd, buf, len);
     if ((buf == NULL) || (len == 0))
         return IMQ_INVAL;
 
@@ -279,6 +310,7 @@ int implementation::send(imqd_t qd, void *buf, size_t len, int timeout) {
 }
 
 int implementation::copy(imqd_t qd, void *buf, size_t len, int timeout) {
+    mq_trace("copy", qd, buf, len);
     void *new_buf = malloc(len);
     memmove(new_buf, buf, len);
     int rv = send(qd, new_buf, len, timeout);
@@ -302,6 +334,7 @@ int implementation::recv(imqd_t qd, void **buf, size_t *len, int timeout) {
 
     *buf = m.buf;
     *len = m.len;
+    mq_trace("recv", qd, m.buf, m.len);
     return IMQ_OK;
 }
 
@@ -334,6 +367,8 @@ extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void) {
     SDL_AtomicLock(&impl_spinlock);
     if (!impl)
         impl = new implementation();
+    if (!platform)
+        platform = getplatform();
     impl_refcount += 1;
     SDL_AtomicUnlock(&impl_spinlock);
     return impl;

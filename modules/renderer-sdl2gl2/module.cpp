@@ -1132,7 +1132,8 @@ see fgt.gl.rednerer.reshape()
 
 */
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
-    platform->log_info("reshape(): got window %dx%d psz %d",new_window_w, new_window_h, new_psz);
+    platform->log_info("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
+        new_window_w, new_window_h, new_psz, Parx, Pary);
 
     if (!album || !album->count) { // can't draw anything without textures anyway
         platform->log_info("reshape(): no textures.");
@@ -1142,21 +1143,34 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
         if (new_psz > 0)
             platform->fatal("reshape + zoom : can't");
+        new_psz = Psz;
     } else { // a zoom
         SDL_GetWindowSize(gl_window, &new_window_w, &new_window_h);
-        Psz = new_psz;
     }
 
-    int new_grid_w = new_window_w / (Psz * Parx);
-    int new_grid_h = new_window_h / (Psz * Pary);
+    platform->log_info("win_wh: %dx%d pszx %f pszy %f",
+        new_window_w, new_window_h, Psz * Parx, Psz * Pary);
 
-    grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
-    grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
+    int new_grid_w = new_window_w / (new_psz * Parx);
+    int new_grid_h = new_window_h / (new_psz * Pary);
 
-    viewport_w = grid_w * Psz * Parx;
-    viewport_h = grid_h * Psz * Pary;
-    viewport_x = ( new_window_w - viewport_w ) / 2;
-    viewport_y = ( new_window_h - viewport_h ) / 2;
+    platform->log_info("new_grid_wh: %dx%d", new_grid_w, new_grid_h);
+
+    new_grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
+    new_grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
+
+    platform->log_info("clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
+
+    viewport_w = lrint(new_grid_w * new_psz * Parx);
+    viewport_h = lrint(new_grid_h * new_psz * Pary);
+
+    if ((viewport_w > new_window_w) || ( viewport_h > new_window_h)) {
+        SDL_SetWindowSize(gl_window, viewport_w, viewport_h);
+        viewport_x = viewport_y = 0;
+    } else {
+        viewport_x = ( new_window_w - viewport_w ) / 2;
+        viewport_y = ( new_window_h - viewport_h ) / 2;
+    }
 
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 
@@ -1166,9 +1180,9 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
-    platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %dx%d",
+    platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
                         viewport_w, viewport_h, viewport_x, viewport_y,
-                        grid_w, grid_h, (int)(Psz*Parx), (int)(Psz*Pary));
+                        grid_w, grid_h, Psz, Parx, Pary);
 
 }
 

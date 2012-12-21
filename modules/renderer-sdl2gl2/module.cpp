@@ -212,7 +212,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     }
     platform->log_info("vbstreamer_t::draw(): drawing %d, %d points", which, w*h);
 
-    glBindVertexArray(which);
+    glBindVertexArray(va_names[which]);
     glDrawArrays(GL_POINTS, 0, w*h);
 
     glBindVertexArray(0);

@@ -393,33 +393,6 @@ void render_things() { ui->render_things(); }
 
 void gofui_t::render_things(void) {
     df_buffer_t *buf = targetbuf;
-    /* now render a portion of the map into the buffer
-       according to its dimx/dimy
-       this example assumes map cell values are indices
-       into the texture list. this is not so in DF,
-       and this mapping step, if necessary, is to be done here.
-
-       the viewport position is to be kept where?? in the interface
-       object, of course.
-    */
-
-    memset(buf->ptr, 0, buf->required_sz);
-
-    for (uint32_t i = 0; i < buf->w; i++)
-        for (uint32_t j = 0; j < buf->h; j++) {
-            uint32_t index = ( buf->h * i + j );
-            int value = sim->get( ( i + ui->vp_x ) % buf->w,
-                                   ( j + ui->vp_y ) % buf->h );
-            buf->screen[4*index] = 111; // 'o'
-            buf->screen[4*index+1] = value; // fg, 1:1 map to ansi is nice
-            buf->screen[4*index+2] = 0; // bg
-            buf->screen[4*index+3] = 1; // br
-            buf->texpos[index] = value;
-        }
-
-    snprintf(buf, buf->w/2, 0, 20, 0x01010100, "vp: %d,%d", ui->vp_x, ui->vp_y);
-    snprintf(buf, 0, 0, 10, 0x01010100, ui->paused ? "[PAUSED]" : "[RUNNING]");
-
 
     if (first_pause || unpause_seq) {
         uint32_t *uibuf = (uint32_t *)(buf->screen);
@@ -445,6 +418,33 @@ void gofui_t::render_things(void) {
             if (unpause_seq > (sizeof(c64load) / sizeof(c64frame) ) - 1)
                 unpause_seq = 0;
         }
+    } else {
+        /* now render a portion of the map into the buffer
+           according to its dimx/dimy
+        */
+
+        for (uint32_t i = 0; i < buf->w; i++)
+            for (uint32_t j = 0; j < buf->h; j++) {
+                uint32_t index = ( buf->h * i + j );
+                int value = sim->get( ( i + ui->vp_x ) % buf->w,
+                                       ( j + ui->vp_y ) % buf->h );
+                if (value) {
+                    buf->screen[4*index] = 1; // the face
+                    buf->screen[4*index+1] = value; // fg, 1:1 map to ansi is nice
+                    buf->screen[4*index+2] = 0; // bg
+                    buf->screen[4*index+3] = 1; // br
+                    buf->texpos[index] = 0;
+                } else {
+                    buf->screen[4*index] = 32;
+                    buf->screen[4*index+1] = 0;
+                    buf->screen[4*index+2] = 0;
+                    buf->screen[4*index+3] = 0;
+                    buf->texpos[index] = 0;
+                }
+            }
+
+        platform->bufprintf(buf, buf->w/2, 0, 20, 0x01010100, "vp: %d,%d", ui->vp_x, ui->vp_y);
+        platform->bufprintf(buf, 0, 0, 10, 0x01010100, ui->paused ? "[PAUSED]" : "[RUNNING]");
     }
 }
 

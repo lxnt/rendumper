@@ -1,7 +1,9 @@
 //#include <stdsomething.h>
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include "itypes.h"
+#include "iplatform.h"
 
 /*  malloc(3) says:
         The malloc() and calloc() functions return a pointer
@@ -59,8 +61,17 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
     buf->required_sz = screen_sz + texpos_sz + addcolor_sz
             + grayscale_sz + cf_sz + cbr_sz + tail_sz + page_sz;
 
-    if (!buf->ptr)
+    if (!buf->ptr) { // nominal; set up just required_sz.
+        buf->screen = NULL;
+        buf->texpos = NULL;
+        buf->addcolor = NULL;
+        buf->cf = NULL;
+        buf->cbr = NULL;
+        buf->tail = NULL;
+        buf->used_sz = 0;
         return;
+    }
+
 
     buf->screen = (unsigned char *) pot_align(buf->ptr, pot);
     buf->texpos = (long *) (buf->screen + screen_sz);
@@ -92,7 +103,43 @@ df_buffer_t *allocate_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
 }
 
 void memset_buffer_t(df_buffer_t *buf, uint8_t b) {
-    memset(buf->screen, b, buf->used_sz);
+    memset(buf->screen, b, buf->used_sz - buf->w*buf->h*buf->tail_sizeof);
+}
+
+void dump_buffer_t(df_buffer_t *buf, const char *name) {
+    FILE *fp = fopen(name, "wb");
+    fprintf(fp, "w=%u\nh=%u\ntail_sizeof=%u\nrequired_sz=%u\nused_sz=%u\nptr=%p\n",
+        buf->w, buf->h, buf->tail_sizeof, buf->required_sz, buf->used_sz, buf->ptr);
+
+    unsigned bc = 0;
+    uint8_t *p = buf->ptr;
+    while(bc < buf->required_sz) {
+        bc++;
+        fprintf(fp, "%02hhx ", p[bc]);
+        if (bc%4 == 0)
+            fputc(' ', fp);
+        if (bc%32 == 0)
+            fputc('\n', fp);
+        if (p + bc == buf->screen)
+            fputs("\nscreen:\n", fp);
+        if (p + bc == (uint8_t *)buf->texpos)
+            fputs("\ntexpos:\n", fp);
+        if (p + bc == (uint8_t *)buf->addcolor)
+            fputs("\naddcolor:\n", fp);
+        if (p + bc == buf->grayscale)
+            fputs("\ngrayscale:\n", fp);
+        if (p + bc == buf->cf)
+            fputs("\ncf:\n", fp);
+        if (p + bc == buf->cbr)
+            fputs("\ncbr:\n", fp);
+        if (p + bc == buf->tail)
+            fputs("\ntail:\n", fp);
+        if (p + bc == buf->tail + buf->w*buf->h*buf->tail_sizeof)
+            fputs("\nunused:\n", fp);
+
+    }
+    fputc('\n', fp);
+    fclose(fp);
 }
 
 /*  if using external memory allocator, set buf->ptr to NULL
@@ -101,4 +148,52 @@ void free_buffer_t(df_buffer_t *buf) {
     if (buf->ptr)
         free(buf->ptr);
     free(buf);
+}
+
+#if defined(WIN32)
+/* http://msdn.microsoft.com/en-us/library/a9yf33zb%28v=vs.80%29.aspx */
+static void iph_stub(const wchar_t * /* expr */,
+              const wchar_t * /* function */,
+              const wchar_t * /* file */,
+              unsigned int    /* line */,
+              uintptr_t) { }
+
+static void windoze_crap() {
+    _set_invalid_parameter_handler(iph_stub);
+    _CrtSetReportMode(_CRT_ASSERT, 0);
+}
+#define vsnprintf _vsnprintf
+#endif
+
+int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t attrs, const char *fmt, va_list ap) {
+    char tbuf[size + 1];
+
+    memset(tbuf, 0, size+1);
+
+#if defined(WIN32)
+    windoze_crap();
+#endif
+
+    int rv = vsnprintf(tbuf, size + 1, fmt, ap);
+
+#if defined(WIN32)
+    if (rv < 0) {
+        if (strlen(tbuf) == size))
+            rv = size;
+        else
+            return rv;
+    }
+#else
+    if (rv < 0)
+        return rv;
+#endif
+    uint32_t printed = rv;
+    uint32_t i;
+    uint32_t *ptr = (uint32_t *)(buffer->screen);
+
+    for (i = 0 ; (i < buffer->w - x) && ( i < printed ); i++) {
+        uint32_t offset = (x + i) * buffer->h + y;
+        *( ptr + offset ) = attrs | tbuf[i];
+    }
+    return i;
 }

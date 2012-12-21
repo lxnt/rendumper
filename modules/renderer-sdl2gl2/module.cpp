@@ -32,6 +32,39 @@ const int MAX_GRID_Y = 256;
 #define CLAMP_GW(w) CLAMP(w, MIN_GRID_X, MAX_GRID_X)
 #define CLAMP_GH(h) CLAMP(h, MIN_GRID_Y, MAX_GRID_Y)
 
+/* buffer states:
+    - unmapped, not in any use - initial state.
+    - mapped, not in any use
+    - mapped, in free_buffers queue
+    - mapped, given out to simuthread
+    - mapped, submitted to renderer - in inbound_q
+    - unmapped, fence object not signalled - being drawn
+    - unmapped, fence object signalled - drawing finished, can be remapped.
+
+    in buf::pstate :
+
+
+*/
+enum bufstate_t : uint32_t {
+    BS_NONE = 0,            // just allocated
+    BS_MAPPED_UNUSED,       // mapped, ready to be given out
+    BS_FREE_Q,              // in free_buf_q
+    BS_IN_SIMULOOP,         // handed out to the simuloop
+    BS_INBOUND_Q,           // handed back via submit_buffer, sits in incoming_q
+    BS_RENDERING            // fence object pending or so we think
+};
+
+const char *buf_pstate_str[] = {
+    "BS_NONE",
+    "BS_MAPPED_UNUSED",
+    "BS_FREE_Q",
+    "BS_IN_SIMULOOP",
+    "BS_INBOUND_Q",
+    "BS_RENDERING",
+    NULL
+};
+
+
 //{  vbstreamer_t
 /*  Vertex array object streamer, derived from the fgt.gl.VAO0 and fgt.gl.SurfBunchPBO. */
 struct vbstreamer_t {
@@ -120,64 +153,55 @@ void vbstreamer_t::initialize() {
 }
 
 df_buffer_t *vbstreamer_t::get_a_buffer() {
-    /* this defines the order of buffer submission */
-    int which = last_drawn < rrlen - 1 ? last_drawn + 1 : 0;
     GLenum srv;
-    GLint param;
+    int free_q = 0;
 
-    glBindBuffer(GL_COPY_READ_BUFFER, bo_names[which]);
-    glGetBufferParameteriv(GL_COPY_READ_BUFFER, GL_BUFFER_MAPPED, &param);
-    glBindBuffer(GL_COPY_READ_BUFFER, 0);
-    GL_DEAD_YET();
-
-    if (param)
-        return NULL;
-
-    if (syncs[which]) {
-        switch (srv = glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
-            case GL_ALREADY_SIGNALED:
-            case GL_CONDITION_SATISFIED:
-                glDeleteSync(syncs[which]);
-                syncs[which] = NULL;
+    for (unsigned which = 0; which < rrlen ; which ++) {
+        df_buffer_t *buf = bufs[which];
+        switch (buf->pstate) {
+            case BS_NONE:
+                remap_buf(buf);
+            case BS_MAPPED_UNUSED:
+                return buf;
+            case BS_RENDERING:
+                if (!syncs[which])
+                    platform->fatal("buf %p/%d BS_RENDERING w/o sync object", buf, which);
+                switch (srv = glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
+                    case GL_ALREADY_SIGNALED:
+                    case GL_CONDITION_SATISFIED:
+                        glDeleteSync(syncs[which]);
+                        syncs[which] = NULL;
+                        //platform->log_info("get_a_buffer(): sync for %p/%d signalled/satisfied", buf, which);
+                        remap_buf(buf);
+                        return buf;
+                    case GL_TIMEOUT_EXPIRED:
+                        //platform->log_info("get_a_buffer(): sync for %p/%d not signalled yet", buf, which);
+                        break;
+                    case GL_WAIT_FAILED:
+                        /* some fuckup with syncs[] */
+                        platform->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
+                    default:
+                        GL_DEAD_YET();
+                        platform->fatal("glClientWaitSync(syncs[%d]=%p): %x : unbelievable.", which, syncs[which], srv);
+                }
+            case BS_FREE_Q:
+                free_q ++;
                 break;
-            case GL_TIMEOUT_EXPIRED:
-                return NULL;
-            case GL_WAIT_FAILED:
-                /* some fuckup with syncs[] */
-                platform->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
             default:
-                GL_DEAD_YET();
-                platform->fatal("glClientWaitSync(syncs[%d]=%p): %x : unbelievable.", which, syncs[which], srv);
+                platform->log_info("get_a_buffer(): skipping %p/%d: pstate=%s", buf, which,
+                                        buf_pstate_str[buf->pstate]);
         }
     }
-
-    remap_buf(bufs[which]);
-    platform->log_info("vbstreamer_t::get_a_buffer(): returning #%d: %dx%d, ", which, bufs[which]->w, bufs[which]->h);
-    return bufs[which];
+    if (!free_q)
+        platform->log_info("vbstreamer_t::get_a_buffer(): no buffers and free_q==0.");
+    return NULL;
 }
 
 void vbstreamer_t::set_grid(uint32_t _w, uint32_t _h) {
-    platform->log_info("vbstreamer_t: setting grid %ux%u -> %ux%u",w, h, _w, _h);
+    if ((w != _w) || (h != _h))
+        platform->log_info("vbstreamer_t::set_grid(): %ux%u -> %ux%u",w, h, _w, _h);
     w = _w, h = _h;
 }
-
-/* buffer states:
-    - unmapped, not in any use - initial state.
-    - mapped, not in any use
-    - mapped, in free_buffers queue
-    - mapped, given out to simuthread
-    - mapped, submitted to renderer - in inbound_q
-    - unmapped, fence object not signalled - being drawn
-    - unmapped, fence object signalled - drawing finished, can be remapped.
-
-okay, kill free_buf_q.
-
-    - unmapped, not in any use - initial state. ptr = NULL, w = h = 0;
-    - mapped, given out to simuthread/submitted to renderer
-    - unmapped, fence object not signalled - being drawn
-    - unmapped, fence object signalled - drawing finished, can be remapped.
-*/
-
 
 unsigned vbstreamer_t::find(const df_buffer_t *buf) const {
     unsigned which;
@@ -194,10 +218,13 @@ unsigned vbstreamer_t::find(const df_buffer_t *buf) const {
 void vbstreamer_t::draw(df_buffer_t *buf) {
     unsigned which = find(buf);
 
-    if (last_drawn == which)
-        platform->fatal("vbstreamer_t::draw(): last_drawn == which :wtf.");
+    if (buf->pstate != BS_INBOUND_Q)
+        platform->fatal("vbstreamer_t::draw(%p/%d): pstate == %u :wtf.", buf, which, buf->pstate);
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
+
+    { char name[4096]; sprintf(name, "tail-%d.dump", which); dump_buffer_t(buf, name); }
+
     glUnmapBuffer(GL_ARRAY_BUFFER);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -207,10 +234,10 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         /* discard frame: it's of wrong size anyway. reset vao while at it */
         /* this can cause spikes in fps: maybe don't submit those samples? */
         remap_buf(buf);
-        platform->log_info("vbstreamer_t::draw(): remapped %d: grid mismatch", which);
+        platform->log_info("vbstreamer_t::draw(%p/%d): remapped: grid mismatch", buf, which);
         return;
     }
-    platform->log_info("vbstreamer_t::draw(): drawing %d, %d points", which, w*h);
+    platform->log_info("vbstreamer_t::draw(%p/%d): drawing %d points", buf, which, w*h);
 
     glBindVertexArray(va_names[which]);
     glDrawArrays(GL_POINTS, 0, w*h);
@@ -220,6 +247,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 
     syncs[which] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     last_drawn = which;
+    buf->pstate = BS_RENDERING;
 
     GL_DEAD_YET();
 }
@@ -233,7 +261,8 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 void vbstreamer_t::remap_buf(df_buffer_t *buf) {
     bool reset_vao = ((w != buf->w) || (h != buf->h));
     unsigned which = find(buf);
-    platform->log_info("vbstreamer_t::get_a_buffer(%d): reset_vao = %s", which, reset_vao ? "true": "false");
+    platform->log_info("vbstreamer_t::remap_buf(%p/%d): state=%s reset_vao=%s vbs.wh=%dx%d buf->wh=%dx%d",
+        buf, which, buf_pstate_str[buf->pstate], reset_vao ? "true": "false", w, h, buf->w, buf->h);
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
     if (reset_vao) {
@@ -244,6 +273,7 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         //glUnmapBuffer(GL_ARRAY_BUFFER);
         glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
     }
+
     buf->ptr = (uint8_t *)glMapBufferRange(GL_ARRAY_BUFFER, 0, buf->required_sz,
 //        GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT ); <- invalid flags in Mesa. Why?
 //        GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
@@ -274,6 +304,8 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         glBindVertexArray(0);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    buf->pstate = BS_MAPPED_UNUSED;
 
     GL_DEAD_YET();
 }
@@ -1031,7 +1063,6 @@ void implementation::slurp_keys() {
         mouse_xg = (mouse_xw - viewport_x) / (Parx * Psz);
         mouse_yg = (mouse_yw - viewport_y) / (Pary * Psz);
     }
-
 }
 
 void implementation::renderer_thread(void) {
@@ -1078,6 +1109,7 @@ void implementation::renderer_thread(void) {
             if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
                 platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
             else
+                tbuf->pstate = BS_FREE_Q,
                 platform->log_info("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
 
         df_buffer_t *buf = NULL;
@@ -1204,6 +1236,7 @@ df_buffer_t *implementation::get_buffer(void) {
         case IMQ_OK:
             buf = (df_buffer_t *)(*msg);
             mqueue->free(msg);
+            buf->pstate = BS_IN_SIMULOOP;
             return buf;
         case IMQ_TIMEDOUT:
             return NULL;
@@ -1250,6 +1283,7 @@ implementation::implementation() {
 
 void implementation::submit_buffer(df_buffer_t *buf) {
     itc_message_t msg;
+    buf->pstate = BS_INBOUND_Q;
     msg.t = itc_message_t::render_buffer;
     msg.d.buffer = buf;
     mqueue->copy(incoming_q, &msg, sizeof(itc_message_t), -1);

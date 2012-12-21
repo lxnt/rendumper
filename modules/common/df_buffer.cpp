@@ -87,6 +87,7 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
 /* a constructor */
 df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
     df_buffer_t *buf = (df_buffer_t *) malloc(sizeof(df_buffer_t));
+    buf->pstate = 0;
     buf->ptr = NULL;
     buf->tail_sizeof = tail_sizeof;
     buf->w = w, buf->h = h;

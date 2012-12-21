@@ -16,6 +16,7 @@ struct df_buffer_t {
     uint32_t tail_sizeof;
     uint32_t required_sz, used_sz;
     uint8_t *ptr;
+    uint32_t pstate;           // renderer-private state
 
     unsigned char *screen;     // uchar[4] in fact.
     long *texpos;

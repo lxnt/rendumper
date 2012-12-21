@@ -1174,24 +1174,22 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
         if (new_psz > 0)
-            platform->fatal("reshape + zoom : can't");
+            platform->fatal("reshape(): reshape + zoom : can't");
         new_psz = Psz;
     } else { // a zoom
         SDL_GetWindowSize(gl_window, &new_window_w, &new_window_h);
     }
 
-    platform->log_info("win_wh: %dx%d pszx %f pszy %f",
-        new_window_w, new_window_h, Psz * Parx, Psz * Pary);
-
     int new_grid_w = new_window_w / (new_psz * Parx);
     int new_grid_h = new_window_h / (new_psz * Pary);
 
-    platform->log_info("new_grid_wh: %dx%d", new_grid_w, new_grid_h);
+    platform->log_info("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
+        new_window_w, new_window_h, Psz * Parx, Psz * Pary, new_grid_w, new_grid_h);
 
     new_grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
     new_grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
 
-    platform->log_info("clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
+    platform->log_info("reshape(): clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
 
     viewport_w = lrint(new_grid_w * new_psz * Parx);
     viewport_h = lrint(new_grid_h * new_psz * Pary);
@@ -1212,7 +1210,7 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
-    platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
+    platform->log_info("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
                         viewport_w, viewport_h, viewport_x, viewport_y,
                         grid_w, grid_h, Psz, Parx, Pary);
 

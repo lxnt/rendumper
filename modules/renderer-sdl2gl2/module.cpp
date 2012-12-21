@@ -1072,17 +1072,15 @@ void implementation::renderer_thread(void) {
             upload_album();
         }
 
-        df_buffer_t *buf = NULL;
         int rv;
+        df_buffer_t *tbuf;
+        while ((tbuf = grid_streamer.get_a_buffer()) != NULL)
+            if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
+                platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
+            else
+                platform->log_info("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
 
-        if ((buf = streamer.get_a_buffer()) != NULL) {
-            /* whoa, streamer got buffers: rid it of them */
-            df_buffer_t *tbuf;
-            while ((tbuf = streamer.get_a_buffer()) != NULL)
-                if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
-                    platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
-        }
-
+        df_buffer_t *buf = NULL;
         unsigned read_timeout_ms = 10;
         while (true) {
             void *vbuf; size_t vlen;
@@ -1178,13 +1176,19 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
 /* return value of NULL means: skip that render_things() call. */
 df_buffer_t *implementation::get_buffer(void) {
-    void *msg = NULL;
+    df_buffer_t **msg;
     df_buffer_t *buf = NULL;
     size_t len = sizeof(void *);
     int rv;
-    switch (rv = mqueue->recv(free_buf_q, &msg, &len, 0)) {
+    switch (rv = mqueue->recv(free_buf_q, (void **)&msg, &len, 0)) {
+        /*  wish I could get myself to make this simpler ...
+            ok, give recv() a pointer to (void *) and a pointer to size_t
+            it writes there a pointer to the message, and message length.
+            message here is itself a pointer.
+        */
+
         case IMQ_OK:
-            buf = (df_buffer_t *)msg;
+            buf = (df_buffer_t *)(*msg);
             mqueue->free(msg);
             return buf;
         case IMQ_TIMEDOUT:
@@ -1194,7 +1198,6 @@ df_buffer_t *implementation::get_buffer(void) {
     }
     return buf;
 }
-
 
 void implementation::zoom_in() { cmd_zoom_in = true; }
 void implementation::zoom_out() { cmd_zoom_out = true; }

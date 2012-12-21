@@ -256,10 +256,10 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
     /* generate grid positions */
     for (unsigned i = 0; i < w*h ; i++) {
         uint16_t *ptr = (uint16_t *)(buf->tail) + 4 * i;
-        ptr[0] = i / h; // x | this column-major
-        ptr[1] = h - i % h; // y |   major madness
-        ptr[2] = 0;     // dim
-        ptr[3] = 0;     // snow-rain
+        ptr[0] = i / h;         // x | this column-major
+        ptr[1] = h - i % h - 1; // y |   major madness
+        ptr[2] = i;             // dim
+        ptr[3] = 0;             // snow-rain
     }
 
     if (reset_vao) {

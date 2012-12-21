@@ -8,6 +8,7 @@
 #include <locale.h>
 
 #include "posix_glob.h"
+#include "df_buffer.h"
 
 #include "SDL.h"
 #include "SDL_thread.h"
@@ -108,7 +109,14 @@ struct implementation : public iplatform {
         va_end(ap);
         exit(1);
     }
-
+    int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
+                                size_t size, uint32_t attrs, const char *fmt, ...) {
+        va_list ap;
+        va_start(ap, fmt);
+        int rv = vbprintf(buffer, x, y, size, attrs, fmt, ap);
+        va_end(ap);
+        return rv;
+    }
     const char * const *glob(const char* pattern, const char * const exclude[],
                     const bool include_dirs, const bool include_files) {
         return posix_glob(pattern, exclude, include_dirs, include_files);

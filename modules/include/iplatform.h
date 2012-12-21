@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "ideclspec.h"
+#include "itypes.h"
 
 #if defined(WIN32)
 # undef WINDOWS_LEAN_AND_MEAN
@@ -116,6 +117,21 @@ struct iplatform {
     virtual void log_info(const char *, ...) = 0;
     virtual void log_error(const char *, ...) = 0;
     virtual NORETURN void fatal(const char *, ...) = 0;
+    /*  Puts a string into the buffer. string gets truncated at size characters,
+        or at the buffer border; no wrapping.
+
+        attrs are:
+            lil endian:
+                (br<<24) | (bg<<16) | (fg<<8)
+            big endian:
+                (fg<<16) | (bg<<8 )| (br)
+
+        return value:
+            characters written, that is min(final_strlen, size, dimx-x)
+            or -1.
+    */
+    virtual int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
+                                size_t size, uint32_t attrs, const char *fmt, ...) = 0;
 
     /* File/directory finder.
         parameters:

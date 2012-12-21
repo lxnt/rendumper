@@ -391,69 +391,6 @@ void add_input_event(df_input_event_t *event) { ui->add_input_event(event); }
 void assimilate_buffer(df_buffer_t *buf) { ui->assimilate_buffer(buf); }
 void render_things() { ui->render_things(); }
 
-#if defined(WIN32)
-/* this so needs to be moved into the platform code */
-/* http://msdn.microsoft.com/en-us/library/a9yf33zb%28v=vs.80%29.aspx */
-void iph_stub(const wchar_t * /* expr */,
-              const wchar_t * /* function */,
-              const wchar_t * /* file */,
-              unsigned int  /* line */,
-              uintptr_t) { }
-
-void windoze_crap() {
-    _set_invalid_parameter_handler(iph_stub);
-    _CrtSetReportMode(_CRT_ASSERT, 0);
-}
-#define vsnprintf _vsnprintf
-#endif
-
-/*
-    puts a string into the buffer. string gets truncated at size characters
-    or at the buffer border; no wrapping.
-
-    attrs are:
-        lil endian:
-            (br<<24) | (bg<<16) | (fg<<8)
-        big endian:
-            (fg<<16) | (bg<<8 )| (br)
-
-    return value:
-        characters written, that is min(final_strlen, size, dimx-x)
-        or -1.
-*/
-int snprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t attrs, const char *fmt, ...) {
-    char tbuf[size + 1];
-
-    memset(tbuf, 0, size+1);
-
-    va_list ap;
-    va_start(ap, fmt);
-    int rv = vsnprintf(tbuf, size + 1, fmt, ap);
-    va_end(ap);
-
-#if defined(WIN32)
-    if (rv < 0) {
-        if (strlen(tbuf) == size))
-            rv = size;
-        else
-            return rv;
-    }
-#else
-    if (rv < 0)
-        return rv;
-#endif
-    uint32_t printed = rv;
-    uint32_t i;
-    uint32_t *ptr = (uint32_t *)(buffer->screen);
-
-    for (i = 0 ; (i < buffer->w - x) && ( i < printed ); i++) {
-        uint32_t offset = (x + i) * buffer->h + y;
-        *( ptr + offset ) = attrs | tbuf[i];
-    }
-    return i;
-}
-
-
 void gofui_t::render_things(void) {
     df_buffer_t *buf = targetbuf;
     /* now render a portion of the map into the buffer
@@ -514,9 +451,6 @@ void gofui_t::render_things(void) {
 //}
 
 int main (int argc, char* argv[]) {
-#if defined(WIN32)
-    windoze_crap();
-#endif
     if (argc < 2) {
         fprintf(stderr, "Usage: %s print_mode [w h] [tor]\n", argv[0]);
         return 1;

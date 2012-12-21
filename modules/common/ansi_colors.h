@@ -3,6 +3,25 @@
 
 typedef int ansi_colors_t[16][3];
 
+/*
+    ANSI/?GA palette color sequence is:
+
+    black red green brown blue magenta cyan gray
+    darkgray red green yellow blue magenta cyan white
+
+    DF:
+
+    black blue green cyan red magenta brown lgray
+    dgray lblue lgreen lcyan lred lmagenta yellow white
+
+    Stock DF colors.txt is the ANSI_COLORS_XP variant.
+
+*/
+
+#define DF_TO_ANSI { \
+    0,  4,  2,  6, 1,  5,  3,  7, \
+    8, 12, 10, 14, 9, 13, 11, 15  }
+
 #define ANSI_COLORS_VGA \
 {                       \
     { 0, 0, 0 } ,       \

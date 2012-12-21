@@ -302,26 +302,17 @@ void vbstreamer_t::finalize() {
 //} vbstreamer_t
 
 //{  shader_t
-/*  Shader container, derived from fgt.gl.GridShader. */
+/*  Shader container, derived from fgt.gl.Shader0. */
 struct shader_t {
     GLuint program;
 
-    int u_ansi_sampler;
-    int u_font_sampler;
-    int u_findex_sampler;
-    int u_final_alpha;
-    int u_pszar;
-    int u_fofindex_wh;
-    int u_grid_wh;
-    int u_colors;
-
     shader_t(): program(0) { }
 
-    void initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& );
+    virtual void bind_attribute_locs() = 0;
+    virtual void get_uniform_locs() = 0;
+
+    void initialize(const char *setname);
     GLuint compile(const char *fname,  GLuint type);
-    void set_at_frame(float);
-    void set_at_resize(float, float, int, unsigned, unsigned);
-    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, ansi_colors_t);
     void finalize();
 
 };
@@ -364,10 +355,15 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
     return target;
 }
 
-void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstreamer_t& vbs) {
+void shader_t::initialize(const char *setname) {
+    std::string vsfname("shaders/");
+    std::string fsfname("shaders/");
+    vsfname += setname; vsfname += ".vs";
+    fsfname += setname; fsfname += ".fs";
+
     program = glCreateProgram();
-    GLuint vs = compile(vsfname, GL_VERTEX_SHADER);
-    GLuint fs = compile(fsfname, GL_FRAGMENT_SHADER);
+    GLuint vs = compile(vsfname.c_str(), GL_VERTEX_SHADER);
+    GLuint fs = compile(fsfname.c_str(), GL_FRAGMENT_SHADER);
 
     glAttachShader(program, vs);
     glDeleteShader(vs);
@@ -375,19 +371,10 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
     glDeleteShader(fs);
     GL_DEAD_YET();
 
-    glBindAttribLocation(program, vbs.screen_posn, "screen");
-    glBindAttribLocation(program, vbs.texpos_posn, "texpos");
-    glBindAttribLocation(program, vbs.addcolor_posn, "addcolor");
-    glBindAttribLocation(program, vbs.grayscale_posn, "grayscale");
-    glBindAttribLocation(program, vbs.cf_posn, "cf");
-    glBindAttribLocation(program, vbs.cbr_posn, "cbr");
-    glBindAttribLocation(program, vbs.grid_posn, "grid");
-
-    //glBindFragDataLocation(program, 0, "frag");
-
-    GL_DEAD_YET();
+    bind_attribute_locs();
 
     glLinkProgram(program);
+    GL_DEAD_YET();
 
     GLint stuff;
     GLchar strbuf[8192];
@@ -396,8 +383,82 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
         glGetProgramInfoLog(program, 8192, NULL, strbuf);
         platform->fatal("%s", strbuf);
     }
+    GL_DEAD_YET();
 
-    u_ansi_sampler      = glGetUniformLocation(program, "ansi");
+    get_uniform_locs();
+}
+
+void shader_t::finalize() {
+    glDeleteProgram(program);
+    GL_DEAD_YET();
+}
+
+//}
+//{ grid_shader_t
+/*  Grid shader, derived from fgt.gl.GridShader. */
+
+struct grid_shader_t : public shader_t {
+    /* attribute positions - copy from vbstreamer_t */
+    const GLuint screen_posn;
+    const GLuint texpos_posn;
+    const GLuint addcolor_posn;
+    const GLuint grayscale_posn;
+    const GLuint cf_posn;
+    const GLuint cbr_posn;
+    const GLuint grid_posn;
+
+    /* uniform locations */
+    int u_font_sampler;
+    int u_findex_sampler;
+    int u_final_alpha;
+    int u_pszar;
+    int u_fofindex_wh;
+    int u_grid_wh;
+    int u_colors;
+
+    grid_shader_t(): shader_t(),
+        screen_posn(0),
+        texpos_posn(1),
+        addcolor_posn(2),
+        grayscale_posn(3),
+        cf_posn(4),
+        cbr_posn(5),
+        grid_posn(6) {}
+
+    void bind_attribute_locs();
+    void get_uniform_locs();
+
+    void set_at_frame(float);
+    void set_at_resize(float, float, int, unsigned, unsigned);
+    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, ansi_colors_t);
+
+};
+
+void grid_shader_t::bind_attribute_locs() {
+
+    glBindAttribLocation(program, screen_posn, "screen");
+    glBindAttribLocation(program, texpos_posn, "texpos");
+    glBindAttribLocation(program, addcolor_posn, "addcolor");
+    glBindAttribLocation(program, grayscale_posn, "grayscale");
+    glBindAttribLocation(program, cf_posn, "cf");
+    glBindAttribLocation(program, cbr_posn, "cbr");
+    glBindAttribLocation(program, grid_posn, "grid");
+
+    //glBindFragDataLocation(program, 0, "frag");
+
+    GL_DEAD_YET();
+    platform->log_info("%s: %d", "va screen_posn", screen_posn);
+    platform->log_info("%s: %d", "va texpos_posn", texpos_posn);
+    platform->log_info("%s: %d", "va addcolor_posn", addcolor_posn);
+    platform->log_info("%s: %d", "va grayscale_posn", grayscale_posn);
+    platform->log_info("%s: %d", "va cf_posn", cf_posn);
+    platform->log_info("%s: %d", "va cbr_posn", cbr_posn);
+    platform->log_info("%s: %d", "va grid_posn", grid_posn);
+
+}
+
+void grid_shader_t::get_uniform_locs() {
+
     u_font_sampler      = glGetUniformLocation(program, "font");
     u_findex_sampler    = glGetUniformLocation(program, "findex");
     u_final_alpha       = glGetUniformLocation(program, "final_alpha");
@@ -410,49 +471,37 @@ void shader_t::initialize(const char *vsfname, const char *fsfname, const vbstre
 
     GL_DEAD_YET();
 
-    platform->log_info("%s: %d", "vbs.screen_posn", vbs.screen_posn);
-    platform->log_info("%s: %d", "vbs.texpos_posn", vbs.texpos_posn);
-    platform->log_info("%s: %d", "vbs.addcolor_posn", vbs.addcolor_posn);
-    platform->log_info("%s: %d", "vbs.grayscale_posn", vbs.grayscale_posn);
-    platform->log_info("%s: %d", "vbs.cf_posn", vbs.cf_posn);
-    platform->log_info("%s: %d", "vbs.cbr_posn", vbs.cbr_posn);
-    platform->log_info("%s: %d", "vbs.grid_posn", vbs.grid_posn);
-    platform->log_info("%s: %d", "u_ansi_sampler", u_ansi_sampler);
-    platform->log_info("%s: %d", "u_font_sampler", u_font_sampler);
-    platform->log_info("%s: %d", "u_findex_sampler", u_findex_sampler);
-    platform->log_info("%s: %d", "u_final_alpha", u_final_alpha);
-    platform->log_info("%s: %d", "u_pszar", u_pszar);
-    platform->log_info("%s: %d", "u_fofindex_wh", u_fofindex_wh);
-    platform->log_info("%s: %d", "u_colors", u_colors);
+    platform->log_info("%s: %d", "uf font_sampler", u_font_sampler);
+    platform->log_info("%s: %d", "uf findex_sampler", u_findex_sampler);
+    platform->log_info("%s: %d", "uf final_alpha", u_final_alpha);
+    platform->log_info("%s: %d", "uf pszar", u_pszar);
+    platform->log_info("%s: %d", "uf fofindex_wh", u_fofindex_wh);
+    platform->log_info("%s: %d", "uf colors", u_colors);
 }
 
-void shader_t::finalize() {
-    glDeleteProgram(program);
-    GL_DEAD_YET();
-}
-
-void shader_t::set_at_frame(float alpha) {
+void grid_shader_t::set_at_frame(float alpha) {
     glUseProgram(program);
     glUniform1f(u_final_alpha, alpha); GL_DEAD_YET();
 }
 
-void shader_t::set_at_resize(float parx, float pary, int psz,
+void grid_shader_t::set_at_resize(float parx, float pary, int psz,
                                 unsigned grid_w, unsigned grid_h) {
     glUseProgram(program);
     glUniform3f(u_pszar, parx, pary, psz);      GL_DEAD_YET();
     glUniform2f(u_grid_wh, grid_w, grid_h);     GL_DEAD_YET();
 }
 
-void shader_t::set_at_font(int tu_font, int tu_findex,
+void grid_shader_t::set_at_font(int tu_font, int tu_findex,
                          unsigned font_w, unsigned font_h,
                          unsigned findex_w, unsigned findex_h,
                                          ansi_colors_t ccolors) {
 
     GLfloat fcolors[16*4];
+    int cmap[] = DF_TO_ANSI;
     for (int i = 0; i <16 ; i++) {
-        fcolors[4*i + 0] = (float) (ccolors[i][0]) / 255.0;
-        fcolors[4*i + 1] = (float) (ccolors[i][1]) / 255.0;
-        fcolors[4*i + 2] = (float) (ccolors[i][2]) / 255.0;
+        fcolors[4*i + 0] = (float) (ccolors[cmap[i]][0]) / 255.0;
+        fcolors[4*i + 1] = (float) (ccolors[cmap[i]][1]) / 255.0;
+        fcolors[4*i + 2] = (float) (ccolors[cmap[i]][2]) / 255.0;
         fcolors[4*i + 3] = 1.0f;
     }
 
@@ -463,7 +512,171 @@ void shader_t::set_at_font(int tu_font, int tu_findex,
     glUniform4fv(u_colors, 16, fcolors);        GL_DEAD_YET();
 }
 
-//} shader_t
+//} grid_shader_t
+//{ blitter_t - fgt.gl.BlitShader, fgt.gl.Blitter
+struct blit_shader_t : public shader_t {
+    enum blitmode_t : int {
+        M_FILL   = 1, // # fill with color
+        M_BLEND  = 2, // # texture it
+        M_OPAQUE = 3, // # force texture alpha to 1.0
+        M_RALPHA = 4, // # fill with color; take alpha from tex
+    };
+    int u_tex;
+    int u_dstsize;
+    int u_mode;
+    int u_color;
+    int u_srcrect;
+    int u_srcsize;
+
+    void bind_attribute_locs();
+    void get_uniform_locs();
+
+    void set_at_blit(const blit_shader_t::blitmode_t mode,
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const int r, const int g, const int b, const int a, // color
+        const SDL_Rect *srcrect, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize  // source size in pixels (if partial blit) (needed for texcoords)
+    );
+};
+
+void blit_shader_t::bind_attribute_locs() {
+    glBindAttribLocation(program, 0, "position");
+
+    GL_DEAD_YET();
+}
+
+void blit_shader_t::get_uniform_locs() {
+    u_tex       = glGetUniformLocation(program, "tex");
+    u_dstsize   = glGetUniformLocation(program, "dstsize");
+    u_mode      = glGetUniformLocation(program, "mode");
+    u_color     = glGetUniformLocation(program, "color");
+    u_srcrect   = glGetUniformLocation(program, "srcrect");
+    u_srcsize   = glGetUniformLocation(program, "rcsize");
+
+    GL_DEAD_YET();
+}
+
+void blit_shader_t::set_at_blit(const blit_shader_t::blitmode_t mode,
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const int r, const int g, const int b, const int a, // color
+        const SDL_Rect *srcrect, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize  // source size in pixels (if partial blit) (needed for texcoords)
+) {
+
+    glUseProgram(program);
+    glUniform1i(u_tex, 0);
+    glUniform2i(u_dstsize, dstsize->w, dstsize->h);
+    glUniform1i(u_mode, mode);
+    glUniform4f(u_color, (float)r/255.0, (float)g/255.0, (float)b/255.0, (float)a/255.0);
+
+    if (srcsize && srcrect) {
+        glUniform4i(u_srcrect, srcrect->x, srcrect->y, srcrect->w, srcrect->h);
+        glUniform2i(u_srcsize, srcsize->w, srcsize->h);
+    } else {
+        glUniform4i(u_srcrect, -1, -2, -3, -4);
+        glUniform2i(u_srcsize, -5, -6);
+    }
+
+    GL_DEAD_YET();
+}
+
+struct blitter_t {
+    blit_shader_t shader;
+    GLuint vaoname, bufname;
+
+    void initialize();
+    void finalize();
+
+    void fill(
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels
+        const int r = 0, const int g = 0, const int b = 0, const int a = 0xAD // color
+        ) { _blit( blit_shader_t::M_FILL, dstrect, dstsize, r, g, b, a, NULL, NULL ); }
+    void blend(
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const SDL_Rect *srcrect = NULL, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize = NULL // source size in pixels (if partial blit) (needed for texcoords)
+        ) { _blit( blit_shader_t::M_BLEND, dstrect, dstsize, 0, 0, 0, 0, srcrect, srcsize ); }
+    void opaque(
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const SDL_Rect *srcrect = NULL, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize = NULL // source size in pixels (if partial blit) (needed for texcoords)
+        ) { _blit( blit_shader_t::M_OPAQUE, dstrect, dstsize, 0, 0, 0, 0, srcrect, srcsize ); }
+
+    void ralpha(
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const int r = 0, const int g = 0, const int b = 0, const int a = 0xAD, // color
+        const SDL_Rect *srcrect = NULL, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize = NULL // source size in pixels (if partial blit) (needed for texcoords)
+        ) { _blit( blit_shader_t::M_RALPHA, dstrect, dstsize, r, g, b, a, srcrect, srcsize ); }
+
+    void _blit( blit_shader_t::blitmode_t blitmode,
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const int r, const int g, const int b, const int a, // color
+        const SDL_Rect *srcrect, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize  // source size in pixels (if partial blit) (needed for texcoords)
+        );
+};
+
+void blitter_t::initialize() {
+    shader.initialize("blit120");
+    glGenVertexArrays(1, &vaoname);
+    glGenBuffers(1, &bufname);
+    glBindVertexArray(vaoname);
+    glBindBuffer(GL_ARRAY_BUFFER, bufname);
+    glBufferData(GL_ARRAY_BUFFER, 4096, NULL, GL_STREAM_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_INT,  GL_FALSE, 0, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GL_DEAD_YET();
+}
+
+void blitter_t::finalize() {
+    shader.finalize();
+    glDeleteVertexArrays(1, &vaoname);
+    glDeleteBuffers(1, &bufname);
+}
+
+void blitter_t::_blit( blit_shader_t::blitmode_t blitmode,
+        const SDL_Rect *dstrect, // destination rect in pixels.
+        const SDL_Rect *dstsize, // destination viewport size in pixels (needed for NDC coords)
+        const int r, const int g, const int b, const int a, // color
+        const SDL_Rect *srcrect, // source rect in pixels (if partial blit)
+        const SDL_Rect *srcsize  // source size in pixels (if partial blit) (needed for texcoords)
+    ) {
+    glBindVertexArray(vaoname);
+    glBindBuffer(GL_ARRAY_BUFFER, bufname);
+
+    int *bd = (int *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    GL_DEAD_YET();
+    if (!bd)
+        platform->fatal("NULL from glMapBuffer() in blitter");
+
+    bd[ 0] = dstrect->x; bd[ 1] = dstrect->y;             // bottom left
+        bd[ 2] = 0; bd[ 3] = 1;
+    bd[ 4] = dstrect->x + dstrect->w; bd[ 5] = dstrect->y; // bottom right
+        bd[ 6] = 1; bd[ 7] = 1;
+    bd[ 8] = dstrect->x; bd[ 9] = dstrect->y + dstrect->h; // top left
+        bd[10] = 0; bd[11] = 0;
+    bd[12] = dstrect->x + dstrect->w; bd[13] = dstrect->y + dstrect->h; // top right
+        bd[14] = 1; bd[15] = 0;
+
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+
+    shader.set_at_blit(blitmode, dstsize, r, g, b, a, srcrect, srcsize);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+//} blitter_t
 
 /*  OpenGL 2.1 renderer, rewrite of PRINT_MODE:SHADER. */
 
@@ -501,8 +714,10 @@ struct implementation : public irenderer {
     imqd_t incoming_q;
     imqd_t free_buf_q;
 
-    vbstreamer_t streamer;
-    shader_t shader;
+    vbstreamer_t grid_streamer;
+    grid_shader_t grid_shader;
+
+    blitter_t blitter;
 
     df_texalbum_t *album;
     unsigned font_w, font_h, findex_w, findex_h;
@@ -628,18 +843,20 @@ void implementation::initialize() {
 
     GL_DEAD_YET();
 
-    streamer.initialize();
-    shader.initialize("pms.vs", "pms.fs", streamer);
+    grid_streamer.initialize();
+    grid_shader.initialize("grid120");
+    blitter.initialize();
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
-    album = NULL;cmd_tex_reset = true;
+    album = NULL;
+    cmd_tex_reset = true;
 }
 
 void implementation::finalize() {
     glDeleteTextures(1, &fonttex);
     glDeleteTextures(1, &findextex);
-    shader.finalize();
-    streamer.finalize();
+    grid_shader.finalize();
+    grid_streamer.finalize();
 }
 
 void implementation::upload_album() {
@@ -647,42 +864,59 @@ void implementation::upload_album() {
     glBindTexture(GL_TEXTURE_2D, fonttex);
     font_w = album->album->w;
     font_h = album->height;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_w, font_h, 0, GL_RGBA, GL_BYTE, album->album->pixels);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    //font_h = album->album->h;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_w, font_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, album->album->pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     GL_DEAD_YET();
 
-    findex_w = 256;
-    findex_h = album->count/findex_w + 1;
+    findex_w = 128;
+    findex_h = album->count/findex_w + 1; // todo: pot_align(sqrt(album->count))
+    findex_h = 128;
+    if (album->count > findex_w * findex_h)
+        platform->fatal("whoa, index too large. %d > %d * %d", album->count, findex_w, findex_h);
+    const unsigned findex_sz = findex_w * findex_h * 4 * 2;
+    const unsigned layersz = findex_w * findex_h * 4;
 
-    uint16_t *data = new uint16_t[findex_w * ( 4 * sizeof(uint16_t) ) * findex_h];
+    uint8_t *data = new uint8_t[findex_sz];
+    memset(data, 0, findex_sz);
 
     for (uint32_t i = 0; i < album->count; i++) {
-        data[4*i + 0] = album->index[i].rect.x;
-        data[4*i + 0] = album->index[i].rect.y;
-        data[4*i + 0] = album->index[i].rect.w + 8192 * ( album->index[i].magentic ? 1 : 0);
-        data[4*i + 0] = album->index[i].rect.h + 8192 * ( album->index[i].gray ? 1 : 0);
+        data[4*i + 0] = album->index[i].rect.x >> 8;
+        data[4*i + 1] = album->index[i].rect.x & 0xFFu;
+        data[4*i + 2] = album->index[i].rect.y >> 8;
+        data[4*i + 3] = album->index[i].rect.y & 0xFFu;
+
+        data[layersz + 4*i + 0] = album->index[i].rect.w;
+        data[layersz + 4*i + 1] = album->index[i].rect.h;
+        data[layersz + 4*i + 2] = album->index[i].magentic ? 255 : 0;
+        data[layersz + 4*i + 3] = album->index[i].gray ? 255 : 0;
     }
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, findextex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, findex_w, findex_h, 0, GL_RGBA, GL_UNSIGNED_SHORT, data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_3D, findextex);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, findex_w, findex_h, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    std::fstream fid("findex.dump", std::ios::binary | std::ios::out);
+    fid.write((char*)data, findex_sz);
+    fid.close();
 
     delete []data;
 
     GL_DEAD_YET();
-    platform->log_info("upload_album(): font %dx%d findex %dx%d, %d", font_w, font_h, findex_w, findex_h, album->count);
+    platform->log_info("upload_album(): font %dx%d tui 0 tname %d findex %dx%d, %d tui 1 tname %d",
+                        font_w, font_h, fonttex, findex_w, findex_h, findextex, album->count);
 
     ansi_colors_t ccolors = ANSI_COLORS_VGA;
 
-    shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, ccolors);
+    grid_shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, ccolors);
 }
 
 DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
@@ -866,8 +1100,9 @@ void implementation::renderer_thread(void) {
             switch (msg->t) {
                 case itc_message_t::render_buffer:
                     if (buf) {
+                        platform->log_error("dropped frame (buf %d)", grid_streamer.find(buf));
                         dropped_frames ++;
-                        streamer.remap_buf(buf);
+                        grid_streamer.remap_buf(buf);
                     }
                     buf = msg->d.buffer;
                     mqueue->free(msg);
@@ -880,8 +1115,8 @@ void implementation::renderer_thread(void) {
         if (buf) {
             glClearColor(0.25,0.75,0.25,1);
             glClear(GL_COLOR_BUFFER_BIT);
-            shader.set_at_frame(1.0);
-            streamer.draw(buf);
+            grid_shader.set_at_frame(1.0);
+            grid_streamer.draw(buf);
             SDL_GL_SwapWindow(gl_window);
             platform->log_info("[%d] frame", platform->GetTickCount());
         }
@@ -927,9 +1162,11 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 
-    streamer.set_grid(grid_w, grid_h);
+    Psz = new_psz;
+    grid_w = new_grid_w, grid_h = new_grid_h;
+    grid_streamer.set_grid(grid_w, grid_h);
 
-    shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
+    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
     platform->log_info("reshape(): to vp %dx%d+%d+%d grid %dx%d psz %dx%d",
                         viewport_w, viewport_h, viewport_x, viewport_y,

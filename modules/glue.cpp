@@ -11,14 +11,15 @@
 #include <cstdlib>
 #include <string>
 
-#if defined(WIN32)
+#if defined(__WIN32__) || defined(__CYGWIN__)
 # include <windows.h>
 # define _load_lib(name) LoadLibrary(name)
 # define _get_sym(lib, name) GetProcAddress((HINSTANCE)lib, name)
 # define _error "unknown error"
 # define _release_lib(lib) FreeLibrary((HINSTANCE)lib)
-const char * const _so_suffix = ".dll";
+const std::string _so_suffix(".dll");
 const char _os_path_sep = '\\';
+typedef FARPROC FOOPTR;
 #else
 # include <dlfcn.h>
 # define _load_lib(name) dlopen(name, RTLD_NOW)
@@ -28,7 +29,9 @@ const char _os_path_sep = '\\';
 //const char * const _so_suffix = ".so";
 const char _os_path_sep = '/';
 const std::string _so_suffix(".so");
+typedef void * FOOPTR;
 #endif
+
 
 #undef DFMODULE_BUILD
 #include "ideclspec.h"
@@ -116,7 +119,7 @@ static int load_module(const char *soname) {
         return 0;
     }
     int rv = 0;
-    void *sym;
+    FOOPTR sym;
     dep_foo_t depfoo = NULL;
     
     if ((sym = _get_sym(lib, "dependencies"))) {

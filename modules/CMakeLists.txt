@@ -34,12 +34,9 @@ endif()
 
 if (ARCH64)
     if(DF_32BIT_COMPAT)
-        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
         set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
-    else()
-        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
     endif()
 endif()
 

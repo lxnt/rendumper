@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <locale.h>
 
-#include "posix_glob.h"
+#include "df_glob.h"
 #include "df_buffer.h"
 
 #include "SDL.h"
@@ -119,9 +119,9 @@ struct implementation : public iplatform {
     }
     const char * const *glob(const char* pattern, const char * const exclude[],
                     const bool include_dirs, const bool include_files) {
-        return posix_glob(pattern, exclude, include_dirs, include_files);
+        return df_glob(pattern, exclude, include_dirs, include_files);
     }
-    void gfree(const char * const *rv) { posix_gfree(rv); }
+    void gfree(const char * const *rv) { df_gfree(rv); }
 };
 
 static implementation impl;

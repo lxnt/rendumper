@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include "posix_glob.h"
+#include "df_glob.h"
 #include "df_buffer.h"
 
 #define DFMODULE_BUILD
@@ -178,9 +178,9 @@ struct implementation : public iplatform {
                                 size_t size, uint32_t attrs, const char *fmt, ...);
     const char * const *glob(const char* pattern, const char* const exclude[],
                         const bool include_dirs, const bool include_files) {
-        return posix_glob(pattern, exclude, include_dirs, include_files);
+        return df_glob(pattern, exclude, include_dirs, include_files);
     }
-    void gfree(const char * const * rv) { posix_gfree(rv); }
+    void gfree(const char * const * rv) { df_gfree(rv); }
 };
 
 static void log_sumthin(const char *fname, const char *prefix, const char *fmt, va_list ap) {

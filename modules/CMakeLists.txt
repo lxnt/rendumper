@@ -100,16 +100,6 @@ set(HEADERS
     include/irenderer.h )
 install(FILES ${HEADERS} DESTINATION include/dfmodules)
 
-set(POSIX_COMMON
-    common/posix_glob.cpp
-    common/df_buffer.cpp
-)
-
-set(WINDOZE_COMMON
-    common/windoze_glob.cpp
-    common/df_buffer.cpp
-)
-
 set(GL_COMMON
     common/la_muerte_el_gl.cpp
     common/df_buffer.cpp
@@ -139,7 +129,7 @@ if (PLATFORM_SDL2)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
-    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp ${POSIX_COMMON})
+    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp common/df_glob.cpp)
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     target_link_libraries(platform_sdl2 ${PKG_SDL2_LIBRARIES})
     set_target_properties(platform_sdl2 PROPERTIES PREFIX "")
@@ -158,7 +148,7 @@ if (RENDERER_SDL2GL2)
     link_directories(${PKG_GLEW_LIBRARY_DIRS})
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     include_directories( ${PKG_GLEW_INCLUDE_DIRS} )
-    add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${POSIX_COMMON} ${GL_COMMON})
+    add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${GL_COMMON})
     target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} SDL_pnglite z)
     set_target_properties(renderer_sdl2gl2 PROPERTIES PREFIX "")
     install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
@@ -169,7 +159,7 @@ if (RENDERER_NCURSES)
     if(NOT HAVE_NCURSES)
         message(SEND_ERROR "ncursesw/ncurses not found.")
     endif()
-    add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp ${POSIX_COMMON})
+    add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp)
     include_directories( ${NCURSES_INCLUDE_DIRS} )
     target_link_libraries(renderer_ncurses ${NCURSES_LIBRARIES})
     set_target_properties(renderer_ncurses PROPERTIES PREFIX "")
@@ -181,7 +171,7 @@ if (PLATFORM_NCURSES)
     if(NOT HAVE_NCURSES)
         message(SEND_ERROR "ncursesw/ncurses not found.")
     endif()
-    add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp ${POSIX_COMMON})
+    add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp common/df_glob.cpp)
     include_directories( ${NCURSES_INCLUDE_DIRS} )
     target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
     set_target_properties(platform_ncurses PROPERTIES PREFIX "")

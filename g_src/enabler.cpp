@@ -91,7 +91,7 @@ static void assimilate_buffer(df_buffer_t *buf) {
     gps.screentexpos_cbr = buf->cbr;
 
     /* maybe force_full_display_count will overflow. ;) */
-    gps.resize(buf->dimx, buf->dimy);
+    gps.resize(buf->w, buf->h);
 }
 
 static void add_input_event(df_input_event_t *event) {

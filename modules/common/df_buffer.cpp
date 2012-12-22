@@ -116,7 +116,7 @@ void dump_buffer_t(df_buffer_t *buf, const char *name) {
     uint8_t *p = buf->ptr;
     while(bc < buf->required_sz) {
         bc++;
-        fprintf(fp, "%02hhx ", p[bc]);
+        fprintf(fp, "%02x ", (unsigned)p[bc]);
         if (bc%4 == 0)
             fputc(' ', fp);
         if (bc%32 == 0)

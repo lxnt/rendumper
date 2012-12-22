@@ -58,8 +58,6 @@ struct implementation : public iplatform {
 
     BOOL DeleteFile(const char* filename) { return !unlink(filename); }
 
-    void ZeroMemory(void* dest, int len) { memset(dest, 0, len); }
-
     /* Returns milliseconds since 1970
      * Wraps every 24 days (assuming 32-bit signed dwords)
      */

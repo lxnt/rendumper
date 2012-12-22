@@ -87,9 +87,6 @@ typedef int (*thread_foo_t)(void *);
 struct iplatform {
     virtual void release() = 0;
 
-    /* Is not used, at least on Linux. */
-    virtual void ZeroMemory(void *dest, int len) = 0;
-
     /* Retrieves the number of milliseconds that have elapsed since
        the system was started, up to 49.7 days. */
     virtual DWORD GetTickCount(void) = 0; // random.cpp and the blob.

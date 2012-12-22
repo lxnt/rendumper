@@ -36,8 +36,6 @@ struct implementation : public iplatform {
 
     BOOL DeleteFile(const char* filename) { return !unlink(filename); }
 
-    void ZeroMemory(void* dest, int len) { memset(dest, 0, len); }
-
     DWORD GetTickCount() { return SDL_GetTicks(); }
 
     BOOL QueryPerformanceCounter(LARGE_INTEGER* performanceCount) {

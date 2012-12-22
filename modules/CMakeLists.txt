@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 project(dfmodules)
 
-# kludges
-set(ENV{PKG_CONFIG_PATH} "/home/lxnt/00DFGL/prefix32/lib/pkgconfig/")
-
+# kludge
+set(ENV{PKG_CONFIG_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
 
 if (NOT UNIX)
     message(FATAL_ERROR "~")
 endif()
 
 set(CMAKE_C_FLAGS "-fvisibility=hidden -Wall -Wextra -Werror")
+set(CMAKE_C_FLAGS_DEBUG "-ggdb3")
 set(CMAKE_CXX_FLAGS "-std=c++0x -fvisibility-inlines-hidden ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3")
+
 set(M32 "-m32 -march=i686")
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -19,25 +21,24 @@ else()
   set(ARCH64 FALSE)
 endif()
 
-if (ARCH64)
-    if(NOT CONFIGURING_RENDUMPER)
-        option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
-    else()
-        set(DF_32BIT_COMPAT TRUE)
-    endif()
-    if(DF_32BIT_COMPAT)
-#        set(SDL2_PREFIX /home/lxnt/00DFGL/prefix32)
-        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
-        set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE PATH "what it says")
+if(NOT CONFIGURING_RENDUMPER)
+    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
+else()
+    set(DF_32BIT_COMPAT TRUE)
+endif()
 
-        set(CMAKE_CXX_COMPILER g++-4.5)
-        set(CMAKE_C_COMPILER g++-4.5)
+if(DF_32BIT_COMPAT)
+    set(CMAKE_CXX_COMPILER g++-4.5)
+    set(CMAKE_C_COMPILER g++-4.5)
+endif()
+
+if (ARCH64)
+    if(DF_32BIT_COMPAT)
+        set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix32" CACHE PATH "install prefix" FORCE)
         set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
         set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
         set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
-        link_directories(${LIB32_LINK_DIR})
     else()
-#        set(SDL2_PREFIX CACHE PATH /home/lxnt/00DFGL/fgtestbed/prefix FORCE)
         set(CMAKE_INSTALL_PREFIX "/home/lxnt/00DFGL/prefix64" CACHE PATH "install prefix" FORCE)
     endif()
 endif()
@@ -45,15 +46,7 @@ endif()
 include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
-if(DF_LINUX_DIR)
-    set(DFMOD_DESTDIR ${DF_LINUX_DIR}/libs)
-else()
-    set(DFMOD_DESTDIR lib/dfmodules)
-endif()
-
-#if(SDL2_PREFIX)
-#    set(ENV{PKG_CONFIG_PATH} "${SDL2_INSTALL_PREFIX}/lib/pkgconfig/")
-#endif()
+set(DFMOD_DESTDIR lib/dfmodules)
 
 pkg_check_modules(PKG_SDL2 QUIET sdl2)
 pkg_check_modules(PKG_OPENAL QUIET openal)
@@ -125,6 +118,11 @@ set(GL_COMMON
     common/df_buffer.cpp
 )
 
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 option(SOUND_OPENAL "build sound-openal module" OFF)
 if (SOUND_OPENAL)
     if(NOT OPENAL_DEPS)
@@ -139,7 +137,7 @@ if (SOUND_OPENAL)
 endif()
 
 option(PLATFORM_SDL2 "build sdl2 platform module" ${PKG_SDL2_FOUND})
-if (PLATFORM_SDL20)
+if (PLATFORM_SDL2)
     if(NOT PKG_SDL2_FOUND)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
@@ -152,7 +150,7 @@ if (PLATFORM_SDL20)
 endif()
 
 option(RENDERER_SDL2GL2 "build sdl2+gl2 renderer module" ${PKG_SDL2_FOUND})
-if (PLATFORM_SDL20)
+if (RENDERER_SDL2GL2)
     if(NOT PKG_SDL2_FOUND)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
@@ -206,9 +204,12 @@ install(TARGETS common_code LIBRARY DESTINATION ${DFMOD_DESTDIR})
 
 # the glue
 add_library(glue glue.cpp)
-install(TARGETS glue ARCHIVE DESTINATION lib/dfmodules)
+install(TARGETS glue ARCHIVE DESTINATION ${DFMOD_DESTDIR})
 
 # tests
+
+add_definitions(-DDF_MODULES_PATH="${CMAKE_INSTALL_PREFIX}/${DFMOD_DESTDIR}")
+
 add_executable(test-alert tests/alert.cpp)
 target_link_libraries(test-alert glue dl ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-alert RUNTIME DESTINATION bin)
@@ -217,6 +218,6 @@ add_executable(test-find tests/find.cpp)
 target_link_libraries(test-find glue dl ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-find RUNTIME DESTINATION bin)
 
-add_executable(life tests/life.cpp)
-target_link_libraries(life glue dl ${CMAKE_THREAD_LIBS_INIT})
-install(TARGETS life RUNTIME DESTINATION bin)
+add_executable(test-life tests/life.cpp)
+target_link_libraries(test-life glue dl ${CMAKE_THREAD_LIBS_INIT})
+install(TARGETS test-life RUNTIME DESTINATION bin)

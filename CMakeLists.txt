@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(rendumper)
 
-set(LIB32_LINK_DIR "/home/lxnt/00DFGL/lib32" CACHE PATH "what it says")
-set(DF_LINUX_DIR "/home/lxnt/00DFGL/df3411v" CACHE STRING "df_linux")
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "build type" FORCE)
 set(WNO_SIGN_COMPARE "-Wno-sign-compare" CACHE STRING "what it says")
 
@@ -12,16 +10,30 @@ include_directories(modules/include)
 
 if(NOT UNIX)
     message(FATAL_ERROR "~")
-else()
-    set(CMAKE_CXX_COMPILER g++-4.5)
-    set(BRING_EM_ON "-Wall -Wextra -pedantic ${WNO_SIGN_COMPARE}")
-    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu ${LIB32_LINK_DIR})
-    set(CMAKE_CXX_FLAGS_DEBUG "-m32 -g -std=c++0x ${BRING_EM_ON}")
-    set(CMAKE_C_FLAGS_DEBUG "-m32 -g ${BRING_EM_ON}")
-    set(CMAKE_CXX_FLAGS "-m32 -march=i686 -mtune=generic -std=c++0x  ${BRING_EM_ON}")
-    set(CMAKE_C_FLAGS "-m32 -march=i686 -mtune=generic ${BRING_EM_ON}")
 endif()
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(ARCH64 TRUE)
+else()
+  set(ARCH64 FALSE)
+endif()
+
+set(M32 "-m32 -march=i686")
+
+set(CMAKE_CXX_COMPILER g++-4.5)
+set(CMAKE_C_COMPILER g++-4.5)
+set(BRING_EM_ON "-Wall -Wextra -pedantic ${WNO_SIGN_COMPARE}")
+
+set(CMAKE_C_FLAGS "${BRING_EM_ON}")
+set(CMAKE_C_FLAGS_DEBUG "-ggdb3")
+set(CMAKE_CXX_FLAGS "-std=c++0x ${BRING_EM_ON}")
+set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3")
+
+if (ARCH64)
+    set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
+    set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
+endif()
 
 option(FG_DUMPER "Build FG dumper code" OFF)
 if(FG_DUMPER)

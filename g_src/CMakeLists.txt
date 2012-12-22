@@ -58,8 +58,8 @@ set( HEADERS
     texture_handler.h
     ViewBase.h
 )
-link_directories(${LIB32_LINK_DIR})
+
 add_library( graphics SHARED ${SOURCE} ${FGD_SOURCE})
 target_link_libraries(graphics glue ${LIBS} ${FGD_LIBS})
-install(TARGETS graphics LIBRARY DESTINATION ${DF_LINUX_DIR}/libs)
+install(TARGETS graphics LIBRARY DESTINATION lib)
 

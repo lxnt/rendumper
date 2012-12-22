@@ -450,13 +450,17 @@ void gofui_t::render_things(void) {
 
 //}
 
+#if !defined(DF_MODULES_PATH)
+#define DF_MODULES_PATH NULL
+#endif
+
 int main (int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s print_mode [w h] [tor]\n", argv[0]);
         return 1;
     }
 
-    if (!lock_and_load(argv[1], NULL))
+    if (!lock_and_load(argv[1], DF_MODULES_PATH))
         return 1;
 
     int w = 128, h = 32;

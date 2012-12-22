@@ -851,9 +851,11 @@ void implementation::initialize() {
     if (!glFenceSync)
         platform->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 
+#if 0
+    /* this is not present in glew 1.6. and it ain't that fatal anyway */
     if (!GLEW_ARB_map_buffer_alignment)
         platform->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
-
+#endif
     /* todo:
 
     glGetInteger(GL_MAJOR_VERSION);

@@ -151,7 +151,12 @@ void free_buffer_t(df_buffer_t *buf) {
     free(buf);
 }
 
-#if defined(WIN32)
+#if defined(__WIN32__) || defined(__CYGWIN__)
+/*  There's some incompehensible stuff about linking
+    with msvcrt, so just skip this for now */
+#if 0
+
+#include "crtdbg.h"
 /* http://msdn.microsoft.com/en-us/library/a9yf33zb%28v=vs.80%29.aspx */
 static void iph_stub(const wchar_t * /* expr */,
               const wchar_t * /* function */,
@@ -161,8 +166,16 @@ static void iph_stub(const wchar_t * /* expr */,
 
 static void windoze_crap() {
     _set_invalid_parameter_handler(iph_stub);
+
+/*  work around #define _CrtSetReportMode(t,f) ((int)0)
+    causing unused value warning */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
     _CrtSetReportMode(_CRT_ASSERT, 0);
+#pragma GCC diagnostic pop
 }
+#endif
+
 #define vsnprintf _vsnprintf
 #endif
 
@@ -171,7 +184,7 @@ int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t 
 
     memset(tbuf, 0, size+1);
 
-#if defined(WIN32)
+#if defined(WIN32) && defined(MSVCRT_LINKING_GOT_COMPREHENDED)
     windoze_crap();
 #endif
 
@@ -179,7 +192,7 @@ int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t 
 
 #if defined(WIN32)
     if (rv < 0) {
-        if (strlen(tbuf) == size))
+        if (strlen(tbuf) == size)
             rv = size;
         else
             return rv;

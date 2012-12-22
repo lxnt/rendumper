@@ -1,8 +1,6 @@
 #include <cstdarg>
+#include "common_code_deps.h"
 
-#include "iplatform.h"
-#include "imqueue.h"
-#include "irenderer.h"
 #include "emafilter.h"
 #include "df_buffer.h"
 
@@ -64,11 +62,6 @@ struct implementation : public isimuloop {
     /* ITC */
     imqd_t incoming_q; // stuff from renderer or whoever
 
-    /* dependencies */
-    iplatform *platform;
-    imqueue *mqueue;
-    irenderer *renderer;
-
     implementation() :
                       started(false),
                       paused(false),
@@ -81,10 +74,7 @@ struct implementation : public isimuloop {
                       render_things_time_ms(0.025, 10.0, 5),
                       mainloop_period_ms(0.025, 10.0, 5),
                       render_things_period_ms(0.025, 10.0, 5)
-                       {
-        platform = getplatform();
-        mqueue = getmqueue();
-    }
+                       { }
 };
 
 void implementation::set_callbacks(mainloop_foo_t ml,
@@ -162,14 +152,13 @@ uint32_t implementation::get_actual_rfps() { return render_things_period_ms.get(
     also need to get rid of render message. it is not needed.
 */
 void implementation::simulation_thread() {
-    renderer = getrenderer();
-
     incoming_q  = mqueue->open("simuloop", 1<<10);
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
     df_buffer_t *renderbuf = NULL;
     df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
     assimilate_buffer_cb(backup_buf);
+    platform->log_info("backup_buf is %p", backup_buf);
 
     uint32_t last_renderth_at = 0;
     uint32_t last_mainloop_at = 0;
@@ -261,12 +250,15 @@ void implementation::simulation_thread() {
             due_renderth = false;
             if ((renderbuf = renderer->get_buffer()) != NULL) {
                 force_renderth = false;
+
+                platform->log_info("simuloop(): rendering into buf %p", renderbuf);
                 assimilate_buffer_cb(renderbuf);
                 uint32_t rt_start_ms = platform->GetTickCount();
                 render_things_cb();
                 uint32_t rt_end_ms = platform->GetTickCount();
                 renderer->submit_buffer(renderbuf);
                 assimilate_buffer_cb(backup_buf); // so that gps pointers stay valid: is this really needed?
+
                 renders ++;
                 render_things_period_ms.update(rt_end_ms - last_renderth_at);
                 render_things_time_ms.update(rt_end_ms - rt_start_ms);
@@ -308,6 +300,7 @@ void implementation::simulation_thread() {
 void implementation::release() { }
 
 static implementation *impl = NULL;
+
 extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void) {
     if (!impl)
         impl = new implementation();

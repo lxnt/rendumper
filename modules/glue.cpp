@@ -56,6 +56,8 @@ getrenderer_t getrenderer = NULL;
 getkeyboard_t getkeyboard = NULL;
 getmusicsound_t getmusicsound = NULL;
 
+typedef void (*dep_foo_t)(iplatform **, imqueue **, irenderer **, itextures **, isimuloop **, imusicsound **, ikeyboard **);
+
 static std::string module_path("");
 
 /* blindly prepended to the soname */
@@ -74,10 +76,24 @@ void set_modpath(const char *modpath) {
 #define DFMOD_EP_KEYBOARD   32
 #define DFMOD_EP_MUSICSOUND 64
 
+static iplatform   *iplat_ep[42] = { NULL };
+static imqueue     *imq_ep[42] = { NULL };
+static irenderer   *iren_ep[42] = { NULL };
+static itextures   *itex_ep[42] = { NULL };
+static isimuloop   *isim_ep[42] = { NULL };
+static imusicsound *isnd_ep[42] = { NULL };
+static ikeyboard   *ikbd_ep[42] = { NULL };
+
+static int module_load_count = 0;
+
 /* returns a bitfield of which entry points were replaced.
    any error loading the so results in zero entry points replaced
    and thus return value of 0. */
-int load_module(const char *soname) {
+static int load_module(const char *soname) {
+    if (module_load_count++ > 42) {
+        fprintf(stderr, "more that %d modules, you nuts?", module_load_count);
+        exit(module_load_count);
+    }
     std::string fname;
 
     fname = module_path;
@@ -101,6 +117,11 @@ int load_module(const char *soname) {
     }
     int rv = 0;
     void *sym;
+    dep_foo_t depfoo = NULL;
+    
+    if ((sym = _get_sym(lib, "dependencies"))) {
+        depfoo = (dep_foo_t) sym;
+    }
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
@@ -136,10 +157,25 @@ int load_module(const char *soname) {
         rv |= DFMOD_EP_MUSICSOUND; getmusicsound = (getmusicsound_t) sym;
         getplatform()->log_info("%s provides imusicsound", fname.c_str());
     }
+    if (depfoo) {
+        if (rv & DFMOD_EP_PLATFORM) {
+            fprintf(stderr, "platform module has dependencies: fatal.");
+            exit(1);
+        }
+        depfoo(
+            &iplat_ep[module_load_count],
+            &imq_ep[module_load_count],
+            &iren_ep[module_load_count],
+            &itex_ep[module_load_count],
+            &isim_ep[module_load_count],
+            &isnd_ep[module_load_count],
+            &ikbd_ep[module_load_count]
+        );
+    }
     return rv;
 }
 
-bool load_platform(const char *platform, const char *modpath) {
+static bool load_platform(const char *platform, const char *modpath) {
     if (modpath)
         set_modpath(modpath);
     else if ((modpath = getenv("DF_MODULES_PATH")))

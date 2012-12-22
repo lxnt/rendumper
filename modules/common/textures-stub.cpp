@@ -1,5 +1,5 @@
 #include <cstring>
-#include "iplatform.h"
+#include "common_code_deps.h"
 
 #define DFMODULE_BUILD
 #include "itextures.h"
@@ -22,8 +22,7 @@ struct implementation : public itextures {
     /* --- */
 
     long index;
-    iplatform *platform;
-    implementation() : index(0) { platform = getplatform(); }
+    implementation() : index(0) { }
 };
 
 long implementation::clone_texture(long src) {
@@ -65,7 +64,6 @@ df_texalbum_t *implementation::get_album() {
 void implementation::release_album(df_texalbum_t *p) {
     platform->log_info("stub_textures::release_album(%p)", p);
 }
-
 
 void implementation::release() { }
 

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 project(dfmodules)
 
+set(DFMOD_DESTDIR "lib/dfmodules")
+
+message(STATUS "dd: ${DFMOD_DESTDIR}")
+
 # kludge
 set(ENV{PKG_CONFIG_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
-
-if (NOT UNIX)
-    message(FATAL_ERROR "~")
-endif()
 
 set(CMAKE_C_FLAGS "-fvisibility=hidden -Wall -Wextra -Werror")
 set(CMAKE_C_FLAGS_DEBUG "-ggdb3")
@@ -21,10 +21,15 @@ else()
   set(ARCH64 FALSE)
 endif()
 
-if(NOT CONFIGURING_RENDUMPER)
-    option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
+if (UNIX)
+    # this doesn't rly make sense for windoze
+    if(NOT CONFIGURING_RENDUMPER)
+        option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
+    else()
+        set(DF_32BIT_COMPAT TRUE)
+    endif()
 else()
-    set(DF_32BIT_COMPAT TRUE)
+    set(DF_32BIT_COMPAT FALSE)
 endif()
 
 if(DF_32BIT_COMPAT)
@@ -43,17 +48,14 @@ endif()
 include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
-set(DFMOD_DESTDIR lib/dfmodules)
+
+#set(DFMOD_DESTDIR "${CMAKE_INSTALL_PREFIX}/lib/dfmodules")
+message(STATUS "dd: ${DFMOD_DESTDIR}")
 
 pkg_check_modules(PKG_SDL2 QUIET sdl2)
 pkg_check_modules(PKG_OPENAL QUIET openal)
 pkg_check_modules(PKG_SNDFILE QUIET ncurses)
-pkg_check_modules(PKG_NCURSESW QUIET ncursesw)
 pkg_check_modules(PKG_GLEW QUIET glew)
-
-if (NOT PKG_NCURSESW_FOUND)
-    pkg_check_modules(PKG_NCURSES QUIET ncurses)
-endif()
 
 if (PKG_OPENAL_FOUND AND PKG_SNDFILE_FOUND)
     set(OPENAL_DEPS ON)
@@ -63,6 +65,12 @@ endif()
 
 set(HAVE_NCURSES OFF)
 if (UNIX)
+    pkg_check_modules(PKG_NCURSESW QUIET ncursesw)
+
+    if (NOT PKG_NCURSESW_FOUND)
+        pkg_check_modules(PKG_NCURSES QUIET ncurses)
+    endif()
+
     if (PKG_NCURSES_FOUND)
         set(HAVE_NCURSES ON)
         set(NCURSES_CFLAGS "${PKG_NCURSES_CFLAGS_OTHER}")
@@ -89,7 +97,6 @@ endif()
 include_directories(include)
 include_directories(common)
 set(HEADERS
-    include/ideclspec.h
     include/emafilter.h
     include/imqueue.h
     include/isimuloop.h
@@ -122,7 +129,9 @@ if (SOUND_OPENAL)
     set_property(SOURCE sound-openal/module.cpp APPEND PROPERTY COMPILE_FLAGS ${PKG_SNDFILE_CFLAGS})
     target_link_libraries(sound_openal ${PKG_OPENAL_LIBRARIES} ${PKG_SNDFILE_LIBRARIES})
     set_target_properties(sound_openal PROPERTIES PREFIX "")
-    install(TARGETS sound_openal LIBRARY DESTINATION ${DFMOD_DESTDIR})
+#    install(TARGETS sound_openal LIBRARY DESTINATION ${DFMOD_DESTDIR})
+    install(TARGETS sound_openal LIBRARY DESTINATION ${DFMOD_DESTDIR} RUNTIME DESTINATION ${DFMOD_DESTDIR} ARCHIVE DESTINATION ${DFMOD_DESTDIR})
+
 endif()
 
 option(PLATFORM_SDL2 "build sdl2 platform module" ${PKG_SDL2_FOUND})
@@ -131,11 +140,11 @@ if (PLATFORM_SDL2)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
-    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp common/df_glob.cpp)
+    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp common/df_glob.cpp common/df_buffer.cpp)
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     target_link_libraries(platform_sdl2 ${PKG_SDL2_LIBRARIES})
     set_target_properties(platform_sdl2 PROPERTIES PREFIX "")
-    install(TARGETS platform_sdl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
+    install(TARGETS platform_sdl2 LIBRARY DESTINATION ${DFMOD_DESTDIR} RUNTIME DESTINATION ${DFMOD_DESTDIR} ARCHIVE DESTINATION ${DFMOD_DESTDIR})
 endif()
 
 option(RENDERER_SDL2GL2 "build sdl2+gl2 renderer module" ${PKG_SDL2_FOUND})
@@ -143,48 +152,58 @@ if (RENDERER_SDL2GL2)
     if(NOT PKG_SDL2_FOUND)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
-    if(NOT PKG_GLEW_FOUND)
-        message(SEND_ERROR "GLEW not found.")
+    if (UNIX)
+        if(NOT PKG_GLEW_FOUND)
+            message(SEND_ERROR "GLEW not found.")
+        endif()
+        link_directories(${PKG_GLEW_LIBRARY_DIRS})
+        include_directories( ${PKG_GLEW_INCLUDE_DIRS} )
+    else()
+        include_directories("${CMAKE_INSTALL_PREFIX}/include/GL")
     endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
-    link_directories(${PKG_GLEW_LIBRARY_DIRS})
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
-    include_directories( ${PKG_GLEW_INCLUDE_DIRS} )
     add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${GL_COMMON})
-    target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} SDL_pnglite z)
     set_target_properties(renderer_sdl2gl2 PROPERTIES PREFIX "")
-    install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
+    if (UNIX)
+        target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} SDL_pnglite z)
+        install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
+    else()
+        target_link_libraries(renderer_sdl2gl2 SDL_pnglite z ${PKG_SDL2_LIBRARIES} glew32 opengl32 glu32)
+        install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR} RUNTIME DESTINATION ${DFMOD_DESTDIR} ARCHIVE DESTINATION ${DFMOD_DESTDIR})
+    endif()
 endif()
 
 if (UNIX)
 option(RENDERER_NCURSES "build ncurses renderer module" ${HAVE_NCURSES})
-if (RENDERER_NCURSES)
-    if(NOT HAVE_NCURSES)
-        message(SEND_ERROR "ncursesw/ncurses not found.")
+    if (RENDERER_NCURSES)
+        if(NOT HAVE_NCURSES)
+            message(SEND_ERROR "ncursesw/ncurses not found.")
+        endif()
+        add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp)
+        include_directories( ${NCURSES_INCLUDE_DIRS} )
+        target_link_libraries(renderer_ncurses ${NCURSES_LIBRARIES})
+        set_target_properties(renderer_ncurses PROPERTIES PREFIX "")
+        install(TARGETS renderer_ncurses LIBRARY DESTINATION ${DFMOD_DESTDIR})
     endif()
-    add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp)
-    include_directories( ${NCURSES_INCLUDE_DIRS} )
-    target_link_libraries(renderer_ncurses ${NCURSES_LIBRARIES})
-    set_target_properties(renderer_ncurses PROPERTIES PREFIX "")
-    install(TARGETS renderer_ncurses LIBRARY DESTINATION ${DFMOD_DESTDIR})
-endif()
 
-option(PLATFORM_NCURSES "build ncurses platform module" ${HAVE_NCURSES})
-if (PLATFORM_NCURSES)
-    if(NOT HAVE_NCURSES)
-        message(SEND_ERROR "ncursesw/ncurses not found.")
+    option(PLATFORM_NCURSES "build ncurses platform module" ${HAVE_NCURSES})
+    if (PLATFORM_NCURSES)
+        if(NOT HAVE_NCURSES)
+            message(SEND_ERROR "ncursesw/ncurses not found.")
+        endif()
+        add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp common/df_glob.cpp)
+        include_directories( ${NCURSES_INCLUDE_DIRS} )
+        target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+        set_target_properties(platform_ncurses PROPERTIES PREFIX "")
+        install(TARGETS platform_ncurses LIBRARY DESTINATION ${DFMOD_DESTDIR})
     endif()
-    add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp common/df_glob.cpp)
-    include_directories( ${NCURSES_INCLUDE_DIRS} )
-    target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
-    set_target_properties(platform_ncurses PROPERTIES PREFIX "")
-    install(TARGETS platform_ncurses LIBRARY DESTINATION ${DFMOD_DESTDIR})
-endif()
 endif(UNIX)
 
 
 # common code and stubs collection
 set(COMMON_SRC
+    common/common_code_deps.cpp
     common/simuloop.cpp
     common/sound-stub.cpp
     common/textures-stub.cpp
@@ -192,24 +211,34 @@ set(COMMON_SRC
     )
 add_library(common_code SHARED ${COMMON_SRC})
 set_target_properties(common_code PROPERTIES PREFIX "")
-install(TARGETS common_code LIBRARY DESTINATION ${DFMOD_DESTDIR})
+target_link_libraries(common_code m)
+if (UNIX)
+    install(TARGETS common_code LIBRARY DESTINATION ${DFMOD_DESTDIR})
+else()
+    install(TARGETS common_code RUNTIME DESTINATION ${DFMOD_DESTDIR})
+endif()
 
 # the glue
 add_library(glue glue.cpp)
 install(TARGETS glue ARCHIVE DESTINATION ${DFMOD_DESTDIR})
 
+if(UNIX)
+    set(GLUE_LIBS glue dl)
+else()
+    set(GLUE_LIBS glue)
+endif()
 # tests
 
 add_definitions(-DDF_MODULES_PATH="${CMAKE_INSTALL_PREFIX}/${DFMOD_DESTDIR}")
 
 add_executable(test-alert tests/alert.cpp)
-target_link_libraries(test-alert glue dl ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test-alert ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-alert RUNTIME DESTINATION bin)
 
 add_executable(test-find tests/find.cpp)
-target_link_libraries(test-find glue dl ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test-find ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-find RUNTIME DESTINATION bin)
 
 add_executable(test-life tests/life.cpp)
-target_link_libraries(test-life glue dl ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test-life ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 install(TARGETS test-life RUNTIME DESTINATION bin)

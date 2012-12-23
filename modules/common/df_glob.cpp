@@ -2,7 +2,6 @@
 #include <string.h>
 
 #if defined(__WIN32__) || defined(__CYGWIN__)
-
 #include <windows.h>
 
 const char * const *df_glob(const char* pattern, const char * const exclude[],

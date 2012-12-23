@@ -3,10 +3,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "ideclspec.h"
 #include "itypes.h"
 
-#if defined(WIN32)
+#if defined(__WIN32__) || defined(__CYGWIN__)
 # undef WINDOWS_LEAN_AND_MEAN
 # define WINDOWS_LEAN_AND_MEAN
 # include <windows.h>
@@ -150,10 +149,10 @@ struct iplatform {
 };
 
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC iplatform * APIENTRY getplatform(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC iplatform * APIENTRY (*getplatform)(void);
+extern "C" iplatform * DFM_APIEP (*getplatform)(void);
 #endif
 
 #endif

@@ -19,7 +19,6 @@
     Supported image file formats must include BMP and PNG.
 */
 
-#include "ideclspec.h"
 #include "itypes.h"
 
 struct itextures {
@@ -57,8 +56,8 @@ struct itextures {
 #endif
 };
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC itextures * APIENTRY gettextures(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC itextures * APIENTRY (*gettextures)(void);
+extern "C" itextures * DFM_APIEP (*gettextures)(void);
 #endif

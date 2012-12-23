@@ -18,6 +18,9 @@
     The album is also not shrunk upon filling.
 */
 
+extern iplatform *platform;
+extern getplatform_t _getplatform;
+
 namespace {
 
 struct implementation : public itextures {
@@ -61,8 +64,6 @@ struct implementation : public itextures {
     std::forward_list<long> grays;
     int cmax, cmay;
 };
-
-iplatform *platform = NULL;
 
 /* pieces of fgt.gl.rgba_surface */
 SDL_Surface *beloved_surface(int w, int h) {
@@ -304,9 +305,10 @@ void implementation::delete_texture(long) { }
 void implementation::release() { }
 
 static implementation *impl = NULL;
-extern "C" DECLSPEC itextures * APIENTRY gettextures(void) {
+
+extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void) {
     if (!impl) {
-        platform = getplatform();
+        platform = _getplatform();
         impl = new implementation();
     }
     return impl;

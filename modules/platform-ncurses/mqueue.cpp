@@ -398,7 +398,7 @@ void implementation::release() {
     mutex_unlock(&impl_spinlock);
 }
 
-extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void) {
+extern "C" DFM_EXPORT imqueue * DFM_APIEP getmqueue(void) {
     mutex_lock(&impl_spinlock);
     if (!impl)
         impl = new implementation();

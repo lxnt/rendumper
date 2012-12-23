@@ -95,7 +95,7 @@ static void alPrintErrors_(const char* file, int line) {
 
 
 /* former initsound() */
-DECLSPEC imusicsound * APIENTRY getmusicsound(void) {
+DECLSPEC imusicsound * DFM_APIEP getmusicsound(void) {
   if (impl)
     return impl;
   

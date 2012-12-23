@@ -15,9 +15,9 @@ struct irenderer {
 };
 
 #if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void);
+extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC irenderer * APIENTRY (*getrenderer)(void);
+extern "C" DFM_EXPORT irenderer * DFM_APIEP (*getrenderer)(void);
 #endif
 
 typedef void (*vvfunc_t)(void);

@@ -17,13 +17,15 @@ const char *_gl_enum_str(GLenum num) {
     }
 }
 
+extern iplatform *platform;
+
 void _gl_fatalize(const char *fi, const int li, const char *foo) {
     GLenum err;
     bool dead = false;
     while ((err = glGetError()) != GL_NO_ERROR) {
         dead = true;
-        getplatform()->log_error("%s", _gl_enum_str(err));
+        platform->log_error("%s", _gl_enum_str(err));
     }
     if (dead)
-        getplatform()->fatal("%s:%d in %s: bye.", fi, li, foo);
+        platform->fatal("%s:%d in %s: bye.", fi, li, foo);
 }

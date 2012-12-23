@@ -18,13 +18,18 @@
 #define DFMODULE_BUILD
 #include "iplatform.h"
 
+iplatform *platform; // for the mqueue
+
 namespace {
 
 struct implementation : public iplatform {
     implementation() {}
     void release() {}
 
-    BOOL CreateDirectory(const char* pathname, void* ) {
+    BOOL CreateDirectory(const char* pathname, void *) {
+#if defined(__WIN32__) || defined(__CYGWIN__)
+        return ::CreateDirectory(pathname, NULL);
+#else
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
             if (errno != EEXIST)
                 log_error("mkdir(%s): %s", pathname, strerror(errno));
@@ -32,6 +37,7 @@ struct implementation : public iplatform {
         } else {
             return TRUE;
         }
+#endif
     }
 
     BOOL DeleteFile(const char* filename) { return !unlink(filename); }
@@ -125,13 +131,14 @@ struct implementation : public iplatform {
 static implementation impl;
 static bool core_init_done = false;
 
-extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
+extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
     if (!core_init_done) {
-        setlocale(LC_ALL, ""); // why on earth do this?
+        setlocale(LC_ALL, ""); // no idea if that's the right thing to do on windoze
         if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0) {
             fprintf(stderr, "\nUnable to initialize SDL:  %s\n", SDL_GetError());
             exit(1);
         }
+        platform = &impl;
     }
 
     return &impl;

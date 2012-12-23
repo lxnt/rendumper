@@ -422,7 +422,7 @@ void implementation::renderer_thread(void) {
 void implementation::release(void) { }
 
 static implementation *impl = NULL;
-extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void) {
+extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void) {
     if (!impl)
         impl = new implementation();
     return impl;

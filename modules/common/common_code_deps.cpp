@@ -1,23 +1,38 @@
-#include "iplatform.h"
-#include "imqueue.h"
-#include "irenderer.h"
-#include "itextures.h"
-#include "isimuloop.h"
-#include "imusicsound.h"
-#include "ikeyboard.h"
+#include "itypes.h"
 
-#define DFMODULE_BUILD
-#include "ideclspec.h"
+#if !defined(NULL)
+#define NULL (0L)
+#endif
 
 /* dependencies */
 iplatform *platform = NULL;
-imqueue *mqueue = NULL;
-irenderer *renderer = NULL;
+imqueue   *mqueue   = NULL;
 
-extern "C" DECLSPEC void APIENTRY dependencies(iplatform ***pl, imqueue ***mq, irenderer ***rr, itextures ***tx, isimuloop ***sl, imusicsound ***ms, ikeyboard ***kb) {
-    *pl = &platform;
-    *mq = &mqueue;
-    *rr = &renderer;
+/* dependency getter entry points */
+getplatform_t _getplatform;
+getmqueue_t   _getmqueue;
+getrenderer_t _getrenderer;
+
+/* helper for getwhatever()s */
+void _get_deps(void) {
+    if (!platform)
+        platform = _getplatform();
+    if (!mqueue)
+        mqueue = _getmqueue();
+}
+
+/* linker entry point */
+extern "C" DFM_EXPORT void DFM_APIEP dependencies(
+                            getplatform_t **pl,
+                            getmqueue_t **mq,
+                            getrenderer_t **rr,
+                            gettextures_t **tx,
+                            getsimuloop_t **sl,
+                            getmusicsound_t **ms,
+                            getkeyboard_t **kb) {
+    *pl = &_getplatform;
+    *mq = &_getmqueue;
+    *rr = &_getrenderer;
     *tx = NULL;
     *sl = NULL;
     *ms = NULL;

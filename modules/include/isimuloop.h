@@ -35,10 +35,10 @@ struct isimuloop : public imessagesender {
     virtual uint32_t get_frame_count() = 0;
 };
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT isimuloop * DFM_APIEP getsimuloop(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC isimuloop * APIENTRY (*getsimuloop)(void);
+extern "C" isimuloop * DFM_APIEP (*getsimuloop)(void);
 #endif
 
 #endif

@@ -65,7 +65,7 @@
     
 */
 
-#include "ideclspec.h"
+#include "itypes.h"
 
 #if defined (DFMODULE_BUILD)
 # define DFMOD_SHIFT 1 // from enabler_input.h
@@ -97,8 +97,8 @@ struct ikeyboard {
     virtual unsigned short key_name(const char *name) = 0;
 };
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC ikeyboard * APIENTRY getkeyboard(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT ikeyboard * DFM_APIEP getkeyboard(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC ikeyboard * APIENTRY (*getkeyboard)(void);
+extern "C" ikeyboard * DFM_APIEP (*getkeyboard)(void);
 #endif

@@ -152,6 +152,8 @@ uint32_t implementation::get_actual_rfps() { return render_things_period_ms.get(
     also need to get rid of render message. it is not needed.
 */
 void implementation::simulation_thread() {
+    irenderer *renderer = _getrenderer();
+
     incoming_q  = mqueue->open("simuloop", 1<<10);
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
@@ -296,12 +298,12 @@ void implementation::simulation_thread() {
     }
 }
 
-
 void implementation::release() { }
 
 static implementation *impl = NULL;
 
-extern "C" DECLSPEC isimuloop * APIENTRY getsimuloop(void) {
+extern "C" DFM_EXPORT isimuloop * DFM_APIEP getsimuloop(void) {
+    _get_deps();
     if (!impl)
         impl = new implementation();
     return impl;

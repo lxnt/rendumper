@@ -3,7 +3,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "ideclspec.h"
+#include "itypes.h"
+
 /* Interthread message queues */
 
 typedef int imqd_t;
@@ -50,10 +51,10 @@ struct imqueue {
     virtual void free(void *buf) = 0;
 };
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT imqueue * DFM_APIEP getmqueue(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC imqueue * APIENTRY (*getmqueue)(void);
+extern "C" imqueue * DFM_APIEP (*getmqueue)(void);
 #endif
 
 #endif

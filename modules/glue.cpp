@@ -15,11 +15,29 @@
 # include <windows.h>
 # define _load_lib(name) LoadLibrary(name)
 # define _get_sym(lib, name) GetProcAddress((HINSTANCE)lib, name)
-# define _error "unknown error"
+# define _error windoze_error()
 # define _release_lib(lib) FreeLibrary((HINSTANCE)lib)
 const std::string _so_suffix(".dll");
 const char _os_path_sep = '\\';
 typedef FARPROC FOOPTR;
+char windoze_errstr[4096];
+static const char *windoze_error(void) {
+    memset(windoze_errstr, 0, 4096);
+    DWORD err = GetLastError();
+    DWORD rv = FormatMessage(
+        FORMAT_MESSAGE_FROM_SYSTEM,
+        NULL,
+        err,
+        0,
+        windoze_errstr,
+        2048,
+        NULL);
+    if (rv == 0) {
+        fprintf(stderr, "Whoa, FormatMessage() failed.\n");
+        exit(1);
+    }
+    return windoze_errstr;
+}
 #else
 # include <dlfcn.h>
 # define _load_lib(name) dlopen(name, RTLD_NOW)
@@ -32,36 +50,14 @@ const std::string _so_suffix(".so");
 typedef void * FOOPTR;
 #endif
 
+#if defined(DFMODULE_BUILD)
+# error DFMODULE_BUILD defined.
+#endif
 
-#undef DFMODULE_BUILD
-#include "ideclspec.h"
+#include "itypes.h"
 #include "iplatform.h"
-#include "imqueue.h"
-#include "irenderer.h"
-#include "isimuloop.h"
-#include "ikeyboard.h"
-#include "itextures.h"
-#include "imusicsound.h"
 
-typedef itextures * (*gettextures_t)(void);
-typedef isimuloop * (*getsimuloop_t)(void);
-typedef irenderer * (*getrenderer_t)(void);
-typedef ikeyboard * (*getkeyboard_t)(void);
-typedef imusicsound * (*getmusicsound_t)(void);
-typedef iplatform * (*getplatform_t)(void);
-typedef imqueue * (*getmqueue_t)(void);
-
-getplatform_t getplatform = NULL;
-getmqueue_t getmqueue = NULL;
-gettextures_t gettextures = NULL;
-getsimuloop_t getsimuloop = NULL;
-getrenderer_t getrenderer = NULL;
-getkeyboard_t getkeyboard = NULL;
-getmusicsound_t getmusicsound = NULL;
-
-typedef void (*dep_foo_t)(iplatform **, imqueue **, irenderer **, itextures **, isimuloop **, imusicsound **, ikeyboard **);
-
-static std::string module_path("");
+static std::string module_path("libs/");
 
 /* blindly prepended to the soname */
 void set_modpath(const char *modpath) {
@@ -79,28 +75,65 @@ void set_modpath(const char *modpath) {
 #define DFMOD_EP_KEYBOARD   32
 #define DFMOD_EP_MUSICSOUND 64
 
-static iplatform   *iplat_ep[42] = { NULL };
-static imqueue     *imq_ep[42] = { NULL };
-static irenderer   *iren_ep[42] = { NULL };
-static itextures   *itex_ep[42] = { NULL };
-static isimuloop   *isim_ep[42] = { NULL };
-static imusicsound *isnd_ep[42] = { NULL };
-static ikeyboard   *ikbd_ep[42] = { NULL };
+/* link table - pointers to pointers to entry points
+   which (pointers) reside in loaded modules. */
+static getplatform_t   *platform_ep[23] = { NULL };
+static getmqueue_t     *mqueue_ep[23]   = { NULL };
+static getrenderer_t   *renderer_ep[23] = { NULL };
+static gettextures_t   *textures_ep[23] = { NULL };
+static getsimuloop_t   *simuloop_ep[23] = { NULL };
+static getmusicsound_t *musicsound_ep[23] = { NULL };
+static getkeyboard_t   *keyboard_ep[23] = { NULL };
+static const char      *module_name[23] = { NULL };
 
 static int module_load_count = 0;
+
+/* master dispatch table - gets replicated to the above
+   and used by the executable this code gets linked to */
+getplatform_t   getplatform = NULL;
+getmqueue_t     getmqueue = NULL;
+gettextures_t   gettextures = NULL;
+getsimuloop_t   getsimuloop = NULL;
+getrenderer_t   getrenderer = NULL;
+getkeyboard_t   getkeyboard = NULL;
+getmusicsound_t getmusicsound = NULL;
+
+static void dump_link_table() {
+    for(int i = 0; i < module_load_count; i++) { // platform doesn't have deps.
+        getplatform()->log_info("module %s:", module_name[i]);
+        getplatform()->log_info("pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+            platform_ep[i], mqueue_ep[i], renderer_ep[i], textures_ep[i], simuloop_ep[i], musicsound_ep[i], keyboard_ep[i]);
+
+        getplatform()->log_info("*pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+            platform_ep[i] ? *platform_ep[i] : NULL,
+            mqueue_ep[i]   ? *mqueue_ep[i] : NULL,
+            renderer_ep[i] ? *renderer_ep[i] : NULL,
+            textures_ep[i] ? *textures_ep[i] : NULL,
+            simuloop_ep[i] ? *simuloop_ep[i] : NULL,
+            musicsound_ep[i] ? *musicsound_ep[i] : NULL,
+            keyboard_ep[i] ? *keyboard_ep[i] : NULL);
+    }
+
+
+    getplatform()->log_info("glue final entry points: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+        getplatform, getmqueue, getrenderer, gettextures, getsimuloop, getkeyboard, getmusicsound);
+}
 
 /* returns a bitfield of which entry points were replaced.
    any error loading the so results in zero entry points replaced
    and thus return value of 0. */
 static int load_module(const char *soname) {
-    if (module_load_count++ > 42) {
+    if (module_load_count > 23) {
         fprintf(stderr, "more that %d modules, you nuts?", module_load_count);
         exit(module_load_count);
     }
+
     std::string fname;
 
     fname = module_path;
     fname += soname;
+
+    module_name[module_load_count] = strdup(fname.c_str());
 
     /* phew. fname += '' if fname.endswith(_so_suffix) else _so_suffix */
     if (! ((fname.size() >= _so_suffix.size())
@@ -121,64 +154,80 @@ static int load_module(const char *soname) {
     int rv = 0;
     FOOPTR sym;
     dep_foo_t depfoo = NULL;
-    
+
     if ((sym = _get_sym(lib, "dependencies"))) {
         depfoo = (dep_foo_t) sym;
     }
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
-        getplatform()->log_info("%s provides iplatform", fname.c_str());
+        getplatform()->log_info("%s provides iplatform (getplatform=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getmqueue"))) {
         rv |= DFMOD_EP_MQUEUE; getmqueue = (getmqueue_t) sym;
-        getplatform()->log_info("%s provides imqueue", fname.c_str());
+        getplatform()->log_info("%s provides imqueue (getmqueue=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "gettextures"))) {
         rv |= DFMOD_EP_TEXTURES; gettextures = (gettextures_t) sym;
-        getplatform()->log_info("%s provides itextures", fname.c_str());
-    }
-
-    if ((sym = _get_sym(lib, "getsimuloop"))) {
-        rv |= DFMOD_EP_SIMULOOP; getsimuloop = (getsimuloop_t) sym;
-        getplatform()->log_info("%s provides isimuloop", fname.c_str());
+        getplatform()->log_info("%s provides itextures (gettextures=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getrenderer"))) {
         rv |= DFMOD_EP_RENDERER; getrenderer = (getrenderer_t) sym;
-        getplatform()->log_info("%s provides irenderer", fname.c_str());
+        getplatform()->log_info("%s provides irenderer (getrenderer=%p)", fname.c_str(), sym);
+    }
+
+    if ((sym = _get_sym(lib, "getsimuloop"))) {
+        rv |= DFMOD_EP_SIMULOOP; getsimuloop = (getsimuloop_t) sym;
+        getplatform()->log_info("%s provides isimuloop (getsimuloop=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getkeyboard"))) {
         rv |= DFMOD_EP_KEYBOARD; getkeyboard = (getkeyboard_t) sym;
-        getplatform()->log_info("%s provides ikeyboard", fname.c_str());
+        getplatform()->log_info("%s provides ikeyboard (getkeyboard=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getmusicsound"))) {
         rv |= DFMOD_EP_MUSICSOUND; getmusicsound = (getmusicsound_t) sym;
-        getplatform()->log_info("%s provides imusicsound", fname.c_str());
+        getplatform()->log_info("%s provides imusicsound (getmusicsound=%p)", fname.c_str(), sym);
     }
+
     if (depfoo) {
-        if (rv & DFMOD_EP_PLATFORM) {
-            fprintf(stderr, "platform module has dependencies: fatal.");
-            exit(1);
-        }
         depfoo(
-            &iplat_ep[module_load_count],
-            &imq_ep[module_load_count],
-            &iren_ep[module_load_count],
-            &itex_ep[module_load_count],
-            &isim_ep[module_load_count],
-            &isnd_ep[module_load_count],
-            &ikbd_ep[module_load_count]
+            &platform_ep[module_load_count],
+            &mqueue_ep[module_load_count],
+            &renderer_ep[module_load_count],
+            &textures_ep[module_load_count],
+            &simuloop_ep[module_load_count],
+            &musicsound_ep[module_load_count],
+            &keyboard_ep[module_load_count]
         );
+        getplatform()->log_info("%s has following dependencies: %s%s%s%s%s%s%s", fname.c_str(),
+            platform_ep[module_load_count] ? "platform " : "",
+            mqueue_ep[module_load_count]   ? "mqueue " : "",
+            renderer_ep[module_load_count] ? "renderer " : "",
+            textures_ep[module_load_count] ? "textures " : "",
+            simuloop_ep[module_load_count] ? "simuloop " : "",
+            musicsound_ep[module_load_count] ? "musicsound " : "",
+            keyboard_ep[module_load_count] ? "keyboard " : "");
+
+        for (int i = 0; i < module_load_count + 1; i++) {
+            if (platform_ep[i])  *platform_ep[i] = getplatform;
+            if (mqueue_ep[i])    *mqueue_ep[i]   = getmqueue;
+            if (renderer_ep[i])  *renderer_ep[i] = getrenderer;
+            if (textures_ep[i])  *textures_ep[i] = gettextures;
+            if (simuloop_ep[i])  *simuloop_ep[i] = getsimuloop;
+            if (musicsound_ep[i]) *musicsound_ep[i] = getmusicsound;
+            if (keyboard_ep[i])  *keyboard_ep[i] = getkeyboard;
+        }
     }
+    module_load_count ++;
     return rv;
 }
 
-static bool load_platform(const char *platform, const char *modpath) {
+bool load_platform(const char *platform, const char *modpath) {
     if (modpath)
         set_modpath(modpath);
     else if ((modpath = getenv("DF_MODULES_PATH")))
@@ -229,5 +278,6 @@ bool lock_and_load(const char *printmode, const char *modpath) {
 
     /* also load some non-stub sound, when we have any working */
 
+    dump_link_table();
     return true;
 }

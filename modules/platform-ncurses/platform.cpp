@@ -230,7 +230,7 @@ static char _main_name[] = "main()";
 
 static void ncurses_fini(void) { endwin(); }
 
-extern "C" DECLSPEC iplatform * APIENTRY getplatform(void) {
+extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
     if (!core_init_done) {
         int rv = pthread_mutex_lock(&_thread_list_mutex);
         _thread_info *mt = new _thread_info();

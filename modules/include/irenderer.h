@@ -146,7 +146,6 @@ http://www.codeproject.com/Articles/28969/HowTo-Export-C-structes-from-a-DLL#Cpp
 
 */
 
-#include "ideclspec.h"
 #include "itypes.h"
 
 struct irenderer : public imessagesender {
@@ -183,10 +182,10 @@ struct irenderer : public imessagesender {
     virtual void reset_textures() = 0;
 };
 
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC irenderer * APIENTRY (*getrenderer)(void);
+extern "C" irenderer * DFM_APIEP (*getrenderer)(void);
 #endif
 
 #endif

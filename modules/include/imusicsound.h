@@ -6,7 +6,7 @@
     std::string &filename has been converted to const char *.
 */
 
-#include "ideclspec.h"
+#include "itypes.h"
 
 struct imusicsound {
     virtual void release() = 0;
@@ -21,10 +21,10 @@ struct imusicsound {
     virtual void stop_sound(int slot, bool is_song)  = 0;    
     
 };
-#if defined (DFMODULE_BUILD) || defined(DFMODULE_IMPLICIT_LINK)
-extern "C" DECLSPEC imusicsound * APIENTRY getmusicsound(void);
+#if defined (DFMODULE_BUILD)
+extern "C" DFM_EXPORT imusicsound * DFM_APIEP getmusicsound(void);
 #else // using glue and runtime loading.
-extern "C" DECLSPEC imusicsound * APIENTRY (*getmusicsound)(void);
+extern "C" imusicsound * DFM_APIEP (*getmusicsound)(void);
 #endif
 
 #endif

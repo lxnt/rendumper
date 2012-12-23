@@ -68,7 +68,8 @@ void implementation::release_album(df_texalbum_t *p) {
 void implementation::release() { }
 
 static implementation *impl = NULL;
-extern "C" DECLSPEC itextures * APIENTRY gettextures(void) {
+extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void) {
+    _get_deps();
     if (!impl)
         impl = new implementation();
     return impl;

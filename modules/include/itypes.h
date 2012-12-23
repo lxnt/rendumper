@@ -3,6 +3,41 @@
 
 #include <cstdint>
 
+#if defined(__WIN32__) || defined(__CYGWIN__)
+# define DFM_EXPORT __declspec(dllexport)
+# define DFM_APIEP __cdecl
+#else /* GCC 4+ is implied. -fvisibility=hidden is implied. */
+# define DFM_EXPORT __attribute__((visibility ("default")))
+# define DFM_APIEP
+#endif
+
+/* forward decls of everything for the deps */
+struct iplatform;
+struct imqueue;
+struct itextures;
+struct irenderer;
+struct isimuloop;
+struct imusicsound;
+struct ikeyboard;
+
+/* entry point pointer typedefs for the deps */
+extern "C" {
+typedef iplatform * (DFM_APIEP *getplatform_t)(void);
+typedef imqueue   * (DFM_APIEP *getmqueue_t)(void);
+typedef irenderer * (DFM_APIEP *getrenderer_t)(void);
+typedef itextures * (DFM_APIEP *gettextures_t)(void);
+typedef isimuloop * (DFM_APIEP *getsimuloop_t)(void);
+typedef ikeyboard * (DFM_APIEP *getkeyboard_t)(void);
+typedef imusicsound * (DFM_APIEP *getmusicsound_t)(void);
+typedef void (*dep_foo_t)(getplatform_t **, getmqueue_t **,
+                          getrenderer_t **, gettextures_t **,
+                          getsimuloop_t **, getmusicsound_t **,
+                          getkeyboard_t **);
+
+}
+
+
+
 /*  A buffer for passing around screen data.
     screen is guaranteed to be page-aligned,
     rest of pointers  - 64bit-aligned.

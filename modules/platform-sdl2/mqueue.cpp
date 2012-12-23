@@ -8,14 +8,13 @@
 #include "SDL_timer.h"
 
 #include "iplatform.h"
+
 #define DFMODULE_BUILD
 #include "imqueue.h"
 
+extern iplatform *platform;
+
 namespace {
-
-iplatform *platform = NULL;
-
-
 
 void mq_trace(const char *wha, imqd_t qd, void *vbuf, size_t len) {
     if (true)
@@ -363,12 +362,10 @@ void implementation::release() {
     SDL_AtomicUnlock(&impl_spinlock);
 }
 
-extern "C" DECLSPEC imqueue * APIENTRY getmqueue(void) {
+extern "C" DFM_EXPORT imqueue * DFM_APIEP getmqueue(void) {
     SDL_AtomicLock(&impl_spinlock);
     if (!impl)
         impl = new implementation();
-    if (!platform)
-        platform = getplatform();
     impl_refcount += 1;
     SDL_AtomicUnlock(&impl_spinlock);
     return impl;

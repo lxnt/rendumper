@@ -50,6 +50,7 @@ static implementation the_stub;
 
 }
 
-extern "C" DECLSPEC imusicsound * APIENTRY getmusicsound(void) {
+extern "C" DFM_EXPORT imusicsound * DFM_APIEP getmusicsound(void) {
+    _get_deps();
     return &the_stub;
 }

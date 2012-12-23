@@ -3,8 +3,9 @@
 #include <ios>
 #include <fstream>
 
-#include "SDL.h"
 #include "glew.h"
+
+#include "SDL.h"
 
 #include "iplatform.h"
 #include "imqueue.h"
@@ -17,9 +18,14 @@
 #define DFMODULE_BUILD
 #include "irenderer.h"
 
+iplatform *platform = NULL;
+getplatform_t _getplatform = NULL;
+
 namespace {
 
-iplatform *platform;
+imqueue   *mqueue   = NULL;
+isimuloop *simuloop = NULL;
+itextures *textures = NULL;
 
 const int MIN_GRID_X = 80;
 const int MAX_GRID_X = 256;
@@ -739,10 +745,6 @@ struct implementation : public irenderer {
     void simuloop_quit() { not_done = false; }
     bool started;
 
-    imqueue *mqueue;
-    isimuloop *simuloop;
-    itextures *textures;
-
     imqd_t incoming_q;
     imqd_t free_buf_q;
 
@@ -1264,9 +1266,6 @@ implementation::implementation() {
     started = false;
     not_done = true;
     dropped_frames = 0;
-    textures = gettextures();
-    simuloop = getsimuloop();
-    mqueue = getmqueue();
     if ((incoming_q = mqueue->open("renderer", 1<<10)) < 0)
         platform->fatal("%s: %d from mqueue->open(renderer)", __func__, incoming_q);
 
@@ -1312,6 +1311,7 @@ void implementation::start() {
         return;
     }
     started = true;
+    platform->log_info("renderer start: this is %p", this);
     thread_id = platform->thread_create(thread_stub, "renderer", (void *)this);
 }
 
@@ -1327,10 +1327,36 @@ void implementation::join() {
 
 void implementation::release(void) { }
 
+/* module glue */
+
 static implementation *impl = NULL;
-extern "C" DECLSPEC irenderer * APIENTRY getrenderer(void) {
+
+getmqueue_t   _getmqueue = NULL;
+gettextures_t _gettextures = NULL;
+getsimuloop_t _getsimuloop = NULL;
+
+extern "C" DFM_EXPORT void DFM_APIEP dependencies(
+                            getplatform_t   **pl,
+                            getmqueue_t     **mq,
+                            getrenderer_t   **rr,
+                            gettextures_t   **tx,
+                            getsimuloop_t   **sl,
+                            getmusicsound_t **ms,
+                            getkeyboard_t   **kb) {
+    *pl = &_getplatform;
+    *mq = &_getmqueue;
+    *rr = NULL;
+    *tx = &_gettextures;
+    *sl = &_getsimuloop;
+    *ms = NULL;
+    *kb = NULL;
+}
+extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void) {
     if (!impl) {
-        platform = getplatform();
+        platform = _getplatform();
+        mqueue   = _getmqueue();
+        textures = _gettextures();
+        simuloop = _getsimuloop();
         impl = new implementation();
     }
     return impl;

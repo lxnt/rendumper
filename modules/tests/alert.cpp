@@ -6,11 +6,12 @@
 #include "glue.h"
 
 int main (int argc, char* argv[]) {
-    if (argc != 3) {
-	fprintf(stderr, "Usage: %s module-path platform-name\n", argv[0]);
+    if (argc != 2) {
+	fprintf(stderr, "Usage: %s platform-name\n", argv[0]);
 	return 1;
     }
-    load_platform(argv[2], argv[1]);
+    if (!load_platform(argv[1], DF_MODULES_PATH))
+        return 1;
 
     iplatform *platform = getplatform();
 

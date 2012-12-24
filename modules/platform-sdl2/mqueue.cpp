@@ -1,6 +1,5 @@
 #include <vector>
 #include <queue>
-#include <sstream>
 
 #include "SDL_thread.h"
 #include "SDL_mutex.h"
@@ -16,29 +15,85 @@ extern iplatform *platform;
 
 namespace {
 
+const char *strmsgt(const itc_message_t *msg) {
+    switch (msg->t) {
+    case itc_message_t::quit: return "quit";
+    case itc_message_t::complete: return "complete";
+    case itc_message_t::set_fps: return "set_fps";
+    case itc_message_t::set_gfps: return "set_gfps";
+    case itc_message_t::push_resize: return "push_resize";
+    case itc_message_t::pop_resize: return "pop_resize";
+    case itc_message_t::reset_textures: return "reset_textures";
+    case itc_message_t::pause: return "pause";
+    case itc_message_t::start: return "start";
+    case itc_message_t::render: return "render";
+    case itc_message_t::inc: return "inc";
+    case itc_message_t::zoom_in: return "zoom_in";
+    case itc_message_t::zoom_out: return "zoom_out";
+    case itc_message_t::zoom_reset: return "zoom_reset";
+    case itc_message_t::zoom_fullscreen: return "zoom_fullscreen";
+    case itc_message_t::zoom_resetgrid: return "zoom_resetgrid";
+    case itc_message_t::render_buffer: return "render_buffer";
+    case itc_message_t::input_event: return "input_event";
+    default: return "~unk~";
+    }
+}
+
+const char *strievtype(const itc_message_t *msg) {
+    switch (msg->d.event.type) {
+    case df_input_event_t::DF_KEY_UP: return "DF_KEY_UP";
+    case df_input_event_t::DF_KEY_DOWN: return "DF_KEY_DOWN";
+    case df_input_event_t::DF_BUTTON_UP: return "DF_BUTTON_UP";
+    case df_input_event_t::DF_BUTTON_DOWN: return "DF_BUTTON_DOWN";
+    case df_input_event_t::DF_QUIT: return "DF_QUIT";
+    default: return "~unk~";
+    }
+}
+
 void mq_trace(const char *wha, imqd_t qd, void *vbuf, size_t len) {
-    if (true)
+    ilogger *logr = platform->getlogr("mq.trace");
+    if (!logr->enabled(LL_TRACE))
         return;
+
     uint8_t *buf = (uint8_t *)vbuf;
-    std::stringstream hexdump(std::stringstream::in|std::stringstream::out);
 
-    //hexdump.width(2);
-    hexdump<<std::hex;
-    for (unsigned i = 0; i < ( len < 8 ? len : 8 ); i++) {
-        platform->log_info("0x%02hhx", buf[i]);
-        hexdump<<( (int)(buf[i]) );
-    }
+    char hexdump[3*8 + 1];
+    memset(hexdump, 0, sizeof(hexdump));
 
-    std::string hd;
+    for (unsigned i = 0; i < ( len < 8 ? len : 8 ); i++)
+        sprintf(hexdump + i*3, "%02x ", (unsigned)buf[i]);
 
-    hexdump.str(hd);
-
-    if (sizeof(void *) > len) {
-        platform->log_info("mq_%s(%d): %p[%u] '%s'", wha, qd, buf, len, hd.c_str());
-    } else {
+    if (sizeof(void *) == len) {
         void *p = *( (void **) buf );
-        platform->log_info("mq_%s(%d): %p[%u] (asptr %p) '%s'", wha, qd, buf, len, p, hd.c_str());
+        logr->trace("mq_%s(%d): %p[%u] (asptr %p) %s", wha, qd, buf, len, p, hexdump);
+        return;
     }
+
+    if (sizeof(itc_message_t) == len) {
+        itc_message_t *m = (itc_message_t *) vbuf;
+        switch (m->t) {
+        case itc_message_t::input_event:
+            logr->trace("mq_%s(%d): %p[%u] (asmsg t=%s sender=%p { event=%s }) %s",
+                wha, qd, buf, len, strmsgt(m), m->sender, strievtype(m), hexdump);
+            break;
+        case itc_message_t::set_fps:
+        case itc_message_t::set_gfps:
+            logr->trace("mq_%s(%d): %p[%u] (asmsg t=%s sender=%p { fps=%d }) %s",
+                wha, qd, buf, len, strmsgt(m), m->sender, m->d.fps, hexdump);
+            break;
+        case itc_message_t::render_buffer:
+            logr->trace("mq_%s(%d): %p[%u] (asmsg t=%s sender=%p { buffer=%p }) %s",
+                wha, qd, buf, len, strmsgt(m), m->sender, m->d.buffer, hexdump);
+            break;
+        default:
+            logr->trace("mq_%s(%d): %p[%u] (asmsg t=%s sender=%p { }) %s",
+                wha, qd, buf, len, strmsgt(m), m->sender, hexdump);
+            break;
+        }
+        return;
+    }
+
+    logr->trace("mq_%s(%d): %p[%u] %s", wha, qd, buf, len, hexdump);
 }
 
 struct the_message {

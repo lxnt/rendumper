@@ -23,6 +23,8 @@ extern getplatform_t _getplatform;
 
 namespace {
 
+ilogger *logr;
+
 struct implementation : public itextures {
     void release();
 
@@ -85,18 +87,19 @@ SDL_Surface *beloved_surface(int w, int h) {
 SDL_Surface *load_normalize(const char *filename) {
     SDL_Surface *s = SDL_LoadPNG(filename);
     if (!s) {
-        platform->log_info("SDL_LoadPNG(): %s", SDL_GetError());
+        logr->info("SDL_LoadPNG(): %s", SDL_GetError());
         s = SDL_LoadBMP(filename);
     }
     if (!s) {
-        platform->log_info("SDL_LoadBMP(): %s", SDL_GetError());
-        platform->fatal("%s: neither PNG nor BMP, or corrupted.", filename);
+        logr->info("SDL_LoadBMP(): %s", SDL_GetError());
     }
 
     SDL_Surface *d = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
 
-    if (!d)
-        platform->fatal("SDL_ConvertSurfaceFormat() failed : %s", SDL_GetError());
+    if (!d) {
+        logr->error("SDL_ConvertSurfaceFormat() failed : %s", SDL_GetError());
+        return NULL;
+    }
 
     SDL_SetSurfaceBlendMode(d, SDL_BLENDMODE_NONE);
     return d;
@@ -280,6 +283,9 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos,
       long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y) {
 
     SDL_Surface *s = load_normalize(filename);
+    if (!s)
+        logr->fatal("failed to load %s", filename);
+
     *disp_x = s->w/dimx, *disp_y = s->h/dimy;
     pages.emplace_front(dimx, dimy, *disp_x, *disp_y, s, convert_magenta, next_index);
 
@@ -293,7 +299,7 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos,
 long implementation::load(const char *filename, bool convert_magenta) {
     SDL_Surface *s = load_normalize(filename);
     if (!s)
-        platform->fatal("failed to load %s", filename);
+        logr->fatal("failed to load %s", filename);
 
     pages.emplace_front(1, 1, s->w, s->h, s, convert_magenta, next_index);
 
@@ -309,6 +315,7 @@ static implementation *impl = NULL;
 extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void) {
     if (!impl) {
         platform = _getplatform();
+        logr = platform->getlogr("sdl.textures"); 
         impl = new implementation();
     }
     return impl;

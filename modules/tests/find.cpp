@@ -7,7 +7,7 @@
 
 int usage(const char *s) {
     if (getplatform)
-        getplatform()->log_error("Usage: %s print-mode pattern {dirs|files|all} [exclude [exclude ...]]", s);
+        getplatform()->getlogr("")->error("Usage: %s print-mode pattern {dirs|files|all} [exclude [exclude ...]]", s);
     else
         fprintf(stderr, "Usage: %s print-mode pattern {dirs|files|all} [exclude [exclude ...]]\n", s);
     return 1;
@@ -47,7 +47,7 @@ int main (int argc, char* argv[]) {
     const char * const *whoa = glob;
 
     while (*whoa) {
-        platform->log_info("found  '%s'", *whoa);
+        platform->getlogr("")->info("found  '%s'", *whoa);
         whoa++;
     }
     platform->gfree(glob);

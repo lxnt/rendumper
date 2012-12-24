@@ -24,8 +24,8 @@ void _gl_fatalize(const char *fi, const int li, const char *foo) {
     bool dead = false;
     while ((err = glGetError()) != GL_NO_ERROR) {
         dead = true;
-        platform->log_error("%s", _gl_enum_str(err));
+        platform->getlogr("gl")->error("%s", _gl_enum_str(err));
     }
     if (dead)
-        platform->fatal("%s:%d in %s: bye.", fi, li, foo);
+        platform->getlogr("gl")->fatal("%s:%d in %s: bye.", fi, li, foo);
 }

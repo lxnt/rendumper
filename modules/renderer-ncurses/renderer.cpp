@@ -42,6 +42,7 @@ struct implementation : public irenderer {
     iplatform *platform;
     imqueue *mqueue;
     isimuloop *simuloop;
+    ilogger *logr;
 
     imqd_t incoming_q;
 
@@ -60,6 +61,7 @@ implementation::implementation() {
     not_done = true;
     dropped_frames = 0;
     platform = getplatform();
+    logr = platform->getlogr("ncurses");
     simuloop = getsimuloop();
     mqueue = getmqueue();
     incoming_q = mqueue->open("renderer", 1<<10);
@@ -69,7 +71,7 @@ implementation::implementation() {
     getmaxyx(stdscr, y, x);
     this->set_gridsize(x, y);
 }
-#define NOT_IMPLEMENTED(foo) getplatform()->log_error("renderer_ncurses::" #foo " not implemented.\n")
+#define NOT_IMPLEMENTED(foo) logr->error("renderer_ncurses::" #foo " not implemented.\n")
 void implementation::reset_textures() { NOT_IMPLEMENTED(reset_textures); }
 void implementation::zoom_in() { NOT_IMPLEMENTED(zoom_in); }
 void implementation::zoom_out() { NOT_IMPLEMENTED(zoom_out); }
@@ -118,7 +120,7 @@ void implementation::run_here() {
 
 void implementation::start() {
     if (started) {
-        platform->log_error("second renderer start ignored\n");
+        logr->error("second renderer start ignored\n");
         return;
     }
     started = true;
@@ -127,7 +129,7 @@ void implementation::start() {
 
 void implementation::join() {
     if (!started) {
-        platform->log_error("irenderer::join(): not started\n");
+        logr->error("irenderer::join(): not started\n");
         return;
     }
     platform->thread_join(thread_id, NULL);
@@ -135,10 +137,9 @@ void implementation::join() {
 
 // Map from DF color to ncurses color
 static int ncurses_map_color(int color) {
-    if (color < 0) {
-        getplatform()->log_error("fatal: ncurses_map_color(%d)\n", color);
-        abort();
-    }
+    if (color < 0)
+        getplatform()->fatal("fatal: ncurses_map_color(%d)\n", color);
+
     switch (color) {
         case 0: return 0;
         case 1: return 4;
@@ -268,7 +269,7 @@ void implementation::slurp_keys() {
         int what = get_wch(&key);
 #if defined(DEBUG_INPUT)
         if (what != -1)
-            platform->log_info("get_wch(): what=%d key=%u.", what, key);
+            logr->info("get_wch(): what=%d key=%u.", what, key);
 #endif
         switch (what) {
             case ERR:
@@ -328,13 +329,13 @@ void implementation::slurp_keys() {
                     case KEY_PPAGE:     event.sym = DFKS_PAGEUP; break;
                     case KEY_ENTER:     event.sym = DFKS_RETURN; break;
                     default:
-                        platform->log_info("get_wch(): what=%d key=%u, skipped.", what, key);
+                        logr->info("get_wch(): what=%d key=%u, skipped.", what, key);
                         continue;
                 }
                 simuloop->add_input_event(&event);
                 continue;
             default:
-                platform->log_info("get_wch(): what=%d key=%u, skipped.", what, key);
+                logr->info("get_wch(): what=%d key=%u, skipped.", what, key);
                 continue;
         }
     } while(false);
@@ -384,7 +385,7 @@ void implementation::renderer_thread(void) {
                     mqueue->free(msg);
                     break;
                 default:
-                    platform->log_error("render_thread(): unknown message type %d", msg->t);
+                    logr->error("render_thread(): unknown message type %d", msg->t);
                     break;
             }
         }

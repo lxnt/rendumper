@@ -74,6 +74,8 @@ const char *buf_pstate_str[] = {
 //{  vbstreamer_t
 /*  Vertex array object streamer, derived from the fgt.gl.VAO0 and fgt.gl.SurfBunchPBO. */
 struct vbstreamer_t {
+    ilogger *logr;
+
     const unsigned rrlen;
     GLuint *va_names;
     GLuint *bo_names;
@@ -131,6 +133,7 @@ struct vbstreamer_t {
     dim, rain and snow get initialized to zero. */
 
 void vbstreamer_t::initialize() {
+    logr = platform->getlogr("gl.vbstreamer");
     //glGetInteger(GL_MIN_MAP_BUFFER_ALIGNMENT, &pot);
     w = h = 0;
     va_names = new GLuint[rrlen];
@@ -171,41 +174,42 @@ df_buffer_t *vbstreamer_t::get_a_buffer() {
                 return buf;
             case BS_RENDERING:
                 if (!syncs[which])
-                    platform->fatal("buf %p/%d BS_RENDERING w/o sync object", buf, which);
+                    logr->fatal("buf %p/%d BS_RENDERING w/o sync object", buf, which);
                 switch (srv = glClientWaitSync(syncs[which], GL_SYNC_FLUSH_COMMANDS_BIT, 0)) {
                     case GL_ALREADY_SIGNALED:
                     case GL_CONDITION_SATISFIED:
                         glDeleteSync(syncs[which]);
                         syncs[which] = NULL;
-                        //platform->log_info("get_a_buffer(): sync for %p/%d signalled/satisfied", buf, which);
+                        logr->trace("get_a_buffer(): sync for %p/%d signalled/satisfied", buf, which);
+                        buf->pstate = BS_RENDER_DONE;
                         remap_buf(buf);
                         return buf;
                     case GL_TIMEOUT_EXPIRED:
-                        //platform->log_info("get_a_buffer(): sync for %p/%d not signalled yet", buf, which);
+                        logr->trace("get_a_buffer(): sync for %p/%d not signalled yet", buf, which);
                         break;
                     case GL_WAIT_FAILED:
                         /* some fuckup with syncs[] */
-                        platform->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
+                        logr->fatal("glClientWaitSync(syncs[%d]=%p): GL_WAIT_FAILED.", which, syncs[which]);
                     default:
                         GL_DEAD_YET();
-                        platform->fatal("glClientWaitSync(syncs[%d]=%p): %x : unbelievable.", which, syncs[which], srv);
+                        logr->fatal("glClientWaitSync(syncs[%d]=%p): %x : unbelievable.", which, syncs[which], srv);
                 }
             case BS_FREE_Q:
                 free_q ++;
                 break;
             default:
-                platform->log_info("get_a_buffer(): skipping %p/%d: pstate=%s", buf, which,
+                logr->trace("get_a_buffer(): skipping %p/%d: pstate=%s", buf, which,
                                         buf_pstate_str[buf->pstate]);
         }
     }
     if (!free_q)
-        platform->log_info("vbstreamer_t::get_a_buffer(): no buffers and free_q==0.");
+        logr->warn("get_a_buffer(): no buffers and free_q==0.");
     return NULL;
 }
 
 void vbstreamer_t::set_grid(uint32_t _w, uint32_t _h) {
     if ((w != _w) || (h != _h))
-        platform->log_info("vbstreamer_t::set_grid(): %ux%u -> %ux%u",w, h, _w, _h);
+        logr->info("set_grid(): %ux%u -> %ux%u",w, h, _w, _h);
     w = _w, h = _h;
 }
 
@@ -216,7 +220,7 @@ unsigned vbstreamer_t::find(const df_buffer_t *buf) const {
             break;
 
     if (bufs[which] != buf)
-        platform->fatal("vbstreamer_t::find(): bogus buffer supplied.");
+        logr->fatal("find(): bogus buffer supplied.");
 
     return which;
 }
@@ -225,7 +229,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
     unsigned which = find(buf);
 
     if (buf->pstate != BS_INBOUND_Q)
-        platform->fatal("vbstreamer_t::draw(%p/%d): pstate == %u :wtf.", buf, which, buf->pstate);
+        logr->fatal("draw(%p/%d): pstate == %u :wtf.", buf, which, buf->pstate);
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
@@ -240,10 +244,10 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         /* discard frame: it's of wrong size anyway. reset vao while at it */
         /* this can cause spikes in fps: maybe don't submit those samples? */
         remap_buf(buf);
-        platform->log_info("vbstreamer_t::draw(%p/%d): remapped: grid mismatch", buf, which);
+        logr->info("draw(%p/%d): remapped: grid mismatch", buf, which);
         return;
     }
-    platform->log_info("vbstreamer_t::draw(%p/%d): drawing %d points", buf, which, w*h);
+    logr->trace("draw(%p/%d): drawing %d points", buf, which, w*h);
 
     glBindVertexArray(va_names[which]);
     glDrawArrays(GL_POINTS, 0, w*h);
@@ -342,6 +346,7 @@ void vbstreamer_t::finalize() {
 //{  shader_t
 /*  Shader container, derived from fgt.gl.Shader0. */
 struct shader_t {
+    ilogger *logr;
     GLuint program;
 
     shader_t(): program(0) { }
@@ -363,7 +368,7 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
     std::ifstream f;
     f.open(fname, std::ios::binary);
     if (!f.is_open())
-        platform->fatal("f.open(%s) failed.", fname);
+        logr->fatal("f.open(%s) failed.", fname);
     len = f.seekg(0, std::ios::end).tellg();
     f.seekg(0, std::ios::beg);
     buf = new GLchar[len + 1];
@@ -382,10 +387,10 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
         glGetShaderiv(target, GL_INFO_LOG_LENGTH, &param);
         buf = new GLchar[param + 1];
         glGetShaderInfoLog(target, param, NULL, buf);
-        platform->log_error("'%s' compile: %s", fname, buf);
+        logr->error("'%s' compile: %s", fname, buf);
         delete []buf;
     } else {
-        platform->log_info("'%s' compiled ok.", fname);
+        logr->info("'%s' compiled ok.", fname);
     }
 
     GL_DEAD_YET();
@@ -394,6 +399,7 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
 }
 
 void shader_t::initialize(const char *setname) {
+    logr = platform->getlogr("gl.shader_t");
     std::string vsfname("shaders/");
     std::string fsfname("shaders/");
     vsfname += setname; vsfname += ".vs";
@@ -419,7 +425,7 @@ void shader_t::initialize(const char *setname) {
     glGetProgramiv(program, GL_LINK_STATUS, &stuff);
     if (stuff == GL_FALSE) {
         glGetProgramInfoLog(program, 8192, NULL, strbuf);
-        platform->fatal("%s", strbuf);
+        logr->fatal("%s", strbuf);
     }
     GL_DEAD_YET();
 
@@ -485,13 +491,13 @@ void grid_shader_t::bind_attribute_locs() {
     //glBindFragDataLocation(program, 0, "frag");
 
     GL_DEAD_YET();
-    platform->log_info("%s: %d", "va screen_posn", screen_posn);
-    platform->log_info("%s: %d", "va texpos_posn", texpos_posn);
-    platform->log_info("%s: %d", "va addcolor_posn", addcolor_posn);
-    platform->log_info("%s: %d", "va grayscale_posn", grayscale_posn);
-    platform->log_info("%s: %d", "va cf_posn", cf_posn);
-    platform->log_info("%s: %d", "va cbr_posn", cbr_posn);
-    platform->log_info("%s: %d", "va grid_posn", grid_posn);
+    logr->trace("%s: %d", "va screen_posn", screen_posn);
+    logr->trace("%s: %d", "va texpos_posn", texpos_posn);
+    logr->trace("%s: %d", "va addcolor_posn", addcolor_posn);
+    logr->trace("%s: %d", "va grayscale_posn", grayscale_posn);
+    logr->trace("%s: %d", "va cf_posn", cf_posn);
+    logr->trace("%s: %d", "va cbr_posn", cbr_posn);
+    logr->trace("%s: %d", "va grid_posn", grid_posn);
 
 }
 
@@ -509,12 +515,12 @@ void grid_shader_t::get_uniform_locs() {
 
     GL_DEAD_YET();
 
-    platform->log_info("%s: %d", "uf font_sampler", u_font_sampler);
-    platform->log_info("%s: %d", "uf findex_sampler", u_findex_sampler);
-    platform->log_info("%s: %d", "uf final_alpha", u_final_alpha);
-    platform->log_info("%s: %d", "uf pszar", u_pszar);
-    platform->log_info("%s: %d", "uf fofindex_wh", u_fofindex_wh);
-    platform->log_info("%s: %d", "uf colors", u_colors);
+    logr->trace("%s: %d", "uf font_sampler", u_font_sampler);
+    logr->trace("%s: %d", "uf findex_sampler", u_findex_sampler);
+    logr->trace("%s: %d", "uf final_alpha", u_final_alpha);
+    logr->trace("%s: %d", "uf pszar", u_pszar);
+    logr->trace("%s: %d", "uf fofindex_wh", u_fofindex_wh);
+    logr->trace("%s: %d", "uf colors", u_colors);
 }
 
 void grid_shader_t::set_at_frame(float alpha) {
@@ -782,9 +788,11 @@ struct implementation : public irenderer {
     GLuint fonttex;
     GLuint findextex;
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
+    ilogger *logr, *nputlogr;
 };
 
 void implementation::initialize() {
+    nputlogr = platform->getlogr("sdl2gl2.input");
 
     /* this GL renderer needs or uses no SDL internal rendering
        or even a window surface. */
@@ -796,7 +804,7 @@ void implementation::initialize() {
        and InitSubsystem() calls VideoInit(NULL). Okay,
        let's just InitSubsystem() and see what happens. */
     if (SDL_InitSubSystem(SDL_INIT_VIDEO))
-        platform->fatal("SDL_InitSubsystem(SDL_INIT_VIDEO): %s", SDL_GetError());
+        logr->fatal("SDL_InitSubsystem(SDL_INIT_VIDEO): %s", SDL_GetError());
 
     struct gl_attr {
         SDL_GLattr attr; const char *name; int value;
@@ -818,7 +826,7 @@ void implementation::initialize() {
 
     for (unsigned i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
         if (SDL_GL_SetAttribute(attr_req[i].attr, attr_req[i].value))
-            platform->fatal("SDL_GL_SetAttribute(%s, %d): %s",
+            logr->fatal("SDL_GL_SetAttribute(%s, %d): %s",
                 attr_req[i].name, attr_req[i].value, SDL_GetError());
     }
 
@@ -827,36 +835,36 @@ void implementation::initialize() {
         640, 300, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
 
     if (!gl_window)
-        platform->fatal("SDL_CreateWindow(...): %s", SDL_GetError());
+        logr->fatal("SDL_CreateWindow(...): %s", SDL_GetError());
 
     gl_context = SDL_GL_CreateContext(gl_window);
 
     if (!gl_context)
-        platform->fatal("SDL_GL_CreateContext(...): %s", SDL_GetError());
+        logr->fatal("SDL_GL_CreateContext(...): %s", SDL_GetError());
 
     for (unsigned i=0; i < sizeof(attr_req)/sizeof(gl_attr); i++) {
         int value;
         if (SDL_GL_GetAttribute(attr_req[i].attr, &value))
-            platform->fatal("SDL_GL_GetAttribute(%s, ptr): %s",
+            logr->fatal("SDL_GL_GetAttribute(%s, ptr): %s",
                 attr_req[i].name, SDL_GetError());
-        platform->log_info("GL context: %s requested %d got %d",
+        logr->info("GL context: %s requested %d got %d",
             attr_req[i].name, attr_req[i].value, value);
     }
 
     GLenum err = glewInit();
     if (GLEW_OK != err)
-        platform->fatal("glewInit(): %s", glewGetErrorString(err));
+        logr->fatal("glewInit(): %s", glewGetErrorString(err));
 
     if (!glMapBufferRange)
-        platform->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
+        logr->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
 
     if (!glFenceSync)
-        platform->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
+        logr->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 
 #if 0
     /* this is not present in glew 1.6. and it ain't that fatal anyway */
     if (!GLEW_ARB_map_buffer_alignment)
-        platform->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
+        logr->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
 #endif
     /* todo:
 
@@ -974,7 +982,7 @@ void implementation::slurp_keys() {
 
         switch(sdl_event.type) {
         case SDL_TEXTINPUT:
-            platform->log_info("SDL_TEXTINPUT: '%s'", sdl_event.text.text);
+            nputlogr->info("SDL_TEXTINPUT: '%s'", sdl_event.text.text);
             submit = false;
             break;
         case SDL_KEYDOWN:
@@ -1005,11 +1013,11 @@ void implementation::slurp_keys() {
                 df_event.button = df_input_event_t::DF_BUTTON_MIDDLE;
                 break;
             case SDL_BUTTON_X1:
-                platform->log_info("SDL_BUTTON_X1: '%s'", sdl_event.text.text);
+                nputlogr->trace("SDL_BUTTON_X1: '%s'", sdl_event.text.text);
                 submit = false;
                 break;
             case SDL_BUTTON_X2:
-                platform->log_info("SDL_BUTTON_X2: '%s'", sdl_event.text.text);
+                nputlogr->trace("SDL_BUTTON_X2: '%s'", sdl_event.text.text);
                 submit = false;
                 break;
             default:
@@ -1022,7 +1030,7 @@ void implementation::slurp_keys() {
                 df_event.type = df_input_event_t::DF_BUTTON_UP;
             break;
         case SDL_MOUSEWHEEL:
-            platform->log_info("SDL_MOUSEWHEEL: x=%d y=%d", sdl_event.wheel.x, sdl_event.wheel.y);
+            nputlogr->trace("SDL_MOUSEWHEEL: x=%d y=%d", sdl_event.wheel.x, sdl_event.wheel.y);
             if (sdl_event.wheel.y < 0) {
                 df_event.type = df_input_event_t::DF_BUTTON_DOWN;
                 df_event.button = df_input_event_t::DF_WHEEL_UP;
@@ -1047,7 +1055,7 @@ void implementation::slurp_keys() {
             submit = false;
             break;
         case SDL_WINDOWEVENT_CLOSE:
-            platform->log_info("SDL_WINDOWEVENT_CLOSE");
+            nputlogr->info("SDL_WINDOWEVENT_CLOSE");
             submit = false;
             break;
         case SDL_QUIT:
@@ -1111,10 +1119,10 @@ void implementation::renderer_thread(void) {
         df_buffer_t *tbuf;
         while ((tbuf = grid_streamer.get_a_buffer()) != NULL)
             if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
-                platform->fatal("%s: %d from mqueue->copy()", __func__, rv);
+                logr->fatal("%s: %d from mqueue->copy()", __func__, rv);
             else
                 tbuf->pstate = BS_FREE_Q,
-                platform->log_info("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
+                logr->trace("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
 
         df_buffer_t *buf = NULL;
         unsigned read_timeout_ms = 10;
@@ -1127,14 +1135,14 @@ void implementation::renderer_thread(void) {
                 break;
 
             if (rv != 0)
-                platform->fatal("render_thread(): %d from mqueue->recv().");
+                logr->fatal("render_thread(): %d from mqueue->recv().");
 
             itc_message_t *msg = (itc_message_t *)vbuf;
 
             switch (msg->t) {
                 case itc_message_t::render_buffer:
                     if (buf) {
-                        platform->log_error("dropped frame (buf %d)", grid_streamer.find(buf));
+                        logr->warn("dropped frame (buf %d)", grid_streamer.find(buf));
                         dropped_frames ++;
                         grid_streamer.remap_buf(buf);
                     }
@@ -1142,7 +1150,7 @@ void implementation::renderer_thread(void) {
                     mqueue->free(msg);
                     break;
                 default:
-                    platform->log_error("render_thread(): unknown message type %d", msg->t);
+                    logr->error("render_thread(): unknown message type %d", msg->t);
                     break;
             }
         }
@@ -1152,7 +1160,7 @@ void implementation::renderer_thread(void) {
             grid_shader.set_at_frame(1.0);
             grid_streamer.draw(buf);
             SDL_GL_SwapWindow(gl_window);
-            platform->log_info("[%d] frame", platform->GetTickCount());
+            logr->trace("swap");
         }
     }
 }
@@ -1168,11 +1176,11 @@ see fgt.gl.rednerer.reshape()
 
 */
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
-    platform->log_info("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
+    logr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
         new_window_w, new_window_h, new_psz, Parx, Pary);
 
     if (!album || !album->count) { // can't draw anything without textures anyway
-        platform->log_info("reshape(): no textures.");
+        logr->trace("reshape(): no textures.");
         return;
     }
 
@@ -1187,13 +1195,13 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     int new_grid_w = new_window_w / (new_psz * Parx);
     int new_grid_h = new_window_h / (new_psz * Pary);
 
-    platform->log_info("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
+    logr->trace("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
         new_window_w, new_window_h, Psz * Parx, Psz * Pary, new_grid_w, new_grid_h);
 
     new_grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
     new_grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
 
-    platform->log_info("reshape(): clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
+    logr->trace("reshape(): clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
 
     viewport_w = lrint(new_grid_w * new_psz * Parx);
     viewport_h = lrint(new_grid_h * new_psz * Pary);
@@ -1251,9 +1259,9 @@ df_buffer_t *implementation::get_buffer(void) {
 void implementation::zoom_in() { cmd_zoom_in = true; }
 void implementation::zoom_out() { cmd_zoom_out = true; }
 void implementation::zoom_reset() { cmd_zoom_reset = true;  }
-void implementation::toggle_fullscreen() { platform->log_info("toggle_fullscreen(): stub"); }
-void implementation::override_grid_size(unsigned, unsigned)  { platform->log_info("override_grid_size(): stub"); }
-void implementation::release_grid_size() { platform->log_info("release_grid_size(): stub"); }
+void implementation::toggle_fullscreen() { logr->trace("toggle_fullscreen(): stub"); }
+void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("override_grid_size(): stub"); }
+void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
 void implementation::reset_textures() { cmd_tex_reset = true;  }
 int implementation::mouse_state(int *x, int *y) {
     /* race-prone. convert to uint32_t mouse_gxy if it causes problems. */
@@ -1282,6 +1290,7 @@ implementation::implementation() {
 
 void implementation::submit_buffer(df_buffer_t *buf) {
     itc_message_t msg;
+    memset(&msg, 0, sizeof(msg)); // appease its valgrindiness
     buf->pstate = BS_INBOUND_Q;
     msg.t = itc_message_t::render_buffer;
     msg.d.buffer = buf;
@@ -1296,8 +1305,9 @@ static int thread_stub(void *data) {
 }
 
 void implementation::run_here() {
+    logr = platform->getlogr("sdl2gl2");
     if (started) {
-        platform->log_error("second renderer start ignored\n");
+        logr->error("second renderer start ignored\n");
         return;
     }
     started = true;
@@ -1306,18 +1316,19 @@ void implementation::run_here() {
 }
 
 void implementation::start() {
+    logr = platform->getlogr("sdl2gl2");
     if (started) {
-        platform->log_error("second renderer start ignored\n");
+        logr->error("second renderer start ignored\n");
         return;
     }
     started = true;
-    platform->log_info("renderer start: this is %p", this);
+    logr->info("renderer start: this is %p", this);
     thread_id = platform->thread_create(thread_stub, "renderer", (void *)this);
 }
 
 void implementation::join() {
     if (!started) {
-        platform->log_error("irenderer::join(): not started\n");
+        logr->error("irenderer::join(): not started\n");
         return;
     }
     platform->thread_join(thread_id, NULL);

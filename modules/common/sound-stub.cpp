@@ -6,6 +6,8 @@
 
 namespace {
 
+ilogger *logr = NULL;
+
 struct implementation : public imusicsound {
     void release();
     void update();
@@ -19,38 +21,41 @@ struct implementation : public imusicsound {
 };
 
 void implementation::update() {
-    platform->log_info("stub_sound: update()\n");
+    logr->trace("stub_sound: update()\n");
 }
 void implementation::set_master_volume(long newvol)  {
-    platform->log_info("stub_sound: set_master_volume(%ld)\n", newvol);
+    logr->trace("stub_sound: set_master_volume(%ld)\n", newvol);
 }
 void implementation::load_sound(const char *filename, int slot, bool is_song) {
-    platform->log_info("stub_sound: update(filename='%s', slot=%d, is_song=%s)\n",
+    logr->trace("stub_sound: update(filename='%s', slot=%d, is_song=%s)\n",
         filename, slot, is_song?"true":"false");
 }
 void implementation::play_sound(int slot, bool is_song) {
-    platform->log_info("stub_sound: play_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: play_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
 }
 void implementation::start_background(int slot, bool is_song) {
-    platform->log_info("stub_sound: start_background(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: start_background(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
 }
 void implementation::stop_background(void) {
-    platform->log_info("stub_sound: stop_background()\n");
+    logr->trace("stub_sound: stop_background()\n");
 }
 void implementation::stop_all(void) {
-    platform->log_info("stub_sound: stop_all()\n");
+    logr->trace("stub_sound: stop_all()\n");
 }
 void implementation::stop_sound(int slot, bool is_song) {
-    platform->log_info("stub_sound: stop_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: stop_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
 }
 void implementation::release(void) {
-    platform->log_info("stub_sound: release()\n");
+    logr->trace("stub_sound: release()\n");
 }
 static implementation the_stub;
 
 }
 
 extern "C" DFM_EXPORT imusicsound * DFM_APIEP getmusicsound(void) {
-    _get_deps();
+    if (!logr) {
+        _get_deps();
+        logr = platform->getlogr("cc.stub.sound");
+    }
     return &the_stub;
 }

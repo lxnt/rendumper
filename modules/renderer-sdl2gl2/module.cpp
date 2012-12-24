@@ -233,7 +233,11 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
-    { char name[4096]; sprintf(name, "tail-%d.dump", which); dump_buffer_t(buf, name); }
+    if (logr->enabled(LL_TRACE)) {
+        char name[4096];
+        sprintf(name, "tail-%d.dump", which);
+        dump_buffer_t(buf, name);
+    }
 
     glUnmapBuffer(GL_ARRAY_BUFFER);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

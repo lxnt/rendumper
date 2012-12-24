@@ -48,12 +48,16 @@ struct itextures {
     virtual df_texalbum_t *get_album() = 0;
     virtual void release_album(df_texalbum_t *) = 0;
 
-#if 0
-    /* Drop everything, reset index. Note that this is not equivalent to async_cmd::reset_textures,
-       which just simply "reuploaded" them, whatevet that meant for the current renderer. For this
-       reason it's currently omitted from the interface, but left here as documentation */
+    /* Drop everything, reset index. Does not invalidate any texalbums already given out.
+        Note that this is not equivalent to async_cmd::reset_textures,
+        which just simply "reuploaded" them, whatever that meant for the current renderer. */
     virtual void reset(void) = 0;
-#endif
+
+    /* Load a 16x16 cel page from a PNG stream held in the given buffer.
+        This calls reset().
+        If load() or load_multi_pdim() get called while an rcfont is loaded, it is dropped, using
+        reset() again. Intended for simple tests only, use load_multi_pdim() otherwise. */
+    virtual void set_rcfont(const void *, int) = 0;
 };
 
 #if defined (DFMODULE_BUILD)

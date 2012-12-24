@@ -38,6 +38,9 @@ struct implementation : public itextures {
     df_texalbum_t *get_album();
     void release_album(df_texalbum_t *);
 
+    void set_rcfont(const void *, int);
+    void reset();
+
     /* --- */
 
     long next_index; // == .size(); next unused index.
@@ -46,8 +49,7 @@ struct implementation : public itextures {
         pages(),
         clones(),
         grays(),
-        cmax(0),
-        cmay(0) { }
+        rc_font_set(false) { }
 
     struct celpage {
         int w, h, cw, ch;
@@ -57,6 +59,7 @@ struct implementation : public itextures {
 
         celpage(int w, int h, int cw, int ch, SDL_Surface *s, bool m, int si):
             w(w), h(h), cw(cw), ch(ch), s(s), magentic(m), start_index(si) {}
+        ~celpage() { SDL_FreeSurface(s); }
 
         bool operator < (celpage r) const { return h < r.h; }
     };
@@ -64,7 +67,7 @@ struct implementation : public itextures {
     std::forward_list<celpage> pages;
     std::forward_list<std::pair<long, long>> clones;  // (index, cloned_from)
     std::forward_list<long> grays;
-    int cmax, cmay;
+    bool rc_font_set;
 };
 
 /* pieces of fgt.gl.rgba_surface */
@@ -84,7 +87,7 @@ SDL_Surface *beloved_surface(int w, int h) {
 }
 
 /* make sure it's of our belowed pixelformat and blendmode is none */
-SDL_Surface *load_normalize(const char *filename) {
+SDL_Surface *load_file(const char *filename) {
     SDL_Surface *s = SDL_LoadPNG(filename);
     if (!s) {
         logr->info("SDL_LoadPNG(): %s", SDL_GetError());
@@ -92,8 +95,12 @@ SDL_Surface *load_normalize(const char *filename) {
     }
     if (!s) {
         logr->info("SDL_LoadBMP(): %s", SDL_GetError());
+        return NULL;
     }
+    return s;
+}
 
+SDL_Surface *normalize(SDL_Surface *s) {
     SDL_Surface *d = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
 
     if (!d) {
@@ -105,6 +112,15 @@ SDL_Surface *load_normalize(const char *filename) {
     return d;
 }
 
+SDL_Surface *load_normalize(const char *filename) {
+    SDL_Surface *s = load_file(filename);
+    if (s) {
+        SDL_Surface *d = normalize(s);
+        SDL_FreeSurface(s);
+        s = d;
+    }
+    return s;
+}
 
 int gcd(int n, int m) { return m == 0 ? n: gcd(m, n%m); }
 int lcm(int a, int b) { return a * b / gcd(a, b); }
@@ -281,6 +297,8 @@ void implementation::grayscale_texture(long pos) {
 
 void implementation::load_multi_pdim(const char *filename, long *tex_pos,
       long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y) {
+    if (rc_font_set)
+        reset();
 
     SDL_Surface *s = load_normalize(filename);
     if (!s)
@@ -291,19 +309,50 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos,
 
     for (int i = 0; i < dimx*dimy; i++)
         tex_pos[i] = next_index++;
-
-    if (*disp_x > cmax) cmax = *disp_x;
-    if (*disp_y > cmay) cmay = *disp_y;
 }
 
 long implementation::load(const char *filename, bool convert_magenta) {
+    if (rc_font_set)
+        reset();
+
     SDL_Surface *s = load_normalize(filename);
     if (!s)
         logr->fatal("failed to load %s", filename);
 
     pages.emplace_front(1, 1, s->w, s->h, s, convert_magenta, next_index);
-
     return next_index++;
+}
+
+void implementation::set_rcfont(const void *ptr, int len) {
+    SDL_RWops *rw = SDL_RWFromConstMem(ptr, len);
+    if (!rw)
+        logr->fatal("SDL_RWFromConstMem(): %s", SDL_GetError());
+
+    SDL_Surface *s = SDL_LoadPNG_RW(rw, 1);
+
+    if (!s)
+        logr->fatal("SDL_LoadPNG_RW(): %s", SDL_GetError());
+
+    SDL_Surface *d = normalize(s);
+    SDL_FreeSurface(s);
+    s = d;
+
+    if (next_index)
+        reset();
+
+    pages.emplace_front(16, 16, s->w/16, s->h/16, s, true, 0);
+    rc_font_set = true;
+    next_index = 256;
+    logr->trace("set_rcfont(): %dx%d", s->w/16, s->h/16);
+}
+
+void implementation::reset() {
+    rc_font_set = false;
+    next_index = 0;
+    pages.clear();
+    clones.clear();
+    grays.clear();
+    logr->trace("reset()");
 }
 
 void implementation::delete_texture(long) { }
@@ -315,7 +364,7 @@ static implementation *impl = NULL;
 extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void) {
     if (!impl) {
         platform = _getplatform();
-        logr = platform->getlogr("sdl.textures"); 
+        logr = platform->getlogr("sdl.textures");
         impl = new implementation();
     }
     return impl;

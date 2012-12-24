@@ -21,6 +21,9 @@ struct implementation : public itextures {
     df_texalbum_t *get_album();
     void release_album(df_texalbum_t *);
 
+    void set_rcfont(const void *, int);
+    void reset();
+
     /* --- */
 
     long index;
@@ -66,6 +69,15 @@ df_texalbum_t *implementation::get_album() {
 void implementation::release_album(df_texalbum_t *p) {
     logr->trace("release_album(%p)", p);
 }
+
+void implementation::set_rcfont(const void *, int) {
+    logr->trace("set_rcfont()");
+}
+void implementation::reset() {
+    index = 0;
+    logr->trace("reset()");
+}
+
 
 void implementation::release() { }
 

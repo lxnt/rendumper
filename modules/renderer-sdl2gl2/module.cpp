@@ -948,14 +948,16 @@ void implementation::upload_album() {
     glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    std::fstream fid("findex.dump", std::ios::binary | std::ios::out);
-    fid.write((char*)data, findex_sz);
-    fid.close();
+    if (logr->enabled(LL_TRACE)) {
+        std::fstream fid("findex.dump", std::ios::binary | std::ios::out);
+        fid.write((char*)data, findex_sz);
+        fid.close();
+    }
 
     delete []data;
 
     GL_DEAD_YET();
-    platform->log_info("upload_album(): font %dx%d tui 0 tname %d findex %dx%d, %d tui 1 tname %d",
+    logr->info("upload_album(): font %dx%d tui 0 tname %d findex %dx%d, %d tui 1 tname %d",
                         font_w, font_h, fonttex, findex_w, findex_h, findextex, album->count);
 
     ansi_colors_t ccolors = ANSI_COLORS_VGA;

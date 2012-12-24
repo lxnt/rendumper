@@ -19,6 +19,9 @@ In no particular order.
 - do a knob for max-optimization builds.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
 - rewrite df-structures/codegen.py, it rotted; revive
+- "ld.so understands the string $ORIGIN (or equivalently ${ORIGIN}) in
+  an rpath specification (DT_RPATH or DT_RUNPATH) to mean the directory
+  containing the application executable."
 
 Starting up, paths and stuff
 ----------------------------
@@ -97,8 +100,8 @@ Build script needs writing. For now I'll just leave this here::
 
     get glew-1.9.0 source - http://glew.sf.net/
 
-     i686-w64-mingw32-ld -o lib/glew32.dll src/glew.o -L/mingw/lib -lglu32 -lopengl32 -lgdi32 -luser32 -lkernel32
-     i686-w64-mingw32-gcc -o lib/glew32.dll src/glew.o -shared -Wl,-soname,glew32.dll -Wl,--out-implib,lib/libglew32.dll.a  -lglu32 -lopengl32 -lgdi32 -luser32 -lkernel32
+    i686-w64-mingw32-gcc -DGLEW_NO_GLU -O2 -Wall -W -Iinclude -DGLEW_BUILD -DSTATIC -o src/glew.o -c src/glew.c
+    i686-w64-mingw32-gcc -o lib/glew32.dll src/glew.o -shared -Wl,-soname,glew32.dll -Wl,--out-implib,lib/libglew32.dll.a  -lglu32 -lopengl32 -lgdi32 -luser32 -lkernel32
     cp lib/libglew32.dll.a ../../prefix-win32/lib/
     cp include/GL/* ../../prefix-win32/include/GL/
     cp lib/glew32.dll  ../../prefix-win32/bin/

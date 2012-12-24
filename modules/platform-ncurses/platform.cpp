@@ -42,6 +42,7 @@ static void * run_foo(void *data) {
 
 static std::vector<_thread_info *> _thread_list;
 static pthread_mutex_t _thread_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t _logging_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct implementation : public iplatform {
     log_implementation *log_impl;
@@ -187,6 +188,14 @@ struct implementation : public iplatform {
         log_impl->vlog_message(LL_FATAL, "platform", fmt, ap);
         va_end(ap);
         abort();
+    }
+
+    void lock_logging() {
+        pthread_mutex_lock(&_logging_mutex);
+    }
+
+    void unlock_logging() {
+        pthread_mutex_unlock(&_logging_mutex);
     }
 
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,

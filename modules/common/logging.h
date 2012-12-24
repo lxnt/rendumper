@@ -1,32 +1,58 @@
+/* Why write another log4cpp?
+
+    Because it needs to work across module boundaries.
+    Because it must be thread-safe in the face of abstracted away threading.
+    Because it doesn't need to pull tons of dependencies.
+    Because it doesn't need idiocy like stringstream support.
+    Because it doesn't need bloat like rolling appenders or smtp support.
+
+    Because it's less work than to integrate something external.
+
+    Differences from common log4j clones:
+        - propagate is effectively set to false and cannot be changed.
+        - no handlers, appenders or formatters.
+        - their functionality is in the ilogsink::vlog_message().
+        - which can't be changed or configured at runtime.
+        - getting a logger for the first time is expensive.
+        - changing its level is more expensive.
+*/
+
 #include <cstdarg>
 #include <string>
 #include <unordered_map>
+#include <forward_list>
 
 #include "iplatform.h"
+
+#if defined(LOGGING_LOGGING)
+#define LTRACE(fmt, args...) do { fprintf(stderr, fmt, ## args); } while(0)
+#define LTRACE_DUMP(fmt, args...) do { fprintf(stderr, fmt, ## args); dump_config(); } while(0)
+#else
+#define LTRACE(fmt, args...)
+#define LTRACE_DUMP(fmt, args...)
+#endif
 
 struct ilogsink {
     virtual void vlog_message(int, const std::string&, const char *, va_list) = 0;
 };
 
 struct alogger : public ilogger {
-    int level;
+    int level, effective;
     std::string name;
     ilogsink *bugor;
 
-    alogger(const char *n, int l, ilogsink *p): level(l), name(n), bugor(p) {}
-    alogger(const std::string& n, int l, ilogsink *p): level(l), name(n), bugor(p) {}
-    alogger(const alogger& other) {
-        level = other.level;
-        name = other.name;
-        bugor = other.bugor;
-    }
+    alogger(const char *n, int l, int e, ilogsink *p):
+        level(l), effective(e),
+        name(n),
+        bugor(p) {}
 
-    void set(const int l) {
-        level = l;
-    }
+    alogger(const std::string& n, int l, int e, ilogsink *p):
+        level(l), effective(e),
+        name(n),
+        bugor(p) {}
 
     bool enabled(const int for_wha) {
-        return (level >= for_wha);
+        return (effective <= for_wha);
     }
 
     void trace(const char *fmt, ...) {
@@ -77,45 +103,168 @@ struct alogger : public ilogger {
 
 struct log_implementation : public ilogsink {
     FILE *dst;
-    iplatform *plat;
+    iplatform *platform;
 
     std::unordered_map<std::string, alogger *> config;
-    typedef std::unordered_map<std::string,  alogger *>::const_iterator lchashi_t;
-    typedef std::unordered_map<std::string,  alogger *>::value_type lchashp_t;
     alogger *root_logger;
 
     const char *ll_names(int l) {
         switch (l) {
-        case LL_TRACE: return "trace";
-        case LL_INFO:  return "warn ";
-        case LL_WARN:  return "info ";
-        case LL_ERROR: return "error";
-        case LL_FATAL: return "fatal";
-        default:       return "~unk~";
+        case LL_NONE:   return "none ";
+        case LL_TRACE:  return "trace";
+        case LL_INFO:   return "warn ";
+        case LL_WARN:   return "info ";
+        case LL_ERROR:  return "error";
+        case LL_FATAL:  return "fatal";
+        default:        return "~unk~";
         }
     }
 
     log_implementation(iplatform *p, FILE *d): config() {
-        plat = p;
+        platform = p;
         dst = d;
-        root_logger = new alogger("", LL_WARN, this);
-        lchashp_t iv(std::string(""), root_logger);
-        config.insert(iv);
+        root_logger = new alogger("", LL_WARN, LL_WARN, this);
+    }
+#if defined(LOGGING_LOGGING)
+    void dump_conf() {
+        for (auto logr = config.cbegin(); logr != config.cend(); ++logr)
+            fprintf(stderr, "confdump: '%s' l=%d e=%d\n", logr->first.c_str(), logr->second->level, logr->second->effective);
+    }
+#endif
+
+    void reconf_chain(alogger *leaf) {
+        /*  requires logging be locked up.
+            is the most expensive operation here.
+
+            - creates any missing ancestors.
+            - recalculates effective logging levels for
+              the relevant part (up or down) part of chain.
+
+            - is triggered by logconf() unconditionally.
+            - is triggered by getlogr() if logger in
+              question did not exits at the time of call.
+        */
+
+        std::forward_list<std::string> descendants;
+
+        LTRACE("reconf_chain(%s)\n", leaf->name.c_str());
+
+        if (leaf == root_logger) {
+            if ( (leaf->effective != leaf->level) ||
+                 (leaf->effective == LL_NONE) ) {
+                     /* aw, it's all fubar */
+                    LTRACE("logging.h: root's fubar.\n");
+                    abort();
+                 }
+
+            /* total reconf */
+            for (auto logr = config.cbegin(); logr != config.cend(); ++logr)
+                descendants.push_front(logr->first);
+        } else {
+
+            /* make a list of logger names for this chain.
+                - first, all ancestors, inserting missing as we go
+                - second, all existing descendants
+                missing descendants - they can't exist since we
+                inserted them as missing ancestors right here.
+
+                so basically we first find the farthest descendant.
+                if it exists, we're not leaf, all ancestors must exist,
+                and we should reconfigure all descendants with
+                level == NOTSET down until first one level != NONE
+
+                if we don't have any descendants we've just been created
+                and can have gaps in ancestry which must be fixed.
+
+                for this we create a descending list of names which are
+                going to have to be fixed and fix'em.
+            */
+
+            std::string our_prefix(leaf->name);
+            our_prefix += '.';
+            bool has_descendants = false;
+
+            for (auto logr = config.cbegin(); logr != config.cend(); ++logr) {
+                if (logr->first.size() <= our_prefix.size())
+                    continue;
+
+                if (0 == logr->first.compare(0, our_prefix.size(), our_prefix)) {
+                    descendants.push_front(logr->first);
+                    has_descendants = true;
+                }
+            }
+
+            if (!has_descendants)
+                descendants.push_front(leaf->name);
+        }
+
+        LTRACE("reconf_chain(%s) descendants (%u) list:\n", leaf->name.c_str(), config.size());
+#if defined(LOGGING_LOGGING)
+        for (auto boo = descendants.cbegin(); boo != descendants.cend(); ++boo) {
+            LTRACE("reconf_chain(%s): %s\n", leaf->name.c_str(), boo->c_str());
+        }
+#endif
+        fflush(stderr);
+        /* don't weed out non-leaf descendants - not worth it. */
+        for (auto logr = descendants.begin(); logr != descendants.end(); ++logr) {
+            LTRACE("reconfing %s\n", logr->c_str());
+
+            size_t lpos, pos;
+            std::string ancestor;
+            int effective_so_far = root_logger->effective;
+            lpos = 0;
+            do {
+                pos = logr->find('.', lpos);
+                ancestor = logr->substr(0, pos);
+                LTRACE("pos=%u lpos=%u ancestor='%s'\n", pos, lpos, ancestor.c_str());
+                auto got = config.find(ancestor);
+                if (got != config.end()) {
+                    if (got->second->level == LL_NONE)
+                        got->second->effective = effective_so_far;
+                    else
+                        effective_so_far = got->second->effective = got->second->level;
+                } else {
+                    config.insert({{ ancestor, new alogger(ancestor, LL_NONE, effective_so_far, this) }});
+                }
+                lpos = pos + 1;
+            } while (pos != std::string::npos);
+        }
     }
 
-    void logconf(const char *n, int level)  {
+    ilogger *logconf(const char *n, int level)  {
+        LTRACE_DUMP("logconf(%s, %d): %u loggers out.\n", n, level, config.size());
         if ((n == NULL) || (strlen(n) == 0)) {
-            root_logger->level = level;
-            return;
+            if (root_logger->level != level) {
+                root_logger->level = root_logger->effective = level;
+                platform->lock_logging();
+                reconf_chain(root_logger);
+                platform->unlock_logging();
+                LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.\n", n, level, config.size());
+            }
+            return root_logger;
         }
         std::string name(n);
-        lchashi_t got = config.find(name);
-        if (got != config.end())
-            got->second->set(level);
-        else {
-            lchashp_t iv(name, new alogger(name, level, this));
-            config.insert(iv);
+
+        platform->lock_logging();
+
+        auto got = config.find(name);
+        alogger *rv;
+        if (got != config.end()) {
+            rv = got->second;
+            rv->level = level;
+            LTRACE("logconf(%s, %d): found it.\n", n, level);
+        } else {
+            rv = new alogger(name, level, level, this);
+            config.insert({{ name, rv }});
+            LTRACE("logconf(%s, %d): created it.\n", n, level);
         }
+
+        reconf_chain(rv);
+
+        platform->unlock_logging();
+
+        LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.\n", n, level, config.size());
+        return rv;
     }
 
     ilogger *getlogr(const char *n) {
@@ -123,34 +272,25 @@ struct log_implementation : public ilogsink {
             return root_logger;
 
         std::string name(n);
-        std::string prefix;
-        size_t pos = std::string::npos;
 
-        lchashi_t got = config.find(name);
+        platform->lock_logging();
+
+        auto got = config.find(name);
+
+        platform->unlock_logging();
+
         if (got != config.end())
             return got->second;
 
         /* generate a logger since it doesn't exist yet.
            inherit level from whatever ancestor we can find. */
-        alogger *rv = root_logger;
 
-        while ((pos = name.rfind('.', pos)) != std::string::npos) {
-            prefix = name.substr(0, pos);
-            got = config.find(prefix);
-            if (got != config.end()) {
-                rv = got->second;
-                break;
-            }
-            pos --;
-        }
-        rv = new alogger(name, rv->level, rv->bugor);
-        lchashp_t iv(std::string(name), rv);
-        config.insert(iv);
-        return rv;
+        LTRACE("getlogr(%s) triggers logconf()", n);
+        return logconf(n, LL_NONE);
     }
 
     void vlog_message(int level, const std::string& name, const char *fmt, va_list ap) {
-        fprintf(dst, "%06d %s [%s]: ", plat->GetTickCount() % 1000000, name.c_str(), ll_names(level));
+        fprintf(dst, "%06d %s [%s]: ", platform->GetTickCount() % 1000000, name.c_str(), ll_names(level));
         vfprintf(dst, fmt, ap);
         fputc('\n', dst);
         va_end(ap);

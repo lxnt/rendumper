@@ -16,6 +16,7 @@
 
 #include "SDL.h"
 #include "SDL_thread.h"
+#include "SDL_mutex.h"
 #include "SDL_timer.h"
 #include "SDL_messagebox.h"
 
@@ -25,6 +26,8 @@
 iplatform *platform; // for the mqueue
 
 namespace {
+
+SDL_mutex *_logging_mutex;
 
 struct implementation : public iplatform {
     log_implementation log_impl;
@@ -106,6 +109,9 @@ struct implementation : public iplatform {
         abort();
     }
 
+    void lock_logging() { SDL_LockMutex(_logging_mutex); }
+    void unlock_logging() { SDL_UnlockMutex(_logging_mutex); }
+
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                                 size_t size, uint32_t attrs, const char *fmt, ...) {
         va_list ap;
@@ -131,7 +137,7 @@ extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
         setlocale(LC_ALL, ""); // no idea if that's the right thing to do on windoze
         if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0)
             impl.fatal("Unable to initialize SDL:  %s", SDL_GetError());
-
+        _logging_mutex = SDL_CreateMutex();
         platform = &impl;
     }
 

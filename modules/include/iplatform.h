@@ -84,11 +84,12 @@ typedef struct {
 typedef struct _unidentified_flying_struct *thread_t;
 typedef int (*thread_foo_t)(void *);
 
-#define LL_TRACE    0
-#define LL_INFO     1
-#define LL_WARN     2
-#define LL_ERROR    3
-#define LL_FATAL    4
+#define LL_NONE     0
+#define LL_TRACE    1
+#define LL_INFO     2
+#define LL_WARN     3
+#define LL_ERROR    4
+#define LL_FATAL    5
 
 struct ilogger {
     virtual bool enabled(const int) = 0;
@@ -131,6 +132,8 @@ struct iplatform {
     virtual void logconf(const char *name, int level) = 0;
     virtual ilogger *getlogr(const char *) = 0;
     virtual NORETURN void fatal(const char *, ...) = 0;
+    virtual void lock_logging() = 0;
+    virtual void unlock_logging() = 0;
 
     /*  Puts a string into the buffer. string gets truncated at size characters,
         or at the buffer border; no wrapping.

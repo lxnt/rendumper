@@ -271,7 +271,7 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 void vbstreamer_t::remap_buf(df_buffer_t *buf) {
     bool reset_vao = ((w != buf->w) || (h != buf->h));
     unsigned which = find(buf);
-    platform->log_info("vbstreamer_t::remap_buf(%p/%d): state=%s reset_vao=%s vbs.wh=%dx%d buf->wh=%dx%d",
+    logr->trace("remap_buf(%p/%d): state=%s reset_vao=%s vbs.wh=%dx%d buf->wh=%dx%d",
         buf, which, buf_pstate_str[buf->pstate], reset_vao ? "true": "false", w, h, buf->w, buf->h);
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
@@ -921,7 +921,7 @@ void implementation::upload_album() {
     findex_h = album->count/findex_w + 1; // todo: pot_align(sqrt(album->count))
     findex_h = 128;
     if (album->count > findex_w * findex_h)
-        platform->fatal("whoa, index too large. %d > %d * %d", album->count, findex_w, findex_h);
+        logr->fatal("whoa, index too large. %d > %d * %d", album->count, findex_w, findex_h);
     const unsigned findex_sz = findex_w * findex_h * 4 * 2;
     const unsigned layersz = findex_w * findex_h * 4;
 
@@ -1224,7 +1224,7 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
-    platform->log_info("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
+    logr->trace("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
                         viewport_w, viewport_h, viewport_x, viewport_y,
                         grid_w, grid_h, Psz, Parx, Pary);
 

@@ -52,12 +52,13 @@ const int MAX_GRID_Y = 256;
 
 */
 enum bufstate_t : uint32_t {
-    BS_NONE = 0,            // just allocated
-    BS_MAPPED_UNUSED,       // mapped, ready to be given out
-    BS_FREE_Q,              // in free_buf_q
-    BS_IN_SIMULOOP,         // handed out to the simuloop
-    BS_INBOUND_Q,           // handed back via submit_buffer, sits in incoming_q
-    BS_RENDERING            // fence object pending or so we think
+    BS_NONE = 0,            // unmapped, just allocated                  - ours
+    BS_MAPPED_UNUSED,       // mapped, ready to be given out             - ours
+    BS_FREE_Q,              // mapped, in renderer's free_buf_q          - not ours
+    BS_IN_SIMULOOP,         // mapped, handed out to the simuloop        - not ours
+    BS_INBOUND_Q,           // mapped, handed back via submit_buffer, sits in incoming_q - not ours. submitted to draw() or remap(), where it becomes ours.
+    BS_RENDERING,           // unmapped, fence object might be pending   - ours.
+    BS_RENDER_DONE          // unmapped, fence object was signalled      - ours.
 };
 
 const char *buf_pstate_str[] = {
@@ -67,6 +68,7 @@ const char *buf_pstate_str[] = {
     "BS_IN_SIMULOOP",
     "BS_INBOUND_Q",
     "BS_RENDERING",
+    "BS_RENDER_DONE",
     NULL
 };
 
@@ -279,12 +281,26 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         buf, which, buf_pstate_str[buf->pstate], reset_vao ? "true": "false", w, h, buf->w, buf->h);
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
+    if (buf->pstate == BS_INBOUND_Q) {
+        /* a skipped frame */
+        if (!reset_vao) {
+            /* can be recycled w/o remapping (what about dim/snow?) */
+            buf->pstate = BS_MAPPED_UNUSED;
+            logr->trace("remap_buf(%p/%d): recycled fast", buf, which);
+            return;
+        }
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        buf->pstate = BS_RENDER_DONE;
+    }
+
+    if ((buf->pstate != BS_RENDER_DONE) && (buf->pstate != BS_NONE))
+        logr->fatal("remap_buf(%p/%d): state=%s after fixup", buf, which, buf_pstate_str[buf->pstate]);
+
     if (reset_vao) {
         buf->ptr = NULL;
         buf->w = w, buf->h = h;
         buf->tail_sizeof = tail_sizeof;
-        setup_buffer_t(buf, pot);
-        //glUnmapBuffer(GL_ARRAY_BUFFER);
+        setup_buffer_t(buf, pot); // get required_sz
         glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
     }
 

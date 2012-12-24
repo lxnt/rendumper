@@ -17,6 +17,7 @@
 #include "itypes.h"
 #include "itextures.h"
 
+#include "font8png.h"
 
 #include "glue.h"
 
@@ -484,14 +485,15 @@ int main (int argc, char* argv[]) {
     isimuloop *simuloop = getsimuloop();
     itextures *textures = gettextures();
     //const char *filename, long *tex_pos, long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y
-    long tex_pos[256], tdispy, tdispx;
-    textures->load_multi_pdim("curses_800x600.png", tex_pos, 16, 16, true, &tdispx, &tdispy);
+    //long tex_pos[256], tdispy, tdispx;
+    //textures->load_multi_pdim("curses_800x600.png", tex_pos, 16, 16, true, &tdispx, &tdispy);
+    textures->set_rcfont(font8png_data, font8png_size);
     renderer->reset_textures();
 
     // set up the simuloop
     simuloop->set_callbacks(mainloop, render_things, assimilate_buffer, add_input_event);
     simuloop->set_target_sfps(2);
-    simuloop->set_target_rfps(4);
+    simuloop->set_target_rfps(60);
 
     // run the loops
     if (!getenv("RENDER_IN_MAIN")) {

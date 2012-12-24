@@ -60,7 +60,7 @@ typedef void * FOOPTR;
 static std::string module_path("libs/");
 
 /* blindly prepended to the soname */
-void set_modpath(const char *modpath) {
+static void set_modpath(const char *modpath) {
     module_path = modpath;
     if    ((module_path.size() > 0)
         && (module_path.at(module_path.size() - 1) != _os_path_sep))
@@ -87,6 +87,7 @@ static getkeyboard_t   *keyboard_ep[23] = { NULL };
 static const char      *module_name[23] = { NULL };
 
 static int module_load_count = 0;
+static int root_log_level = 0;
 
 /* master dispatch table - gets replicated to the above
    and used by the executable this code gets linked to */
@@ -99,12 +100,16 @@ getkeyboard_t   getkeyboard = NULL;
 getmusicsound_t getmusicsound = NULL;
 
 static void dump_link_table() {
+    ilogger *logr = getplatform()->getlogr("glue.link.dump-table");
+    if (!logr->enabled(LL_TRACE))
+        return;
+
     for(int i = 0; i < module_load_count; i++) { // platform doesn't have deps.
-        getplatform()->log_info("module %s:", module_name[i]);
-        getplatform()->log_info("pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+        logr->trace("module %s:", module_name[i]);
+        logr->trace("pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
             platform_ep[i], mqueue_ep[i], renderer_ep[i], textures_ep[i], simuloop_ep[i], musicsound_ep[i], keyboard_ep[i]);
 
-        getplatform()->log_info("*pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+        logr->trace("*pointers: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
             platform_ep[i] ? *platform_ep[i] : NULL,
             mqueue_ep[i]   ? *mqueue_ep[i] : NULL,
             renderer_ep[i] ? *renderer_ep[i] : NULL,
@@ -114,8 +119,7 @@ static void dump_link_table() {
             keyboard_ep[i] ? *keyboard_ep[i] : NULL);
     }
 
-
-    getplatform()->log_info("glue final entry points: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+    logr->trace("glue final entry points: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
         getplatform, getmqueue, getrenderer, gettextures, getsimuloop, getkeyboard, getmusicsound);
 }
 
@@ -123,6 +127,10 @@ static void dump_link_table() {
    any error loading the so results in zero entry points replaced
    and thus return value of 0. */
 static int load_module(const char *soname) {
+    ilogger *logr = NULL;
+    if (getplatform)
+        logr = getplatform()->getlogr("glue.load_module");
+
     if (module_load_count > 23) {
         fprintf(stderr, "more that %d modules, you nuts?", module_load_count);
         exit(module_load_count);
@@ -143,14 +151,17 @@ static int load_module(const char *soname) {
     void *lib = _load_lib(fname.c_str());
 
     if (!lib) {
-        if (!getplatform) {
-            /* no platform yet. */
+        if (!logr) {
             fprintf(stderr, "load_module(\"%s\"): %s\n", fname.c_str(), _error);
         } else {
-            getplatform()->log_error("load_module(%s): %s\n", fname.c_str(), _error);
+            logr->error("'%s': %s\n", fname.c_str(), _error);
         }
         return 0;
     }
+    /*  okay, from here we hope that we got a platform -
+        first module got loaded w/o error and it should have been the platform.
+        actually, enforce it. */
+
     int rv = 0;
     FOOPTR sym;
     dep_foo_t depfoo = NULL;
@@ -161,37 +172,47 @@ static int load_module(const char *soname) {
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
-        getplatform()->log_info("%s provides iplatform (getplatform=%p)", fname.c_str(), sym);
+        if (!logr)
+            logr = getplatform()->getlogr("glue.load_module"); // not very clean, but..
+        else
+            logr->fatal("second platform load attempt detected."); // also catch this
+        getplatform()->logconf(NULL, root_log_level);
+        logr->info("%s provides iplatform (getplatform=%p)", fname.c_str(), sym);
+    } else {
+        if (module_load_count == 0) {
+            fputs("first module loaded must provide an iplatform\n", stderr);
+            exit(8);
+        }
     }
 
     if ((sym = _get_sym(lib, "getmqueue"))) {
         rv |= DFMOD_EP_MQUEUE; getmqueue = (getmqueue_t) sym;
-        getplatform()->log_info("%s provides imqueue (getmqueue=%p)", fname.c_str(), sym);
+        logr->info("%s provides imqueue (getmqueue=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "gettextures"))) {
         rv |= DFMOD_EP_TEXTURES; gettextures = (gettextures_t) sym;
-        getplatform()->log_info("%s provides itextures (gettextures=%p)", fname.c_str(), sym);
+        logr->info("%s provides itextures (gettextures=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getrenderer"))) {
         rv |= DFMOD_EP_RENDERER; getrenderer = (getrenderer_t) sym;
-        getplatform()->log_info("%s provides irenderer (getrenderer=%p)", fname.c_str(), sym);
+        logr->info("%s provides irenderer (getrenderer=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getsimuloop"))) {
         rv |= DFMOD_EP_SIMULOOP; getsimuloop = (getsimuloop_t) sym;
-        getplatform()->log_info("%s provides isimuloop (getsimuloop=%p)", fname.c_str(), sym);
+        logr->info("%s provides isimuloop (getsimuloop=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getkeyboard"))) {
         rv |= DFMOD_EP_KEYBOARD; getkeyboard = (getkeyboard_t) sym;
-        getplatform()->log_info("%s provides ikeyboard (getkeyboard=%p)", fname.c_str(), sym);
+        logr->info("%s provides ikeyboard (getkeyboard=%p)", fname.c_str(), sym);
     }
 
     if ((sym = _get_sym(lib, "getmusicsound"))) {
         rv |= DFMOD_EP_MUSICSOUND; getmusicsound = (getmusicsound_t) sym;
-        getplatform()->log_info("%s provides imusicsound (getmusicsound=%p)", fname.c_str(), sym);
+        logr->info("%s provides imusicsound (getmusicsound=%p)", fname.c_str(), sym);
     }
 
     if (depfoo) {
@@ -204,7 +225,7 @@ static int load_module(const char *soname) {
             &musicsound_ep[module_load_count],
             &keyboard_ep[module_load_count]
         );
-        getplatform()->log_info("%s has following dependencies: %s%s%s%s%s%s%s", fname.c_str(),
+        logr->trace("%s requires %s%s%s%s%s%s%s", fname.c_str(),
             platform_ep[module_load_count] ? "platform " : "",
             mqueue_ep[module_load_count]   ? "mqueue " : "",
             renderer_ep[module_load_count] ? "renderer " : "",
@@ -227,32 +248,17 @@ static int load_module(const char *soname) {
     return rv;
 }
 
-bool load_platform(const char *platform, const char *modpath) {
-    if (modpath)
-        set_modpath(modpath);
-    else if ((modpath = getenv("DF_MODULES_PATH")))
-        set_modpath(modpath);
+bool lock_and_load(const char *printmode, const char *modpath, int rll) {
+    root_log_level = rll;
 
-    std::string soname = "platform_";
-    soname += platform;
-
-    if (!load_module(soname.c_str())) {
-        return false;
-    }
-
-    if (!load_module("common_code")) {
-        getplatform()->log_error("Failed to load common_code");
-        return false;
-    }
-
-    return true;
-}
-
-bool lock_and_load(const char *printmode, const char *modpath) {
     if (!printmode)
         printmode = getenv("DF_PRINTMODE");
     if (!printmode)
         return false;
+
+    if (!modpath)
+        modpath = getenv("DF_MODULES_PATH");
+    set_modpath(modpath);
 
     std::string pm(printmode);
     std::string platform;
@@ -265,14 +271,23 @@ bool lock_and_load(const char *printmode, const char *modpath) {
         platform = "sdl";
     }
 
-    if (!load_platform(platform.c_str(), modpath))
+    std::string soname = "platform_";
+    soname += platform;
+
+    if (!load_module(soname.c_str())) {
         return false;
+    }
+
+    if (!load_module("common_code")) {
+        getplatform()->getlogr("lock_and_load")->error("Failed to load common_code");
+        return false;
+    }
 
     std::string renreder = "renderer_";
     renreder += printmode;
 
     if (!load_module(renreder.c_str())) {
-        getplatform()->log_error("Failed to load renderer module %s\n", renreder.c_str());
+        getplatform()->getlogr("lock_and_load")->error("Failed to load renderer module %s\n", renreder.c_str());
         return false;
     }
 

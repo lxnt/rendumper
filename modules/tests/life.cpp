@@ -460,7 +460,7 @@ int main (int argc, char* argv[]) {
         return 1;
     }
 
-    if (!lock_and_load(argv[1], DF_MODULES_PATH))
+    if (!lock_and_load(argv[1], DF_MODULES_PATH, LL_WARN))
         return 1;
 
     int w = 128, h = 32;

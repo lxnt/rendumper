@@ -1,8 +1,6 @@
 #if !defined(DF_MOD_GLUE_H)
 #define DF_MOD_GLUE_H
 
-void set_modpath(const char *modpath);
-
 #define DFMOD_EP_PLATFORM    1
 #define DFMOD_EP_MQUEUE      2
 #define DFMOD_EP_TEXTURES    4
@@ -13,8 +11,6 @@ void set_modpath(const char *modpath);
 
 int load_module(const char *soname);
 
-bool load_platform(const char *platname, const char *modpath);
-
-bool lock_and_load(const char *printmode, const char *modpath);
+bool lock_and_load(const char *printmode, const char *modpath, int root_log_level);
 
 #endif

@@ -10,7 +10,7 @@ int main (int argc, char* argv[]) {
 	fprintf(stderr, "Usage: %s platform-name\n", argv[0]);
 	return 1;
     }
-    if (!load_platform(argv[1], DF_MODULES_PATH))
+    if (!lock_and_load(argv[1], DF_MODULES_PATH, LL_TRACE))
         return 1;
 
     iplatform *platform = getplatform();

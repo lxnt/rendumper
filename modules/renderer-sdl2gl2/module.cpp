@@ -21,6 +21,8 @@
 iplatform *platform = NULL;
 getplatform_t _getplatform = NULL;
 
+char *get_embedded_shader_source(const char *setname, const unsigned int type);
+
 namespace {
 
 imqueue   *mqueue   = NULL;
@@ -365,6 +367,7 @@ void vbstreamer_t::finalize() {
 
 //{  shader_t
 /*  Shader container, derived from fgt.gl.Shader0. */
+
 struct shader_t {
     ilogger *logr;
     GLuint program;
@@ -380,24 +383,53 @@ struct shader_t {
 
 };
 
-GLuint shader_t::compile(const char *fname, GLuint type) {
+GLuint shader_t::compile(const char *setname, GLuint type) {
     GLuint target = glCreateShader(type);
-    GLchar *buf;
+    char *buf = NULL;
     long len;
 
+    std::string fname(DFM_SHADERS_PATH);
+    std::string stype;
+    fname += setname;
+    switch (type) {
+    case GL_VERTEX_SHADER:
+        fname += ".vs";
+        stype = "vertex";
+        break;
+    case GL_FRAGMENT_SHADER:
+        fname += ".fs";
+        stype = "fragment";
+        break;
+    default:
+        logr->fatal("compile(%s, %d): ~unk~ type");
+    }
+
+    buf = get_embedded_shader_source(setname, type);
+
     std::ifstream f;
+    bool delete_buf = false;
     f.open(fname, std::ios::binary);
-    if (!f.is_open())
-        logr->fatal("f.open(%s) failed.", fname);
-    len = f.seekg(0, std::ios::end).tellg();
-    f.seekg(0, std::ios::beg);
-    buf = new GLchar[len + 1];
-    f.read(buf, len);
-    f.close();
-    buf[len] = 0;
+
+    if (f.is_open()) {
+        len = f.seekg(0, std::ios::end).tellg();
+        f.seekg(0, std::ios::beg);
+        buf = new GLchar[len + 1];
+        f.read(buf, len);
+        f.close();
+        buf[len] = 0;
+        delete_buf = true;
+    }
+
+    if (buf == NULL)
+        logr->fatal("compile(): shader set '%s' not found.", setname);
 
     glShaderSource(target, 1, const_cast<const GLchar**>(&buf), NULL);
-    delete []buf;
+
+    if (delete_buf)
+        delete []buf;
+
+    bool using_embedded = not delete_buf;
+
     GL_DEAD_YET();
     glCompileShader(target);
 
@@ -407,10 +439,16 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
         glGetShaderiv(target, GL_INFO_LOG_LENGTH, &param);
         buf = new GLchar[param + 1];
         glGetShaderInfoLog(target, param, NULL, buf);
-        logr->error("'%s' compile: %s", fname, buf);
+        if (using_embedded)
+            logr->error("embedded shader %s/%s compile: %s", setname, stype.c_str(), buf);
+        else
+            logr->error("'%s' compile: %s", fname.c_str(), buf);
         delete []buf;
     } else {
-        logr->info("'%s' compiled ok.", fname);
+        if (using_embedded)
+            logr->info("%s/%s compiled ok.", setname, stype.c_str());
+        else
+            logr->info("'%s' compiled ok.", fname.c_str());
     }
 
     GL_DEAD_YET();
@@ -420,14 +458,10 @@ GLuint shader_t::compile(const char *fname, GLuint type) {
 
 void shader_t::initialize(const char *setname) {
     logr = platform->getlogr("gl.shader_t");
-    std::string vsfname("shaders/");
-    std::string fsfname("shaders/");
-    vsfname += setname; vsfname += ".vs";
-    fsfname += setname; fsfname += ".fs";
 
     program = glCreateProgram();
-    GLuint vs = compile(vsfname.c_str(), GL_VERTEX_SHADER);
-    GLuint fs = compile(fsfname.c_str(), GL_FRAGMENT_SHADER);
+    GLuint vs = compile(setname, GL_VERTEX_SHADER);
+    GLuint fs = compile(setname, GL_FRAGMENT_SHADER);
 
     glAttachShader(program, vs);
     glDeleteShader(vs);

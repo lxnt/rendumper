@@ -113,9 +113,21 @@ set(PLATFORM_COMMON
     common/df_buffer.cpp
 )
 
+set_source_files_properties(shaders.c PROPERTIES GENERATED TRUE)
+file(GLOB SHADER_SOURCE shaders/*)
+add_custom_command(
+    OUTPUT ${dfmodules_SOURCE_DIR}/common/shaders.cpp
+    COMMAND python ${dfmodules_SOURCE_DIR}/grab-shaders.py ${dfmodules_SOURCE_DIR}/shaders ${dfmodules_SOURCE_DIR}/common/shaders.cpp
+    WORKING_DIRECTORY ${dfmodules_SOURCE_DIR}
+    MAIN_DEPENDENCY grab-shaders.py
+    DEPENDS ${SHADER_SOURCE}
+)
+add_custom_target(grab_shaders DEPENDS common/shaders.cpp)
+
 set(GL_COMMON
     common/la_muerte_el_gl.cpp
     common/df_buffer.cpp
+    common/shaders.cpp
 )
 
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
@@ -169,6 +181,7 @@ if (RENDERER_SDL2GL2)
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${GL_COMMON})
     set_target_properties(renderer_sdl2gl2 PROPERTIES PREFIX "")
+    set_target_properties(renderer_sdl2gl2 PROPERTIES COMPILE_DEFINITIONS DFM_SHADERS_PATH="data/shaders")
     if (UNIX)
         target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} SDL_pnglite z)
         install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})

@@ -48,7 +48,6 @@ endif()
 include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
-
 #set(DFMOD_DESTDIR "${CMAKE_INSTALL_PREFIX}/lib/dfmodules")
 message(STATUS "dd: ${DFMOD_DESTDIR}")
 
@@ -109,6 +108,11 @@ set(HEADERS
     include/irenderer.h )
 install(FILES ${HEADERS} DESTINATION include/dfmodules)
 
+set(PLATFORM_COMMON
+    common/df_glob.cpp
+    common/df_buffer.cpp
+)
+
 set(GL_COMMON
     common/la_muerte_el_gl.cpp
     common/df_buffer.cpp
@@ -140,7 +144,7 @@ if (PLATFORM_SDL2)
         message(SEND_ERROR "SDL 2.0 not found.")
     endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
-    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp common/df_glob.cpp common/df_buffer.cpp)
+    add_library(platform_sdl2 SHARED platform-sdl2/platform.cpp platform-sdl2/mqueue.cpp ${PLATFORM_COMMON})
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     target_link_libraries(platform_sdl2 ${PKG_SDL2_LIBRARIES})
     set_target_properties(platform_sdl2 PROPERTIES PREFIX "")
@@ -192,7 +196,7 @@ option(RENDERER_NCURSES "build ncurses renderer module" ${HAVE_NCURSES})
         if(NOT HAVE_NCURSES)
             message(SEND_ERROR "ncursesw/ncurses not found.")
         endif()
-        add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp common/df_glob.cpp)
+        add_library(platform_ncurses SHARED platform-ncurses/platform.cpp platform-ncurses/mqueue.cpp ${PLATFORM_COMMON})
         include_directories( ${NCURSES_INCLUDE_DIRS} )
         target_link_libraries(platform_ncurses ${NCURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
         set_target_properties(platform_ncurses PROPERTIES PREFIX "")

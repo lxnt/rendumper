@@ -14,6 +14,7 @@
 
 #include "df_glob.h"
 #include "df_buffer.h"
+#include "logging.h"
 
 #define DFMODULE_BUILD
 #include "iplatform.h"
@@ -43,13 +44,15 @@ static std::vector<_thread_info *> _thread_list;
 static pthread_mutex_t _thread_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct implementation : public iplatform {
-    implementation() {}
+    log_implementation *log_impl;
+
+    implementation(): log_impl(NULL) {}
     void release() {}
 
     BOOL CreateDirectory(const char* pathname, void*) {
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
             if (errno != EEXIST)
-                log_error("mkdir(%s): %s", pathname, strerror(errno));
+                log_impl->root_logger->error("mkdir(%s): %s", pathname, strerror(errno));
             return FALSE;
         } else {
             return TRUE;
@@ -169,9 +172,23 @@ struct implementation : public iplatform {
         return NULL; // like, some foreign thread.
     }
 
-    void log_info(const char *fmt, ...);
-    void log_error(const char *fmt, ...);
-    NORETURN void fatal(const char *fmt, ...);
+    void logconf(const char *name, int level) {
+        log_impl->logconf(name, level);
+    }
+
+    ilogger *getlogr(const char *name) {
+        return log_impl->getlogr(name);
+    }
+
+    NORETURN void fatal(const char *fmt, ...) {
+        va_list ap;
+
+        va_start(ap, fmt);
+        log_impl->vlog_message(LL_FATAL, "platform", fmt, ap);
+        va_end(ap);
+        abort();
+    }
+
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                                 size_t size, uint32_t attrs, const char *fmt, ...);
     const char * const *glob(const char* pattern, const char* const exclude[],
@@ -181,38 +198,6 @@ struct implementation : public iplatform {
     void gfree(const char * const * rv) { df_gfree(rv); }
 };
 
-static void log_sumthin(const char *fname, const char *prefix, const char *fmt, va_list ap) {
-    FILE *fp;
-    if ((fp = fopen(fname, "a"))) {
-        fputs(prefix, fp);
-        fputc(' ', fp);
-        vfprintf(fp, fmt, ap);
-        fputc('\n', fp);
-        fclose(fp);
-    }
-}
-
-void implementation::log_info(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    log_sumthin("dfm.log", "INFO", fmt, ap);
-    va_end(ap);
-}
-
-void implementation::log_error(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    log_sumthin("dfm.log", "ERROR", fmt, ap);
-    va_end(ap);
-}
-
-NORETURN void implementation::fatal(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    log_sumthin("dfm.log", "FATAL", fmt, ap);
-    va_end(ap);
-    exit(1);
-}
 
 int implementation::bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                             size_t size, uint32_t attrs, const char *fmt, ...) {
@@ -232,6 +217,13 @@ static void ncurses_fini(void) { endwin(); }
 
 extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
     if (!core_init_done) {
+        FILE *logfp = fopen("dfm.log", "a");
+        if (!logfp) {
+            fprintf(stderr, "\nlogfile open failed: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        impl.log_impl = new log_implementation(&impl, logfp);
+
         int rv = pthread_mutex_lock(&_thread_list_mutex);
         _thread_info *mt = new _thread_info();
         mt->thread = pthread_self();

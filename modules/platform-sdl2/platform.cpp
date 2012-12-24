@@ -7,8 +7,12 @@
 #include <unistd.h>
 #include <locale.h>
 
+#include <string>
+#include <unordered_map>
+
 #include "df_glob.h"
 #include "df_buffer.h"
+#include "logging.h"
 
 #include "SDL.h"
 #include "SDL_thread.h"
@@ -23,7 +27,9 @@ iplatform *platform; // for the mqueue
 namespace {
 
 struct implementation : public iplatform {
-    implementation() {}
+    log_implementation log_impl;
+
+    implementation(): log_impl(this, stderr) {}
     void release() {}
 
     BOOL CreateDirectory(const char* pathname, void *) {
@@ -32,7 +38,7 @@ struct implementation : public iplatform {
 #else
         if (mkdir(pathname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
             if (errno != EEXIST)
-                log_error("mkdir(%s): %s", pathname, strerror(errno));
+                log_impl.root_logger->error("mkdir(%s): %s", pathname, strerror(errno));
             return FALSE;
         } else {
             return TRUE;
@@ -83,36 +89,23 @@ struct implementation : public iplatform {
         return (thread_t ) SDL_ThreadID();
     }
 
-    void log_error(const char *fmt, ...) {
-        va_list ap;
-
-        fputs("ERROR ", stderr);
-        va_start(ap, fmt);
-        vfprintf(stderr, fmt, ap);
-        fputc('\n', stderr);
-        va_end(ap);
+    void logconf(const char *name, int level) {
+        log_impl.logconf(name, level);
     }
 
-    void log_info(const char *fmt, ...) {
-        va_list ap;
-
-        fputs("INFO ", stderr);
-        va_start(ap, fmt);
-        vfprintf(stderr, fmt, ap);
-        fputc('\n', stderr);
-        va_end(ap);
+    ilogger *getlogr(const char *name) {
+        return log_impl.getlogr(name);
     }
 
     NORETURN void fatal(const char *fmt, ...) {
         va_list ap;
 
         va_start(ap, fmt);
-        fputs("FATAL ", stderr);
-        vfprintf(stderr, fmt, ap);
-        fputc('\n', stderr);
+        log_impl.vlog_message(LL_FATAL, "platform", fmt, ap);
         va_end(ap);
-        exit(1);
+        abort();
     }
+
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                                 size_t size, uint32_t attrs, const char *fmt, ...) {
         va_list ap;
@@ -121,10 +114,12 @@ struct implementation : public iplatform {
         va_end(ap);
         return rv;
     }
+
     const char * const *glob(const char* pattern, const char * const exclude[],
                     const bool include_dirs, const bool include_files) {
         return df_glob(pattern, exclude, include_dirs, include_files);
     }
+
     void gfree(const char * const *rv) { df_gfree(rv); }
 };
 
@@ -134,10 +129,9 @@ static bool core_init_done = false;
 extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
     if (!core_init_done) {
         setlocale(LC_ALL, ""); // no idea if that's the right thing to do on windoze
-        if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0) {
-            fprintf(stderr, "\nUnable to initialize SDL:  %s\n", SDL_GetError());
-            exit(1);
-        }
+        if (SDL_Init(SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0)
+            impl.fatal("Unable to initialize SDL:  %s", SDL_GetError());
+
         platform = &impl;
     }
 

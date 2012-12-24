@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdarg>
 #include "itypes.h"
 
 #if defined(__WIN32__) || defined(__CYGWIN__)
@@ -83,6 +84,23 @@ typedef struct {
 typedef struct _unidentified_flying_struct *thread_t;
 typedef int (*thread_foo_t)(void *);
 
+#define LL_TRACE    0
+#define LL_INFO     1
+#define LL_WARN     2
+#define LL_ERROR    3
+#define LL_FATAL    4
+
+struct ilogger {
+    virtual bool enabled(const int) = 0;
+
+    virtual void trace(const char *, ...) = 0;
+    virtual void info(const char *, ...) = 0;
+    virtual void warn(const char *, ...) = 0;
+    virtual void error(const char *, ...) = 0;
+
+    virtual NORETURN void fatal(const char *, ...) = 0;
+};
+
 struct iplatform {
     virtual void release() = 0;
 
@@ -110,9 +128,10 @@ struct iplatform {
     virtual thread_t thread_id(void) = 0;
 
     /* Logging ended up here too. */
-    virtual void log_info(const char *, ...) = 0;
-    virtual void log_error(const char *, ...) = 0;
+    virtual void logconf(const char *name, int level) = 0;
+    virtual ilogger *getlogr(const char *) = 0;
     virtual NORETURN void fatal(const char *, ...) = 0;
+
     /*  Puts a string into the buffer. string gets truncated at size characters,
         or at the buffer border; no wrapping.
 

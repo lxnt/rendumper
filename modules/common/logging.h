@@ -290,7 +290,7 @@ struct log_implementation : public ilogsink {
     }
 
     void vlog_message(int level, const std::string& name, const char *fmt, va_list ap) {
-        fprintf(dst, "%06d %s [%s]: ", platform->GetTickCount() % 1000000, name.c_str(), ll_names(level));
+        fprintf(dst, "%06lu %s [%s]: ", platform->GetTickCount() % 1000000, name.c_str(), ll_names(level));
         vfprintf(dst, fmt, ap);
         fputc('\n', dst);
         va_end(ap);

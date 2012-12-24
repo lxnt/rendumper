@@ -35,14 +35,14 @@ enum {
     IDYES
 };
 
-typedef int HANDLE;
+typedef void *HANDLE;
 typedef HANDLE HINSTANCE;
 typedef HANDLE HWND;
 typedef HANDLE HDC;
 typedef HANDLE HGLRC;
 typedef int BOOL;
 typedef unsigned short WORD;
-typedef uint32_t DWORD;
+typedef unsigned long DWORD;
 typedef unsigned int UINT;
 typedef short SHORT;
 typedef long LONG;

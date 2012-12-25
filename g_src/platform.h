@@ -5,7 +5,6 @@
 DWORD GetTickCount();	// returns ms since system startup
 BOOL CreateDirectory(const char* pathname, void* unused);
 BOOL DeleteFile(const char* filename);
-void ZeroMemory(void* dest, int len);
 BOOL QueryPerformanceCounter(LARGE_INTEGER* performanceCount);
 BOOL QueryPerformanceFrequency(LARGE_INTEGER* performanceCount);
 int MessageBox(HWND *dummy, const char* text, const char* caption, UINT type);

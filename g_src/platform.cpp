@@ -11,9 +11,6 @@ BOOL CreateDirectory(const char* pathname, void* unused) {
 BOOL DeleteFile(const char* filename) {
     return getplatform()->DeleteFile(filename);
 }
-void ZeroMemory(void* dest, int len) {
-    getplatform()->ZeroMemory(dest, len);
-}
 BOOL QueryPerformanceCounter(LARGE_INTEGER* performanceCount) {
     return getplatform()->QueryPerformanceCounter(performanceCount);
 }

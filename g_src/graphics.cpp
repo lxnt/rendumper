@@ -313,136 +313,166 @@ void graphicst::setclipping(long x1,long x2,long y1,long y2)
 	clipy[1]=y2;
 }
 
-void graphicst::dim_colors(long x,long y,char dim)
+void graphicst::dim_colors(long x, long y, char dim)
 {
-	if(x>=clipx[0]&&x<=clipx[1]&&
-		y>=clipy[0]&&y<=clipy[1])
-		{
-		switch(dim)
-			{
-			case 4:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-					case 6:
-						screen[x*dimy*4 + y*4 + 2]=1;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 2]=3;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 4:
-					case 5:
-					case 6:
-						screen[x*dimy*4 + y*4 + 1]=1;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2])screen[x*dimy*4 + y*4 + 1]=0;
-				screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 3:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 2]=6;
-						break;
-					case 2:
-					case 7:
-						screen[x*dimy*4 + y*4 + 2]=3;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 1:
-						screen[x*dimy*4 + y*4 + 3]=0;
-						break;
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 1]=6;
-						break;
-					case 2:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					case 7:
-						screen[x*dimy*4 + y*4 + 1]=3;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 2:
-				switch(screen[x*dimy*4 + y*4 + 2])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 2]=6;
-						break;
-					}
-				switch(screen[x*dimy*4 + y*4 + 1])
-					{
-					case 4:
-					case 5:
-						screen[x*dimy*4 + y*4 + 1]=6;
-						break;
-					}
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			case 1:
-				if(screen[x*dimy*4 + y*4 + 1]!=7)screen[x*dimy*4 + y*4 + 3]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==screen[x*dimy*4 + y*4 + 2]&&
-					screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 1]=0;
-				if(screen[x*dimy*4 + y*4 + 1]==0&&screen[x*dimy*4 + y*4 + 2]==0&&screen[x*dimy*4 + y*4 + 3]==0)screen[x*dimy*4 + y*4 + 3]=1;
-				break;
-			}
-		}
+    if (   x >= clipx[0]
+        && x <= clipx[1]
+        && y >= clipy[0]
+        && y <= clipy[1]) {
+
+        size_t base = 4*(x*dimy + y);
+
+        switch (dim) {
+        case 4:
+            switch (screen[base + 2]) {
+                case 4:
+                case 5:
+                case 6:
+                    screen[base + 2] = 1;
+                    break;
+                case 2:
+                case 7:
+                    screen[base + 2] = 3;
+                    break;
+                }
+            switch (screen[base + 1]) {
+                case 4:
+                case 5:
+                case 6:
+                    screen[base + 1] = 1;
+                    break;
+                case 2:
+                case 7:
+                    screen[base + 1] = 3;
+                    break;
+            }
+            if (screen[base + 1] == screen[base + 2])
+                screen[base + 1] = 0;
+
+            screen[base + 3] = 0;
+
+            if (   screen[base + 1] == 0
+                && screen[base + 2] == 0
+                && screen[base + 3] == 0 )
+                        screen[base + 3] = 1;
+            break;
+        case 3:
+            switch ( screen[base + 2] ) {
+                case 4:
+                case 5:
+                    screen[base + 2] = 6;
+                    break;
+                case 2:
+                case 7:
+                    screen[base + 2] = 3;
+                    break;
+                }
+            switch ( screen[base + 1] ) {
+                case 1:
+                    screen[base + 3] = 0;
+                    break;
+                case 4:
+                case 5:
+                    screen[base + 1] = 6;
+                    break;
+                case 2:
+                    screen[base + 1] = 3;
+                    break;
+                case 7:
+                    screen[base + 1] = 3;
+                    break;
+                }
+            if ( screen[base + 1] != 7 )
+                screen[base + 3] = 0;
+            if (   screen[base + 1] == screen[base + 2]
+                && screen[base + 3] == 0 )
+                        screen[base + 1] = 0;
+            if (   screen[base + 1] == 0
+                && screen[base + 2] == 0
+                && screen[base + 3] == 0 )
+                        screen[base + 3] = 1;
+            break;
+        case 2:
+            switch (screen[base + 2]) {
+                case 4:
+                case 5:
+                    screen[base + 2] = 6;
+                    break;
+            }
+            switch (screen[base + 1]) {
+                case 4:
+                case 5:
+                    screen[base + 1] = 6;
+                    break;
+            }
+            if (screen[base + 1] != 7)
+                screen[base + 3] = 0;
+
+            if ( screen[base + 1] == screen[base + 2]
+                && screen[base + 3] == 0)
+                screen[base + 1] = 0;
+
+            if (   screen[base + 1] == 0
+                && screen[base + 2] == 0
+                && screen[base + 3] == 0)
+                screen[base + 3] = 1;
+
+            break;
+        case 1:
+            if (screen[base + 1] != 7)
+                screen[base + 3] = 0;
+
+            if (   screen[base + 1] == screen[base + 2]
+                && screen[base + 3] == 0)
+                screen[base + 1] = 0;
+
+            if (   screen[base + 1] == 0
+                && screen[base + 2] == 0
+                && screen[base + 3] == 0)
+                screen[base + 3] = 1;
+
+            break;
+        }
+    }
 }
 
-void graphicst::rain_color_square(long x,long y)
+void graphicst::rain_color_square(long x, long y)
 {
-	if(x>=clipx[0]&&x<=clipx[1]&&
-		y>=clipy[0]&&y<=clipy[1])
-		{
-		screen[x*dimy*4 + y*4 + 1]=1;
-		screen[x*dimy*4 + y*4 + 2]=0;
-		screen[x*dimy*4 + y*4 + 3]=1;
-		}
+    if (   x >= clipx[0]
+        && x <= clipx[1]
+        && y >= clipy[0]
+        && y <= clipy[1] ) {
+        size_t base = 4*(x*dimy + y);
+        screen[base + 1] = 1;
+        screen[base + 2] = 0;
+        screen[base + 3] = 1;
+    }
 }
 
-void graphicst::snow_color_square(long x,long y)
+void graphicst::snow_color_square(long x, long y)
 {
-	if(x>=clipx[0]&&x<=clipx[1]&&
-		y>=clipy[0]&&y<=clipy[1])
-		{
-		screen[x*dimy*4 + y*4 + 1]=7;
-		screen[x*dimy*4 + y*4 + 2]=0;
-		screen[x*dimy*4 + y*4 + 3]=1;
-		}
+    if (   x >= clipx[0]
+        && x <= clipx[1]
+        && y >= clipy[0]
+        && y <= clipy[1] ) {
+        size_t base = 4*(x*dimy + y);
+        screen[base + 1] = 7;
+        screen[base + 2] = 0;
+        screen[base + 3] = 1;
+    }
 }
 
-void graphicst::color_square(long x,long y,unsigned char f,unsigned char b,unsigned char br)
+void graphicst::color_square(long x, long y, unsigned char f, unsigned char b, unsigned char br)
 {
-	if(x>=clipx[0]&&x<=clipx[1]&&
-		y>=clipy[0]&&y<=clipy[1])
-		{
-		screen[x*dimy*4 + y*4 + 1]=f;
-		screen[x*dimy*4 + y*4 + 2]=b;
-		screen[x*dimy*4 + y*4 + 3]=br;
-		}
+    if (   x >= clipx[0]
+        && x <= clipx[1]
+        && y >= clipy[0]
+        && y <= clipy[1] ) {
+        size_t base = 4*(x*dimy + y);
+        screen[base + 1] = f;
+        screen[base + 2] = b;
+        screen[base + 3] = br;
+    }
 }
 
 void graphicst::prepare_graphics(string &src_dir)

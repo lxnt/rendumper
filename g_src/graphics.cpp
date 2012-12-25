@@ -367,10 +367,6 @@ void graphicst::dim_colors(long x, long y, char dim)
 
             br = 0;
 
-            if (   fg == BLACK
-                && bg == BLACK
-                && br == 0 )
-                        br = 1;
             break;
         case 3:
             switch ( bg ) {
@@ -405,10 +401,6 @@ void graphicst::dim_colors(long x, long y, char dim)
                 && br == 0 )
                     fg = BLACK;
 
-            if (   fg == BLACK
-                && bg == BLACK
-                && br == 0 )
-                        br = 1;
             break;
         case 2:
             switch (bg) {
@@ -430,11 +422,6 @@ void graphicst::dim_colors(long x, long y, char dim)
                 && br == 0)
                 fg = BLACK;
 
-            if (   fg == BLACK
-                && bg == BLACK
-                && br == 0)
-                br = 1;
-
             break;
         case 1:
             if (fg != LGRAY)
@@ -451,6 +438,11 @@ void graphicst::dim_colors(long x, long y, char dim)
 
             break;
         }
+
+        if (   fg == BLACK
+            && bg == BLACK
+            && br == 0 )
+                    br = 1;
     }
 }
 

@@ -428,7 +428,7 @@ void graphicst::dim_colors(long x, long y, char dim)
 
             if ( fg == bg
                 && br == 0)
-                fg = 0;
+                fg = BLACK;
 
             if (   fg == BLACK
                 && bg == BLACK
@@ -442,7 +442,7 @@ void graphicst::dim_colors(long x, long y, char dim)
 
             if (   fg == bg
                 && br == 0)
-                fg = 0;
+                fg = BLACK;
 
             if (   fg == BLACK
                 && bg == BLACK

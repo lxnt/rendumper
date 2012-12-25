@@ -14,7 +14,7 @@ In no particular order.
 - see if libgraphics.so still builds.
 - do the TTF support
 - offload  dim/rain/snow effects to the renderer, implement in shaders,
-  reimplement original in the ncurses renderer
+  reimplement original in the ncurses renderer, maybe do grid init by memcpy.
 - compile with the same flags as SDL is: -mmx -3dnow -sse
 - do a knob for max-optimization builds.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
@@ -22,6 +22,11 @@ In no particular order.
 - "ld.so understands the string $ORIGIN (or equivalently ${ORIGIN}) in
   an rpath specification (DT_RPATH or DT_RUNPATH) to mean the directory
   containing the application executable."
+- sdl2gl3 renderer - clone sdl2gl2; move common code to common/
+- maybe get rid of vbstreamer in sdl2gl2. 
+- generate grid in shader using gl_VertexID in sdl2gl3
+- merge ui and compositor from fgtestbed. first finish and debug it though
+
 
 Starting up, paths and stuff
 ----------------------------
@@ -79,6 +84,7 @@ Notes
    getplatform()->getlogr(some-random-name)->trace() inside a loop
    is a very bad practice. don't do it.
 
+9. gps_locator kills any hope for write-only df_buffer_t-s
 
 mingw-w64 build
 ---------------

@@ -1,6 +1,5 @@
 
 #include "iplatform.h"
-#define DFM_STUB(foo) getplatform()->log_error("Stub '%s' called.\n", #foo)
 
 #include "init.h"
 #include "enabler.h"

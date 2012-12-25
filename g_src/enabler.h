@@ -74,6 +74,10 @@ using std::queue;
 
 #endif
 
+#include "iplatform.h"
+extern ilogger *stubs_logr;
+#define DFM_STUB(foo) stubs_logr->error("Stub '%s' called.\n", #foo)
+
 #define GAME_TITLE_STRING "Dwarf Fortress"
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum);

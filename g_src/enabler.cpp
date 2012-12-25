@@ -10,11 +10,11 @@
 #include "init.h"
 #include "music_and_sound_g.h"
 
-#define DFM_STUB(foo) getplatform()->log_error("Stub '%s' called.\n", #foo)
-
 using namespace std;
 
 static iplatform *platform = NULL;
+ilogger *stubs_logr = NULL;
+ilogger *mainlogr = NULL;
 
 enablerst enabler;
 
@@ -74,7 +74,7 @@ void enablerst::zoom_display(zoom_commands command) {
             r->zoom_reset();
             break;
         default:
-            getplatform()->log_error("enablerst::zoom_display(): unknown cmd %d\n", command);
+            mainlogr->error("enablerst::zoom_display(): unknown cmd %d\n", command);
             break;
     }
 }
@@ -100,10 +100,12 @@ static void add_input_event(df_input_event_t *event) {
 
 int main (int argc, char* argv[]) {
     /* here decide what platform to load, without init.txt. somehow. */
-    if (!load_platform("ncurses", "libs/"))
+    if (!lock_and_load("sdl2gl2", "libs/", LL_WARN))
         return 1;
 
     platform = getplatform();
+    mainlogr = platform->getlogr("df");
+    stubs_logr = platform->getlogr("df.stubs");
     irenderer *renderer = getrenderer();
     isimuloop *simuloop = getsimuloop();
 
@@ -119,7 +121,7 @@ int main (int argc, char* argv[]) {
     if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF))
         if (!musicsound.initsound()) {
             report_error("Initializing sound failed, no sound will be played", "");
-            platform->log_info("Initializing sound failed, no sound will be played");
+            mainlogr->warn("Initializing sound failed, no sound will be played");
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
 

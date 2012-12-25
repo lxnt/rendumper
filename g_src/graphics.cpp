@@ -453,9 +453,13 @@ void graphicst::rain_color_square(long x, long y)
         && y >= clipy[0]
         && y <= clipy[1] ) {
         size_t base = 4*(x*dimy + y);
-        screen[base + 1] = 1;
-        screen[base + 2] = 0;
-        screen[base + 3] = 1;
+        unsigned char& fg = screen[base + 1];
+        unsigned char& bg = screen[base + 2];
+        unsigned char& br = screen[base + 3];
+
+        fg = BLUE;
+        bg = BLACK;
+        br = 1;
     }
 }
 
@@ -466,9 +470,13 @@ void graphicst::snow_color_square(long x, long y)
         && y >= clipy[0]
         && y <= clipy[1] ) {
         size_t base = 4*(x*dimy + y);
-        screen[base + 1] = 7;
-        screen[base + 2] = 0;
-        screen[base + 3] = 1;
+        unsigned char& fg = screen[base + 1];
+        unsigned char& bg = screen[base + 2];
+        unsigned char& br = screen[base + 3];
+
+        fg = LGRAY;
+        bg = BLACK;
+        br = 1;
     }
 }
 

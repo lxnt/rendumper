@@ -350,7 +350,7 @@ void graphicst::dim_colors(long x, long y, char dim)
                 case LGRAY:
                     bg = CYAN;
                     break;
-                }
+            }
             switch (fg) {
                 case RED:
                 case MAGENTA:
@@ -366,10 +366,9 @@ void graphicst::dim_colors(long x, long y, char dim)
                 fg = BLACK;
 
             br = 0;
-
             break;
         case 3:
-            switch ( bg ) {
+            switch (bg) {
                 case RED:
                 case MAGENTA:
                     bg = BROWN;
@@ -378,8 +377,8 @@ void graphicst::dim_colors(long x, long y, char dim)
                 case LGRAY:
                     bg = CYAN;
                     break;
-                }
-            switch ( fg ) {
+            }
+            switch (fg) {
                 case BLUE:
                     br = 0;
                     break;
@@ -393,13 +392,12 @@ void graphicst::dim_colors(long x, long y, char dim)
                 case LGRAY:
                     fg = CYAN;
                     break;
-                }
-            if ( fg != LGRAY )
+            }
+            if (fg != LGRAY)
                 br = 0;
 
-            if (   fg == bg
-                && br == 0 )
-                    fg = BLACK;
+            if (fg == bg && br == 0)
+                fg = BLACK;
 
             break;
         case 2:
@@ -418,8 +416,7 @@ void graphicst::dim_colors(long x, long y, char dim)
             if (fg != LGRAY)
                 br = 0;
 
-            if ( fg == bg
-                && br == 0)
+            if (fg == bg && br == 0)
                 fg = BLACK;
 
             break;
@@ -427,22 +424,14 @@ void graphicst::dim_colors(long x, long y, char dim)
             if (fg != LGRAY)
                 br = 0;
 
-            if (   fg == bg
-                && br == 0)
+            if (fg == bg && br == 0)
                 fg = BLACK;
-
-            if (   fg == BLACK
-                && bg == BLACK
-                && br == 0)
-                br = 1;
 
             break;
         }
 
-        if (   fg == BLACK
-            && bg == BLACK
-            && br == 0 )
-                    br = 1;
+        if (fg == BLACK && bg == BLACK && br == 0)
+            br = 1;
     }
 }
 

@@ -457,7 +457,7 @@ GLuint shader_t::compile(const char *setname, GLuint type) {
 }
 
 void shader_t::initialize(const char *setname) {
-    logr = platform->getlogr("gl.shader_t");
+    logr = platform->getlogr("gl.shader");
 
     program = glCreateProgram();
     GLuint vs = compile(setname, GL_VERTEX_SHADER);
@@ -846,7 +846,8 @@ struct implementation : public irenderer {
 };
 
 void implementation::initialize() {
-    nputlogr = platform->getlogr("sdl2gl2.input");
+    nputlogr = platform->getlogr("sdl.input");
+    ilogger *glclogr = platform->getlogr("gl.context");
 
     /* this GL renderer needs or uses no SDL internal rendering
        or even a window surface. */
@@ -901,24 +902,24 @@ void implementation::initialize() {
         if (SDL_GL_GetAttribute(attr_req[i].attr, &value))
             logr->fatal("SDL_GL_GetAttribute(%s, ptr): %s",
                 attr_req[i].name, SDL_GetError());
-        logr->info("GL context: %s requested %d got %d",
+        glclogr->info("%s requested %d got %d",
             attr_req[i].name, attr_req[i].value, value);
     }
 
     GLenum err = glewInit();
     if (GLEW_OK != err)
-        logr->fatal("glewInit(): %s", glewGetErrorString(err));
+        glclogr->fatal("glewInit(): %s", glewGetErrorString(err));
 
     if (!glMapBufferRange)
-        logr->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
+        glclogr->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
 
     if (!glFenceSync)
-        logr->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
+        glclogr->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 
 #if 0
     /* this is not present in glew 1.6. and it ain't that fatal anyway */
     if (!GLEW_ARB_map_buffer_alignment)
-        logr->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
+        glclogr->fatal("ARB_map_buffer_alignment extension or OpenGL 4.2+ is required.");
 #endif
     /* todo:
 
@@ -1307,7 +1308,7 @@ df_buffer_t *implementation::get_buffer(void) {
         case IMQ_TIMEDOUT:
             return NULL;
         default:
-            platform->fatal("%s: %d from mqueue->recv()", __func__, rv);
+            logr->fatal("%s: %d from mqueue->recv()", __func__, rv);
     }
     return buf;
 }
@@ -1331,10 +1332,10 @@ implementation::implementation() {
     not_done = true;
     dropped_frames = 0;
     if ((incoming_q = mqueue->open("renderer", 1<<10)) < 0)
-        platform->fatal("%s: %d from mqueue->open(renderer)", __func__, incoming_q);
+        logr->fatal("%s: %d from mqueue->open(renderer)", __func__, incoming_q);
 
     if ((free_buf_q = mqueue->open("free_buffers", 1<<10)) < 0)
-        platform->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
+        logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
 }
 
 /* Below is code copied from renderer_ncurses.
@@ -1361,7 +1362,7 @@ static int thread_stub(void *data) {
 }
 
 void implementation::run_here() {
-    logr = platform->getlogr("sdl2gl2");
+    logr = platform->getlogr("sdl");
     if (started) {
         logr->error("second renderer start ignored\n");
         return;
@@ -1372,7 +1373,7 @@ void implementation::run_here() {
 }
 
 void implementation::start() {
-    logr = platform->getlogr("sdl2gl2");
+    logr = platform->getlogr("sdl");
     if (started) {
         logr->error("second renderer start ignored\n");
         return;

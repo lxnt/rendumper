@@ -100,7 +100,7 @@ getkeyboard_t   getkeyboard = NULL;
 getmusicsound_t getmusicsound = NULL;
 
 static void dump_link_table() {
-    ilogger *logr = getplatform()->getlogr("glue.link.dump-table");
+    ilogger *logr = getplatform()->getlogr("glue.link");
     if (!logr->enabled(LL_TRACE))
         return;
 
@@ -119,7 +119,7 @@ static void dump_link_table() {
             keyboard_ep[i] ? *keyboard_ep[i] : NULL);
     }
 
-    logr->trace("glue final entry points: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
+    logr->trace("final entry points: pl=%p mq=%p rr=%p tx=%p, sl=%p kb=%p ms=%p",
         getplatform, getmqueue, getrenderer, gettextures, getsimuloop, getkeyboard, getmusicsound);
 }
 
@@ -129,7 +129,7 @@ static void dump_link_table() {
 static int load_module(const char *soname) {
     ilogger *logr = NULL;
     if (getplatform)
-        logr = getplatform()->getlogr("glue.load_module");
+        logr = getplatform()->getlogr("glue.load");
 
     if (module_load_count > 23) {
         fprintf(stderr, "more that %d modules, you nuts?", module_load_count);
@@ -278,8 +278,10 @@ bool lock_and_load(const char *printmode, const char *modpath, int rll) {
         return false;
     }
 
+    ilogger *logr = getplatform()->getlogr("glue");
+    
     if (!load_module("common_code")) {
-        getplatform()->getlogr("lock_and_load")->error("Failed to load common_code");
+        logr->error("Failed to load common_code");
         return false;
     }
 
@@ -287,7 +289,7 @@ bool lock_and_load(const char *printmode, const char *modpath, int rll) {
     renreder += printmode;
 
     if (!load_module(renreder.c_str())) {
-        getplatform()->getlogr("lock_and_load")->error("Failed to load renderer module %s\n", renreder.c_str());
+        logr->error("Failed to load renderer module %s\n",renreder.c_str());
         return false;
     }
 

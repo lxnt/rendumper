@@ -313,6 +313,18 @@ void graphicst::setclipping(long x1,long x2,long y1,long y2)
 	clipy[1]=y2;
 }
 
+
+enum df_3bitcolors : unsigned char {
+    BLACK = 0,
+    BLUE = 1,
+    GREEN = 2,
+    CYAN = 3,
+    RED = 4,
+    MAGENTA = 5,
+    BROWN = 6,
+    LGRAY = 7
+};
+
 void graphicst::dim_colors(long x, long y, char dim)
 {
     if (   x >= clipx[0]
@@ -329,109 +341,111 @@ void graphicst::dim_colors(long x, long y, char dim)
         switch (dim) {
         case 4:
             switch (bg) {
-                case 4:
-                case 5:
-                case 6:
-                    bg = 1;
+                case RED:
+                case MAGENTA:
+                case BROWN:
+                    bg = BLUE;
                     break;
-                case 2:
-                case 7:
-                    bg = 3;
+                case GREEN:
+                case LGRAY:
+                    bg = CYAN;
                     break;
                 }
             switch (fg) {
-                case 4:
-                case 5:
-                case 6:
-                    fg = 1;
+                case RED:
+                case MAGENTA:
+                case BROWN:
+                    fg = BLUE;
                     break;
-                case 2:
-                case 7:
-                    fg = 3;
+                case GREEN:
+                case LGRAY:
+                    fg = CYAN;
                     break;
             }
             if (fg == bg)
-                fg = 0;
+                fg = BLACK;
 
-            screen[base + 3] = 0;
+            br = 0;
 
-            if (   fg == 0
-                && bg == 0
+            if (   fg == BLACK
+                && bg == BLACK
                 && br == 0 )
                         br = 1;
             break;
         case 3:
             switch ( bg ) {
-                case 4:
-                case 5:
-                    bg = 6;
+                case RED:
+                case MAGENTA:
+                    bg = BROWN;
                     break;
-                case 2:
-                case 7:
-                    bg = 3;
+                case GREEN:
+                case LGRAY:
+                    bg = CYAN;
                     break;
                 }
             switch ( fg ) {
-                case 1:
+                case BLUE:
                     br = 0;
                     break;
-                case 4:
-                case 5:
-                    fg = 6;
+                case RED:
+                case MAGENTA:
+                    fg = BROWN;
                     break;
-                case 2:
-                    fg = 3;
+                case GREEN:
+                    fg = CYAN;
                     break;
-                case 7:
-                    fg = 3;
+                case LGRAY:
+                    fg = CYAN;
                     break;
                 }
-            if ( fg != 7 )
+            if ( fg != LGRAY )
                 br = 0;
+
             if (   fg == bg
                 && br == 0 )
-                        fg = 0;
-            if (   fg == 0
-                && bg == 0
+                    fg = BLACK;
+
+            if (   fg == BLACK
+                && bg == BLACK
                 && br == 0 )
                         br = 1;
             break;
         case 2:
             switch (bg) {
-                case 4:
-                case 5:
-                    bg = 6;
+                case RED:
+                case MAGENTA:
+                    bg = BROWN;
                     break;
             }
             switch (fg) {
-                case 4:
-                case 5:
-                    fg = 6;
+                case RED:
+                case MAGENTA:
+                    fg = BROWN;
                     break;
             }
-            if (fg != 7)
+            if (fg != LGRAY)
                 br = 0;
 
             if ( fg == bg
                 && br == 0)
                 fg = 0;
 
-            if (   fg == 0
-                && bg == 0
+            if (   fg == BLACK
+                && bg == BLACK
                 && br == 0)
                 br = 1;
 
             break;
         case 1:
-            if (fg != 7)
+            if (fg != LGRAY)
                 br = 0;
 
             if (   fg == bg
                 && br == 0)
                 fg = 0;
 
-            if (   fg == 0
-                && bg == 0
+            if (   fg == BLACK
+                && bg == BLACK
                 && br == 0)
                 br = 1;
 

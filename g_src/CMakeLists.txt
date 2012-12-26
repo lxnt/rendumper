@@ -2,7 +2,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG=8)
 endif()
 
-set ( LIBS m )
+set ( LIBS m z )
 
 if(FG_DUMPER)
     set(FGD_LIBS lwapi)

@@ -59,7 +59,7 @@ struct implementation : public itextures {
 
         celpage(int w, int h, int cw, int ch, SDL_Surface *s, bool m, int si):
             w(w), h(h), cw(cw), ch(ch), s(s), magentic(m), start_index(si) {}
-        ~celpage() { SDL_FreeSurface(s); }
+        ~celpage() { }
 
         bool operator < (celpage r) const { return h < r.h; }
     };
@@ -349,7 +349,7 @@ void implementation::set_rcfont(const void *ptr, int len) {
 void implementation::reset() {
     rc_font_set = false;
     next_index = 0;
-    pages.clear();
+    pages.clear(); /* do SDL_FreeSurface() here since gcc does meddle with object lifetime in sort() */
     clones.clear();
     grays.clear();
     logr->trace("reset()");

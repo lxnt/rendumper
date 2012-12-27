@@ -177,9 +177,10 @@ static int load_module(const char *soname) {
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
-        if (!logr)
-            logr = getplatform()->getlogr("glue.load_module"); // not very clean, but..
-        else
+        if (!logr) {
+            iplatform *tp = getplatform();
+            logr = tp->getlogr("glue.load_module");
+        } else
             logr->fatal("second platform load attempt detected."); // also catch this
         getplatform()->logconf(NULL, root_log_level);
         logr->info("%s provides iplatform (getplatform=%p)", fname.c_str(), sym);

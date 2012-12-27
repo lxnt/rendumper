@@ -3,58 +3,50 @@ project(dfmodules)
 
 set(DFMOD_DESTDIR "lib/dfmodules")
 
-message(STATUS "dd: ${DFMOD_DESTDIR}")
-
-# kludge
-set(ENV{PKG_CONFIG_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
-
-set(CMAKE_C_FLAGS "-fvisibility=hidden -Wall -Wextra -Werror")
-set(CMAKE_C_FLAGS_DEBUG "-ggdb3")
-set(CMAKE_CXX_FLAGS "-std=c++0x -fvisibility-inlines-hidden ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3")
-
-set(M32 "-m32 -march=i686")
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(ARCH64 TRUE)
-else()
-  set(ARCH64 FALSE)
-endif()
-
-if (UNIX)
-    # this doesn't rly make sense for windoze
-    if(NOT CONFIGURING_RENDUMPER)
-        option(DF_32BIT_COMPAT "Compile for linking with Dwarf Fortress" ON)
-    else()
-        set(DF_32BIT_COMPAT TRUE)
-    endif()
-else()
-    set(DF_32BIT_COMPAT FALSE)
-endif()
-
-if(DF_32BIT_COMPAT)
-    set(CMAKE_CXX_COMPILER g++-4.5)
-    set(CMAKE_C_COMPILER g++-4.5)
-endif()
-
-if (ARCH64)
-    if(DF_32BIT_COMPAT)
-        set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
-        set(CMAKE_CXX_FLAGS "${M32} ${CMAKE_CXX_FLAGS}")
-        set(CMAKE_C_FLAGS "${M32} ${CMAKE_C_FLAGS}")
-    endif()
-endif()
-
-include(FindPkgConfig)
 find_package(Threads REQUIRED)
 
-#set(DFMOD_DESTDIR "${CMAKE_INSTALL_PREFIX}/lib/dfmodules")
-message(STATUS "dd: ${DFMOD_DESTDIR}")
+if(MSVC)
+    # nothing
+else(MSVC)
+    # kludge. the horror.
+    set(ENV{PKG_CONFIG_PATH} "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
 
-pkg_check_modules(PKG_SDL2 QUIET sdl2)
-pkg_check_modules(PKG_OPENAL QUIET openal)
-pkg_check_modules(PKG_SNDFILE QUIET ncurses)
-pkg_check_modules(PKG_GLEW QUIET glew)
+    set(CMAKE_C_FLAGS "-fvisibility=hidden -Wall -Wextra -Werror")
+    set(CMAKE_C_FLAGS_DEBUG "-ggdb3")
+    set(CMAKE_CXX_FLAGS "-std=c++0x -fvisibility-inlines-hidden ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG "-ggdb3")
+
+    if (UNIX)
+        if(NOT BUILD_LIBGRAPHICS)
+            option(BUILD_32BIT "Compile 32bit binaries" ON)
+        else()
+            set(BUILD_32BIT TRUE)
+        endif()
+
+        if(BUILD_32BIT)
+            if (ARCH64)
+                set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)
+                set(CMAKE_CXX_FLAGS "-m32 ${CMAKE_CXX_FLAGS}")
+                set(CMAKE_C_FLAGS "-m32 ${CMAKE_C_FLAGS}")
+            endif()
+        endif()
+
+        SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+        SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+        SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+        SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+    endif()
+
+    include(FindPkgConfig)
+
+    pkg_check_modules(PKG_SDL2 QUIET sdl2)
+    pkg_check_modules(PKG_OPENAL QUIET openal)
+    pkg_check_modules(PKG_SNDFILE QUIET ncurses)
+    pkg_check_modules(PKG_GLEW QUIET glew)
+
+endif(MSVC)
+
 
 if (PKG_OPENAL_FOUND AND PKG_SNDFILE_FOUND)
     set(OPENAL_DEPS ON)
@@ -85,29 +77,17 @@ if (UNIX)
     endif()
 endif()
 
-option(SOUND_FMOD "build sound-fmodex module" OFF)
-if (SOUND_FMOD)
-    add_library(sound_fmodex SHARED sound-fmodex/module.cpp)
-    target_link_libraries(sound_fmodex fmodex_or_something)
-    set_target_properties(sound_fmodex PROPERTIES PREFIX "")
-    install(TARGETS sound_fmodex LIBRARY DESTINATION ${DFMOD_DESTDIR})
+if(FMOD_BUILD_ENABLED)
+    option(SOUND_FMOD "build sound-fmodex module" OFF)
+    if (SOUND_FMOD)
+        add_library(sound_fmodex SHARED sound-fmodex/module.cpp)
+        target_link_libraries(sound_fmodex fmodex_or_something)
+        set_target_properties(sound_fmodex PROPERTIES PREFIX "")
+        install(TARGETS sound_fmodex LIBRARY DESTINATION ${DFMOD_DESTDIR})
+    endif()
 endif()
 
-include_directories(include)
 include_directories(common)
-set(HEADERS
-    include/emafilter.h
-    include/imqueue.h
-    include/isimuloop.h
-    include/itypes.h
-    include/glue.h
-    include/iplatform.h
-    include/ikeyboard.h
-    include/imusicsound.h
-    include/itextures.h
-    include/irenderer.h )
-install(FILES ${HEADERS} DESTINATION include/dfmodules)
-
 set(PLATFORM_COMMON
     common/df_glob.cpp
     common/df_buffer.cpp
@@ -129,11 +109,6 @@ set(GL_COMMON
     common/df_buffer.cpp
     common/shaders.cpp
 )
-
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 option(SOUND_OPENAL "build sound-openal module" OFF)
 if (SOUND_OPENAL)
@@ -235,27 +210,3 @@ else()
     install(TARGETS common_code RUNTIME DESTINATION ${DFMOD_DESTDIR})
 endif()
 
-# the glue
-add_library(glue glue.cpp)
-install(TARGETS glue ARCHIVE DESTINATION ${DFMOD_DESTDIR})
-
-if(UNIX)
-    set(GLUE_LIBS glue dl)
-else()
-    set(GLUE_LIBS glue)
-endif()
-# tests
-
-add_definitions(-DDF_MODULES_PATH="${CMAKE_INSTALL_PREFIX}/${DFMOD_DESTDIR}")
-
-add_executable(test-alert tests/alert.cpp)
-target_link_libraries(test-alert ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-install(TARGETS test-alert RUNTIME DESTINATION bin)
-
-add_executable(test-find tests/find.cpp)
-target_link_libraries(test-find ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-install(TARGETS test-find RUNTIME DESTINATION bin)
-
-add_executable(test-life tests/life.cpp)
-target_link_libraries(test-life ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-install(TARGETS test-life RUNTIME DESTINATION bin)

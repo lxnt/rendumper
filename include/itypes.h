@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#if defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
 # define DFM_EXPORT __declspec(dllexport)
 # define DFM_APIEP __cdecl
 #else /* GCC 4+ is implied. -fvisibility=hidden is implied. */

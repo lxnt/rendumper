@@ -57,11 +57,16 @@ typedef void * FOOPTR;
 #include "itypes.h"
 #include "iplatform.h"
 
-static std::string module_path("libs/");
+static std::string module_path(DF_MODULE_PATH);
 
 /* blindly prepended to the soname */
 static void set_modpath(const char *modpath) {
-    module_path = modpath;
+    if (!modpath)
+        modpath = getenv("DF_MODULE_PATH");
+
+    if (modpath)
+        module_path = modpath;
+
     if    ((module_path.size() > 0)
         && (module_path.at(module_path.size() - 1) != _os_path_sep))
         module_path.append(1, _os_path_sep);
@@ -258,8 +263,6 @@ bool lock_and_load(const char *printmode, const char *modpath, int rll) {
     if (!printmode)
         return false;
 
-    if (!modpath)
-        modpath = getenv("DF_MODULES_PATH");
     set_modpath(modpath);
 
     std::string pm(printmode);

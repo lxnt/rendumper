@@ -17,7 +17,7 @@ int main (int argc, char* argv[]) {
     if (argc < 3)
         return usage(argv[0]);
 
-    if (!lock_and_load(argv[1], DF_MODULES_PATH, LL_TRACE))
+    if (!lock_and_load(argv[1], NULL, LL_TRACE))
         return usage(argv[0]);
 
     const char *pattern = argv[2];

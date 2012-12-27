@@ -142,7 +142,7 @@ struct log_implementation : public ilogsink {
 
             - is triggered by logconf() unconditionally.
             - is triggered by getlogr() if logger in
-              question did not exits at the time of call.
+              question does not exist at the time of call.
         */
 
         std::forward_list<std::string> descendants;

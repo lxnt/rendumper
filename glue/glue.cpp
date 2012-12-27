@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <string>
 
-#if defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
 # include <windows.h>
 # define _load_lib(name) LoadLibrary(name)
 # define _get_sym(lib, name) GetProcAddress((HINSTANCE)lib, name)

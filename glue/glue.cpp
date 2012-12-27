@@ -96,7 +96,6 @@ static int root_log_level = 0;
 
 /* master dispatch table - gets replicated to the above
    and used by the executable this code gets linked to */
-extern "C" {
 getplatform_t   getplatform = NULL;
 getmqueue_t     getmqueue = NULL;
 gettextures_t   gettextures = NULL;
@@ -104,7 +103,6 @@ getsimuloop_t   getsimuloop = NULL;
 getrenderer_t   getrenderer = NULL;
 getkeyboard_t   getkeyboard = NULL;
 getmusicsound_t getmusicsound = NULL;
-};
 
 static void dump_link_table() {
     ilogger *logr = getplatform()->getlogr("glue.link");

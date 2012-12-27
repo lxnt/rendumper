@@ -54,7 +54,7 @@ struct imqueue {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT imqueue * DFM_APIEP getmqueue(void);
 #else // using glue and runtime loading.
-extern "C" imqueue * DFM_APIEP (*getmqueue)(void);
+extern getmqueue_t getmqueue;
 #endif
 
 #endif

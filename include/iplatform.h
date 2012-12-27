@@ -173,8 +173,8 @@ struct iplatform {
 
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void);
-#else // using glue and runtime loading.
-extern "C" iplatform * DFM_APIEP (*getplatform)(void);
+#else
+extern getplatform_t getplatform;
 #endif
 
 #endif

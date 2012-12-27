@@ -24,7 +24,7 @@ struct imusicsound {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT imusicsound * DFM_APIEP getmusicsound(void);
 #else // using glue and runtime loading.
-extern "C" imusicsound * DFM_APIEP (*getmusicsound)(void);
+extern getmusicsound_t getmusicsound;
 #endif
 
 #endif

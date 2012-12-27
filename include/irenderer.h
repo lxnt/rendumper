@@ -185,7 +185,7 @@ struct irenderer : public imessagesender {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void);
 #else // using glue and runtime loading.
-extern "C" irenderer * DFM_APIEP (*getrenderer)(void);
+extern getrenderer_t getrenderer;
 #endif
 
 #endif

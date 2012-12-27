@@ -38,7 +38,7 @@ struct isimuloop : public imessagesender {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT isimuloop * DFM_APIEP getsimuloop(void);
 #else // using glue and runtime loading.
-extern "C" isimuloop * DFM_APIEP (*getsimuloop)(void);
+extern getsimuloop_t getsimuloop;
 #endif
 
 #endif

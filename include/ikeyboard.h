@@ -100,5 +100,5 @@ struct ikeyboard {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT ikeyboard * DFM_APIEP getkeyboard(void);
 #else // using glue and runtime loading.
-extern "C" ikeyboard * DFM_APIEP (*getkeyboard)(void);
+extern getkeyboard_t getkeyboard;
 #endif

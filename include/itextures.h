@@ -63,5 +63,5 @@ struct itextures {
 #if defined (DFMODULE_BUILD)
 extern "C" DFM_EXPORT itextures * DFM_APIEP gettextures(void);
 #else // using glue and runtime loading.
-extern "C" itextures * DFM_APIEP (*gettextures)(void);
+extern gettextures_t gettextures;
 #endif

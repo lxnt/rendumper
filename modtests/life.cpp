@@ -52,7 +52,7 @@ const lifeform_t ggg = {  36, 9,
     "           x   x                    "
     "            xx                      " };
 
-const lifeform_t blse { 10, 6,
+const lifeform_t blse = { 10, 6,
     "       x "
     "     x xx"
     "     x x "
@@ -60,7 +60,7 @@ const lifeform_t blse { 10, 6,
     "  x      "
     "x x      " };
 
-const lifeform_t twentyfive { 5, 5,
+const lifeform_t twentyfive = { 5, 5,
     "xxx x"
     "x    "
     "   xx"

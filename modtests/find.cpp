@@ -36,7 +36,7 @@ int main (int argc, char* argv[]) {
     else
         return usage(argv[0]);
 
-    const char *exclude[argc - 3];
+    char **exclude = new char*[argc - 3];
 
     for(int i = 0; i < argc - 4; i++)
         exclude[i] = argv[i + 4];
@@ -44,6 +44,9 @@ int main (int argc, char* argv[]) {
     exclude[argc - 4] = NULL;
 
     const char * const *glob = platform->glob(pattern, exclude, dirs, files);
+
+    delete []exclude;
+
     const char * const *whoa = glob;
 
     while (*whoa) {

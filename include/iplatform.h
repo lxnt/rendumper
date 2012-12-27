@@ -6,7 +6,7 @@
 #include <cstdarg>
 #include "itypes.h"
 
-#if defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
 # undef WINDOWS_LEAN_AND_MEAN
 # define WINDOWS_LEAN_AND_MEAN
 # include <windows.h>
@@ -74,7 +74,7 @@ typedef struct {
 
 # endif /* WIN32 */
 
-# if defined(__GNUC__) and !defined(NORETURN)
+# if defined(__GNUC__) && !defined(NORETURN)
 #  define NORETURN  __attribute__((noreturn))
 # endif
 # if !defined(NORETURN)

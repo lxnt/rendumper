@@ -349,7 +349,7 @@ struct gofui_t {
             quit = true;
         else if (event->type == df_input_event_t::DF_KEY_DOWN) {
 
-            if (!first_pause and !unpause_seq and event->sym == '.') {
+            if (!first_pause && !unpause_seq && event->sym == '.') {
                 if (paused)
                     single_step = true;
                 return;
@@ -364,7 +364,7 @@ struct gofui_t {
                 }
             } else {
                 if (!unpause_seq)
-                    paused = not paused;
+                    paused = !paused;
                 else
                     unpause_seq = 0; // skip intro
             }

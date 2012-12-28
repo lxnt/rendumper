@@ -91,6 +91,7 @@ include_directories(common)
 set(PLATFORM_COMMON
     common/df_glob.cpp
     common/df_buffer.cpp
+    common/logging.cpp
 )
 
 set_source_files_properties(shaders.c PROPERTIES GENERATED TRUE)

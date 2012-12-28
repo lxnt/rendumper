@@ -1,37 +1,3 @@
-#include "platform.h"
-#include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <fstream>
-#include <zlib.h>
-
-#include "svector.h"
-using std::string;
-
-#include "endian.h"
-
-#include "files.h"
-
-#include "enabler.h"
-
-#include "textlines.h"
-
-#include "basics.h"
-
-#include "g_basics.h"
-
-#include "texture_handler.h"
-
-#include "graphics.h"
-
 #include "init.h"
 
 extern enablerst enabler;
@@ -636,10 +602,6 @@ void initst::begin()
 		}
 	fseed2.close();
         
-#ifdef _DEBUG
-        enabler.window.isFullScreen = FALSE;
-#else
-        
         //FULL SCREEN QUERY, UNLESS IT'S ALREADY SET IN INIT
 
         if (!display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
@@ -664,8 +626,6 @@ void initst::begin()
             }
           else enabler.fullscreen = false;
         }
-#endif
-        
 
 	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
 	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);

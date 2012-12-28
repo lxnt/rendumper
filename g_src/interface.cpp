@@ -1,41 +1,11 @@
-#include "platform.h"
-#include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <fstream>
 #include <zlib.h>
 
 #include "svector.h"
-using std::string;
-
-#include "endian.h"
-
-#include "files.h"
-
-#include "enabler.h"
-
-#include "textlines.h"
-
+#include "stringvecst.h"
 #include "find_files.h"
-
-#include "basics.h"
-
-#include "g_basics.h"
-
 #include "music_and_sound_g.h"
-
 #include "graphics.h"
-
 #include "init.h"
-
 #include "keybindings.h"
 #include "interface.h"
 #include "KeybindingScreen.h"

@@ -11,7 +11,6 @@
 #include <sstream>
 #include <cstdlib>
 #include <fstream>
-#include <zlib.h>
 
 #include "svector.h"
 using std::string;

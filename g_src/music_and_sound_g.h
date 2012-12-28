@@ -2,7 +2,7 @@
 #define MUSIC_AND_SOUND_G
 
 #define SOUND_CHANNELNUM 16
-
+#include <string>
 #include "imusicsound.h"
 
 // If the bool is false, a sound; otherwise a song

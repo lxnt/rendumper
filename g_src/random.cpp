@@ -1,31 +1,6 @@
 #include "platform.h"
-#include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <fstream>
-#include <zlib.h>
-
-#include "svector.h"
-using std::string;
-
-#include "endian.h"
-
-#include "files.h"
-
-#include "enabler.h"
-
-#include "textlines.h"
-
+#include <stdint.h>
 #include "basics.h"
-
 #include "random.h"
 
 extern int32_t basic_seed;

@@ -1,36 +1,21 @@
-#include "platform.h"
-#include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
+//#include <iostream>
 #include <fstream>
-#include <zlib.h>
-
-#include "svector.h"
-using std::string;
-using std::endl;
-using std::ofstream;
-
-#include "endian.h"
+#include <sstream>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
 
-#ifndef INTEGER_TYPES
-	#define INTEGER_TYPES
-	typedef short int16_t;
-	typedef int int32_t;
-	typedef long long int64_t;
-	typedef unsigned short uint16_t;
-	typedef unsigned int uint32_t;
-	typedef unsigned long long uint64_t;
-#endif
+# ifndef INTEGER_TYPES
+# define INTEGER_TYPES
+typedef short int16_t;
+typedef int int32_t;
+typedef long long int64_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
+# endif
 
 typedef int32_t VIndex;
 typedef int32_t Ordinal;
@@ -38,10 +23,9 @@ typedef int32_t Ordinal;
 #endif
 
 #if defined(TTF_SUPPORT)
-#include "ttf_manager.hpp"
+# include "ttf_manager.hpp"
 #endif
 
-#include "init.h"
 #include "basics.h"
 
 extern string errorlog_prefix;

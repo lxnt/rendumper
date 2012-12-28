@@ -1,54 +1,6 @@
-#include "platform.h"
-#include <cerrno>
-#include <string>
-#include <cstring>
-#include <cmath>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <algorithm>
-#include <map>
-#include <set>
-#include <stdio.h>
-//#include <unistd.h>
-
-extern "C" {
 #include <zlib.h>
-#ifndef _WIN32
-# include <sys/types.h>
-# include <sys/stat.h>
-# include <sys/time.h>
-# include <signal.h>
-#endif
-}
-#include "svector.h"
-
-#ifdef _WIN32
-
-#ifndef INTEGER_TYPES
-	#define INTEGER_TYPES
-	typedef short int16_t;
-	typedef int int32_t;
-	typedef long long int64_t;
-	typedef unsigned short uint16_t;
-	typedef unsigned int uint32_t;
-	typedef unsigned long long uint64_t;
-#endif
-
-typedef int32_t VIndex;
-typedef int32_t Ordinal;
-
-#endif
-
-#include "random.h"
-
-using std::string;
-
-#include "basics.h"
-#include "endian.h"
+#include "platform.h"
 #include "files.h"
-#include "enabler.h"
-#include "find_files.h"
 
 inline void CHECK_ERR(int err, const char* /* msg */)
 {

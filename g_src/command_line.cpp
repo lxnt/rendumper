@@ -1,31 +1,8 @@
-#include "platform.h"
-#include <string.h>
-#include <math.h>
-#include <iosfwd>
-#include <iostream>
-#include <ios>
-#include <streambuf>
-#include <istream>
-#include <ostream>
-#include <iomanip>
-#include <sstream>
-#include <cstdlib>
-#include <fstream>
-#include <zlib.h>
-
-#include "svector.h"
+#include <string>
 using std::string;
 
-#include "endian.h"
-
-#include "files.h"
-
-#include "enabler.h"
-
-#include "textlines.h"
-
+#include "stringvecst.h"
 #include "basics.h"
-
 #include "command_line.h"
 
 void command_linest::init(const string &str)

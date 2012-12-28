@@ -17,12 +17,12 @@ class svector : public std::vector<T, A> {
 #endif
                 void erase(typename std::vector<T, A>::size_type i) {
                         std::vector<T, A> &vec = *this;
-                        vec.erase(begin() + i);
+                        vec.erase(std::vector<T, A>::begin() + i);
                 }
                 void insert(typename std::vector<T, A>::size_type i, const T &v) {
 
                         std::vector<T, A> &vec = *this;
-                        vec.insert(begin() + i, v);
+                        vec.insert(std::vector<T, A>::begin() + i, v);
                 }
 };
 #endif

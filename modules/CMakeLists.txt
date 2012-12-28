@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 project(dfmodules)
 
-set(DFMOD_DESTDIR "lib/dfmodules")
+if (UNIX)
+    set(DFMOD_DESTDIR "lib/dfmodules")
+else()
+    set(DFMOD_DESTDIR "bin/libs")
+endif()
 
 find_package(Threads REQUIRED)
 

@@ -2,6 +2,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG=8)
 endif()
 
+if(NOT MSVC)
+    add_definitions(-Wno-sign-compare)
+endif()
+
 set ( LIBS m z )
 
 if(FG_DUMPER)

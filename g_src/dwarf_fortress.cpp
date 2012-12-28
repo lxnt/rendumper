@@ -1,5 +1,5 @@
 #include <string>
-#include <cstdint>
+#include <stdint.h>
 
 #include "random.h"
 #include "init.h"

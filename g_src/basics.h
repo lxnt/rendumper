@@ -1,9 +1,7 @@
 #ifndef BASICS_H
 #define BASICS_H
 
-#ifndef _WIN32
 #include <stdint.h>
-#endif
 #include <string>
 using std::string;
 

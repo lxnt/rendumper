@@ -1,7 +1,7 @@
 #if !defined(ITYPES_H)
 #define ITYPES_H
 
-#include <cstdint>
+#include <stdint.h>
 
 #if defined(WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
 # define DFM_EXPORT __declspec(dllexport)

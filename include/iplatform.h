@@ -1,9 +1,9 @@
 #if !defined(IPLATFORM_H)
 #define IPLATFORM_H
 
-#include <cstddef>
-#include <cstdint>
-#include <cstdarg>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdarg.h>
 #include "itypes.h"
 
 #if defined(WIN32) || defined(__WIN32__) || defined(__CYGWIN__)

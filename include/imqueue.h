@@ -1,8 +1,8 @@
 #if !defined(IMQUEUE_H)
 #define IMQUEUE_H
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 #include "itypes.h"
 
 /* Interthread message queues */

@@ -20,7 +20,7 @@
 #include "ttf_manager.hpp"
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 
 /*
 #ifndef INTEGER_TYPES
@@ -498,7 +498,7 @@ void graphicst::prepare_graphics(string &src_dir)
 		//MUST INSURE THAT THEY ARE LOADED IN THE PROPER ORDER, IN CASE THEY REFER TO EACH OTHER
 	string chk=src_dir;
 	chk+="graphics/graphics_*";
-#ifdef WIN32
+#ifdef _WIN32
 	chk+=".*";
 #endif
 	find_files_by_pattern_with_exception(chk.c_str(),processfilename,"text");

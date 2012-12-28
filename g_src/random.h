@@ -1,9 +1,9 @@
 #ifndef RANDOM_H
 #define RANDOM_H
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <stdint.h>
-#endif //WIN32
+#endif
 
 #if defined(__GNUC__)
 #define UNUSED __attribute__((unused))
@@ -13,7 +13,6 @@
 
 #define MT_BUFFER_NUM 10
 #define MT_LEN 624
-
 
 void mt_init();
 uint32_t mt_trandom();

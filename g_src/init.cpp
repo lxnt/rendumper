@@ -279,7 +279,7 @@ void initst::begin()
                                     display.flag.add_flag(INIT_DISPLAY_FLAG_ARB_SYNC);
                                 }
 
-#ifdef WIN32
+#ifdef _WIN32
 				if(token=="PRIORITY")
 					{
 					if(token2=="REALTIME")

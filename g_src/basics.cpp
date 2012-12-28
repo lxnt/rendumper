@@ -20,7 +20,7 @@ using std::ofstream;
 
 #include "endian.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 
 #ifndef INTEGER_TYPES
 	#define INTEGER_TYPES

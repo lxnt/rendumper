@@ -14,7 +14,7 @@
 
 extern "C" {
 #include <zlib.h>
-#ifndef WIN32
+#ifndef _WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <sys/time.h>
@@ -23,7 +23,7 @@ extern "C" {
 }
 #include "svector.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 
 #ifndef INTEGER_TYPES
 	#define INTEGER_TYPES

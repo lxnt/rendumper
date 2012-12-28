@@ -7,12 +7,12 @@
 
 template <class T, class A = std::allocator<T> >
 class svector : public std::vector<T, A> {
-#ifndef WIN32
+#ifndef _WIN32
         public:
 		using std::vector<T, A>::begin;
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
         public:
 #endif
                 void erase(typename std::vector<T, A>::size_type i) {

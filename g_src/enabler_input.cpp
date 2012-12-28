@@ -24,9 +24,9 @@ struct Event {
   Repeat r;
   InterfaceKey k;
   int repeats;  // Starts at 0, increments once per repeat
-  int serial;
-  int time;
-  int tick;  // The sim-tick at which we last returned this event
+  uint32_t serial;
+  uint32_t time;
+  uint32_t tick;  // The sim-tick at which we last returned this event
   bool macro;  // Created as part of macro playback.
 
   bool operator== (const Event &other) const {
@@ -454,7 +454,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
 
   Time now = e.now;
   set<EventMatch>::iterator pkit;
-  list<pair<KeyEvent, int> > synthetics;
+  list<pair<KeyEvent, uint32_t> > synthetics;
   update_modstate(e);
   
   // Convert modifier state changes
@@ -528,8 +528,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     }
   }
 
-  list<pair<KeyEvent, int> >::iterator lit;
-  for (lit = synthetics.begin(); lit != synthetics.end(); ++lit) {
+  for (auto lit = synthetics.begin(); lit != synthetics.end(); ++lit) {
     // Add or remove the key from pressed_keys, keeping that up to date
     if (lit->first.release) pressed_keys.erase(lit->first.match);
     else pressed_keys.insert(lit->first.match);
@@ -589,7 +588,7 @@ void enabler_inputst::add_input_ncurses(df_input_event_t& event) {
   }
 }
 
-void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, int serial) {
+void enabler_inputst::add_input_refined(KeyEvent &e, uint32_t now, uint32_t serial) {
   // We may be registering a new mapping, in which case we skip the
   // rest of this function.
   if (key_registering && !e.release) {

@@ -81,7 +81,7 @@ class enabler_inputst {
   // In practice.. do not use this one.
   void add_input(df_input_event_t& e);
   // Use this one. It's much nicer.
-  void add_input_refined(KeyEvent &e, Time now, int serial);
+  void add_input_refined(KeyEvent &e, Time now, uint32_t serial);
   // Made specifically for curses. <0 = unicode, >0 = ncurses symbols.
   void add_input_ncurses(df_input_event_t& event);
 

@@ -26,8 +26,7 @@ set( SOURCE
     textlines.cpp
     textures.cpp
     ViewBase.cpp
-    
-    platform.cpp
+
     music_and_sound.cpp
 )
 

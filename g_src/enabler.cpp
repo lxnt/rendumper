@@ -114,8 +114,6 @@ int main (int argc, char* argv[]) {
                             assimilate_buffer,
                             add_input_event);
 
-    { FILE *fp = fopen("df.pid", "w"); fprintf(fp, "%d\n", getpid()); fclose(fp); }
-
     init.begin(); // Load init.txt settings
 
     if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF))

@@ -59,7 +59,21 @@ set( HEADERS
     ViewBase.h
 )
 
-add_library( graphics SHARED ${SOURCE} ${FGD_SOURCE})
-target_link_libraries(graphics glue ${LIBS} ${FGD_LIBS})
-install(TARGETS graphics LIBRARY DESTINATION lib)
+if(UNIX)
+    set( UNIX_ONLY_SOURCE  platform.cpp )
+endif()
 
+
+if(BUILD_FORTRESS)
+    # pretend to build Dwarf_Fortess.exe
+    add_executable(Dwarf_Fortress dwarf_fortress.cpp ${SOURCE} ${FGD_SOURCE} ${UNIX_ONLY_SOURCE})
+    target_link_libraries(Dwarf_Fortress ${GLUE_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${LIBS} ${FGD_LIBS})
+    install(TARGETS Dwarf_Fortress RUNTIME DESTINATION bin/libs)
+endif()
+
+if(LIBGRAPHICS)
+    # build libgraphics.so
+    add_library( graphics SHARED ${SOURCE} ${FGD_SOURCE} ${UNIX_ONLY_SOURCE})
+    target_link_libraries(graphics glue ${LIBS} ${FGD_LIBS})
+    install(TARGETS graphics LIBRARY DESTINATION lib)
+endif()

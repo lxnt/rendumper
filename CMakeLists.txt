@@ -40,10 +40,20 @@ include_directories(glue)
 include_directories(include)
 add_subdirectory(glue)
 
-option(BUILD_LIBGRAPHICS "Build libgraphics.so")
-if(BUILD_LIBGRAPHICS)
+option(BUILD_FORTRESS "Pretend to build Dwarf Fortress")
+if(UNIX)
+    option(BUILD_LIBGRAPHICS "Build libgraphics.so")
+endif()
+
+if(BUILD_LIBGRAPHICS OR BUILD_FORTRESS)
+    if(NOT UNIX AND NOT MSVC)
+        # add install-prefix include dir for mingw builds : zlib
+        # todo: move compression into the platform so/dll
+        include_directories(${CMAKE_INSTALL_PREFIX}/include)
+        link_directories(${CMAKE_INSTALL_PREFIX}/lib)
+    endif()
     add_subdirectory(g_src)
-endif(BUILD_LIBGRAPHICS)
+endif()
 
 option(BUILD_MODULES "Build backend modules")
 if(BUILD_MODULES)

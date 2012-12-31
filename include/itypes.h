@@ -59,6 +59,7 @@ struct df_buffer_t {
     unsigned char *grayscale;
     unsigned char *cf;
     unsigned char *cbr;
+    unsigned char *fx;         // dim, snow, rain
 
     uint8_t *tail;
 };

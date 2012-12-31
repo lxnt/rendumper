@@ -14,11 +14,12 @@ attribute float addcolor;
 attribute float grayscale;
 attribute float cf;
 attribute float cbr;
-attribute vec4 grid;        // almost forgot teh grid
-// Total 7 attributes  = 13 float values
+attribute float fx;
+attribute float vertex_id;
+// Total 8 attributes  = 11 float values
 
 varying vec4 ansicolors;        // computed foreground and background color indexes for tile and creature
-varying vec4 tilecrea;         	// floor and creature tile indexes
+varying vec4 tilecrea;         	// floor and creature tile indices, effects
 // Total 6 float varyings (8 on Mesa)
 
 vec2 ansiconvert(vec3 c) { // { fg, bg, bold }, returns {fg_idx, bg_idx}
@@ -33,13 +34,17 @@ vec2 ansiconvert(vec3 c) { // { fg, bg, bold }, returns {fg_idx, bg_idx}
 }
 
 void main() {
+    vec2 grid;
+    grid.x = floor(vertex_id / grid_wh.y);
+    grid.y = grid_wh.y - mod(vertex_id, grid_wh.y) - 1.0;
+
     vec2 posn = 2.0 * (grid.xy + 0.5)/grid_wh - 1.0;
     gl_Position = vec4(posn.x, posn.y, 0.0, 1.0);
     gl_PointSize = pszar.z;
 
     ansicolors.xy = ansiconvert(screen.yzw);
     ansicolors.zw = vec2(15.0, 0.0);
-    tilecrea.xy = vec2(screen.x, texpos);
+    tilecrea = vec4(screen.x, texpos, fx * 255.0, 0);
 
     if (texpos > 0.1) {
         if  (grayscale > 0.1)
@@ -49,6 +54,4 @@ void main() {
     } else {
         tilecrea.y = -42; // no creature.
     }
-
-    tilecrea.zw = grid.xy; // should be grid.zw for dim/rain/snow/etc but not yet
 }

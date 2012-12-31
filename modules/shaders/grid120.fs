@@ -10,7 +10,7 @@ uniform vec4 fofindex_wh;       // texture sizes
 uniform vec4 colors[16];
 
 varying vec4 ansicolors;        // tile: computed foreground and background color indices for tile and creature
-varying vec4 tilecrea;         	// floor and creature tile indexes
+varying vec4 tilecrea;         	// floor and creature tile indices, effects
 
 vec4 idx2texco(float idx, out vec2 magray) {
     vec3 fi_pos;

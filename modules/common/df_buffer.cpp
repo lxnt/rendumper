@@ -56,10 +56,11 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
     const uint32_t grayscale_sz = pot_align(buf->w*buf->h, pot);
     const uint32_t cf_sz        = pot_align(buf->w*buf->h, pot);
     const uint32_t cbr_sz       = pot_align(buf->w*buf->h, pot);
+    const uint32_t fx_sz        = pot_align(buf->w*buf->h, pot);
     const uint32_t tail_sz      = pot_align(buf->w*buf->h*buf->tail_sizeof, pot);
 
     buf->required_sz = screen_sz + texpos_sz + addcolor_sz
-            + grayscale_sz + cf_sz + cbr_sz + tail_sz + page_sz;
+            + grayscale_sz + cf_sz + cbr_sz + fx_sz + tail_sz + page_sz;
 
     if (!buf->ptr) { // nominal; set up just required_sz.
         buf->screen = NULL;
@@ -67,11 +68,11 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
         buf->addcolor = NULL;
         buf->cf = NULL;
         buf->cbr = NULL;
+        buf->fx = NULL;
         buf->tail = NULL;
         buf->used_sz = 0;
         return;
     }
-
 
     buf->screen = (unsigned char *) pot_align(buf->ptr, pot);
     buf->texpos = (long *) (buf->screen + screen_sz);
@@ -79,7 +80,8 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
     buf->grayscale = buf->screen + screen_sz + texpos_sz + addcolor_sz;
     buf->cf = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz;
     buf->cbr = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz;
-    buf->tail = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz;
+    buf->fx = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz;
+    buf->tail = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz + fx_sz;
 
     buf->used_sz = buf->tail - buf->screen + tail_sz;
 }

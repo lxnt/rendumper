@@ -34,6 +34,10 @@ const int MAX_GRID_X = 256;
 const int MIN_GRID_Y = 25;
 const int MAX_GRID_Y = 256;
 
+/* increasing MAX_GRID_X*MAX_GRID_Y to beyond 64K
+   will require changing format of the vtx id attribute.
+   Is not to be done for GL[ES] 2.0 */
+
 #define MIN(a, b) ((a)<(b)?(a):(b))
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define CLAMP(a, a_floor, a_ceil) ( MIN( (a_floor), MAX( (a), (a_ceil) ) ) )
@@ -88,6 +92,7 @@ struct vbstreamer_t {
     uint32_t w, h;
     uint32_t pot;   // preferred alignment of data as a power-of-two, in bytes
     unsigned last_drawn; // hottest vao in our rr
+    uint16_t *vtx_ids; // pregenerated vertex ids
 
     const uint32_t tail_sizeof;
 
@@ -98,7 +103,8 @@ struct vbstreamer_t {
     const GLuint grayscale_posn;
     const GLuint cf_posn;
     const GLuint cbr_posn;
-    const GLuint grid_posn;
+    const GLuint fx_posn;
+    const GLuint vertexid_posn;
 
     vbstreamer_t(unsigned rr = 3) :
         rrlen(rr),
@@ -110,6 +116,7 @@ struct vbstreamer_t {
         h(0),
         pot(6),
         last_drawn(0),
+        vtx_ids(0),
         tail_sizeof(8), // 4*GLushort
         screen_posn(0),
         texpos_posn(1),
@@ -117,7 +124,8 @@ struct vbstreamer_t {
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        grid_posn(6) {}
+        fx_posn(6),
+        vertexid_posn(7) {}
 
     void initialize();
     df_buffer_t *get_a_buffer();
@@ -128,13 +136,11 @@ struct vbstreamer_t {
     unsigned find(const df_buffer_t *) const;
 };
 
-/* df_buffer_t::tail data is interleaved, unnormalized:
-    - grid position in GL coordinate system, GLushort x2.
-    - dim data from graphicst::dim_colors: GLushort dim
-    - rain/snow: GLushort: 256*(bool rain) + bool snow
-    for a stride of 8 bytes and passed as a single attr.
-    grid position is generated here, at the same time
-    dim, rain and snow get initialized to zero. */
+/* df_buffer_t::tail data is now used only for emulating
+    gl_VertexID for GL2. It would be better to move
+    this to a separate GL_STATIC_DRAW BO.
+    Waiting on vbstreamer_t interface refactoring to allow
+    multiple BOs per one vbstreamer. */
 
 void vbstreamer_t::initialize() {
     logr = platform->getlogr("gl.vbstreamer");
@@ -156,13 +162,18 @@ void vbstreamer_t::initialize() {
         glEnableVertexAttribArray(grayscale_posn);
         glEnableVertexAttribArray(cf_posn);
         glEnableVertexAttribArray(cbr_posn);
-        glEnableVertexAttribArray(grid_posn);
+        glEnableVertexAttribArray(fx_posn);
+        glEnableVertexAttribArray(vertexid_posn);
         bufs[i] = new_buffer_t(0, 0, tail_sizeof);
     }
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     GL_DEAD_YET();
+
+    vtx_ids = new uint16_t[65536];
+    for (uint32_t i = 0; i < 65536; i++)
+        vtx_ids[i] = i;
 }
 
 df_buffer_t *vbstreamer_t::get_a_buffer() {
@@ -237,16 +248,11 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
 
     glBindBuffer(GL_ARRAY_BUFFER, bo_names[which]);
 
-    if (logr->enabled(LL_TRACE)) {
+    if (false && logr->enabled(LL_TRACE)) {
         char name[4096];
         sprintf(name, "tail-%d.dump", which);
         dump_buffer_t(buf, name);
     }
-
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    GL_DEAD_YET();
 
     if ((w != buf->w) || (h != buf->h)) {
         /* discard frame: it's of wrong size anyway. reset vao while at it */
@@ -255,6 +261,12 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         logr->info("draw(%p/%d): remapped: grid mismatch", buf, which);
         return;
     }
+
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GL_DEAD_YET();
+
     logr->trace("draw(%p/%d): drawing %d points", buf, which, w*h);
 
     glBindVertexArray(va_names[which]);
@@ -293,6 +305,7 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         }
         glUnmapBuffer(GL_ARRAY_BUFFER);
         buf->pstate = BS_RENDER_DONE;
+        GL_DEAD_YET();
     }
 
     if ((buf->pstate != BS_RENDER_DONE) && (buf->pstate != BS_NONE))
@@ -315,14 +328,8 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
 
     setup_buffer_t(buf, pot);
 
-    /* generate grid positions */
-    for (unsigned i = 0; i < w*h ; i++) {
-        uint16_t *ptr = (uint16_t *)(buf->tail) + 4 * i;
-        ptr[0] = i / h;         // x | this column-major
-        ptr[1] = h - i % h - 1; // y |   major madness
-        ptr[2] = i;             // dim
-        ptr[3] = 0;             // snow-rain
-    }
+    /* set up vertex ids */
+    memcpy(buf->tail, vtx_ids, w*h*2);
 
     if (reset_vao) {
         glBindVertexArray(va_names[find(buf)]);
@@ -332,7 +339,8 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         glVertexAttribPointer(grayscale_posn, 1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, grayscale));
         glVertexAttribPointer(cf_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cf));
         glVertexAttribPointer(cbr_posn,       1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cbr));
-        glVertexAttribPointer(grid_posn,      4, GL_UNSIGNED_SHORT, GL_FALSE, 0, DFBUFOFFS(buf, tail));
+        glVertexAttribPointer(fx_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, fx));
+        glVertexAttribPointer(vertexid_posn,  1, GL_UNSIGNED_SHORT, GL_FALSE, 0, DFBUFOFFS(buf, tail));
         glBindVertexArray(0);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -356,11 +364,11 @@ void vbstreamer_t::finalize() {
     }
     glDeleteVertexArrays(rrlen, va_names);
     glDeleteBuffers(rrlen, bo_names);
-    delete bufs;
-    delete bo_names;
-    delete va_names;
-    delete syncs;
-
+    delete[] bufs;
+    delete[] bo_names;
+    delete[] va_names;
+    delete[] syncs;
+    delete[] vtx_ids;
     GL_DEAD_YET();
 }
 //} vbstreamer_t
@@ -503,7 +511,8 @@ struct grid_shader_t : public shader_t {
     const GLuint grayscale_posn;
     const GLuint cf_posn;
     const GLuint cbr_posn;
-    const GLuint grid_posn;
+    const GLuint fx_posn;
+    const GLuint vtxid_posn;
 
     /* uniform locations */
     int u_font_sampler;
@@ -521,7 +530,8 @@ struct grid_shader_t : public shader_t {
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        grid_posn(6) {}
+        fx_posn(6),
+        vtxid_posn(7) {}
 
     void bind_attribute_locs();
     void get_uniform_locs();
@@ -540,7 +550,8 @@ void grid_shader_t::bind_attribute_locs() {
     glBindAttribLocation(program, grayscale_posn, "grayscale");
     glBindAttribLocation(program, cf_posn, "cf");
     glBindAttribLocation(program, cbr_posn, "cbr");
-    glBindAttribLocation(program, grid_posn, "grid");
+    glBindAttribLocation(program, fx_posn, "fx");
+    glBindAttribLocation(program, vtxid_posn, "vertex_id");
 
     //glBindFragDataLocation(program, 0, "frag");
 
@@ -551,7 +562,8 @@ void grid_shader_t::bind_attribute_locs() {
     logr->trace("%s: %d", "va grayscale_posn", grayscale_posn);
     logr->trace("%s: %d", "va cf_posn", cf_posn);
     logr->trace("%s: %d", "va cbr_posn", cbr_posn);
-    logr->trace("%s: %d", "va grid_posn", grid_posn);
+    logr->trace("%s: %d", "va fx_posn", fx_posn);
+    logr->trace("%s: %d", "va vtxid_posn", vtxid_posn);
 
 }
 

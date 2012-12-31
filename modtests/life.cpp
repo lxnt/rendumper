@@ -496,7 +496,7 @@ int main (int argc, char* argv[]) {
     simuloop->set_target_rfps(60);
 
     // run the loops
-    if (!getenv("RENDER_IN_MAIN")) {
+    if (getenv("RENDER_IN_THREAD")) {
         renderer->start();
         simuloop->start();
         renderer->join();

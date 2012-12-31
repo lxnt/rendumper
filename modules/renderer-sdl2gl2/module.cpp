@@ -1051,20 +1051,24 @@ void implementation::slurp_keys() {
 
         switch(sdl_event.type) {
         case SDL_TEXTINPUT:
-            nputlogr->info("SDL_TEXTINPUT: '%s'", sdl_event.text.text);
+            nputlogr->trace("SDL_TEXTINPUT: '%s'", sdl_event.text.text);
             submit = false;
             break;
         case SDL_KEYDOWN:
+            nputlogr->trace("SDL_KEYDOWN: sym=%x mod=%hx uni=%x", sdl_event.key.keysym.sym, sdl_event.key.keysym.mod, sdl_event.key.keysym.unicode);
             df_event.type = df_input_event_t::DF_KEY_DOWN;
             df_event.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
             df_event.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
             df_event.unicode = sdl_event.key.keysym.unicode;
+            nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx uni=%x", df_event.sym, df_event.mod, df_event.unicode);
             break;
         case SDL_KEYUP:
+            nputlogr->trace("SDL_KEYUP: sym=%x mod=%hx uni=%x", sdl_event.key.keysym.sym, sdl_event.key.keysym.mod, sdl_event.key.keysym.unicode);
             df_event.type = df_input_event_t::DF_KEY_UP;
             df_event.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
             df_event.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
             df_event.unicode = sdl_event.key.keysym.unicode;
+            nputlogr->trace("DF_KEY_UP: sym=%x mod=%hx uni=%x", df_event.sym, df_event.mod, df_event.unicode);
             break;
         case SDL_MOUSEMOTION:
             submit = false;
@@ -1082,17 +1086,16 @@ void implementation::slurp_keys() {
                 df_event.button = df_input_event_t::DF_BUTTON_MIDDLE;
                 break;
             case SDL_BUTTON_X1:
-                nputlogr->trace("SDL_BUTTON_X1: '%s'", sdl_event.text.text);
                 submit = false;
                 break;
             case SDL_BUTTON_X2:
-                nputlogr->trace("SDL_BUTTON_X2: '%s'", sdl_event.text.text);
                 submit = false;
                 break;
             default:
                 submit = false;
                 break;
             }
+            nputlogr->trace("SDL_MOUSEBUTTON: %d", sdl_event.button.button);
             if (sdl_event.type == SDL_MOUSEBUTTONDOWN)
                 df_event.type = df_input_event_t::DF_BUTTON_DOWN;
             else
@@ -1122,12 +1125,14 @@ void implementation::slurp_keys() {
                 break;
             }
             submit = false;
+            nputlogr->trace("SDL_WINDOWEVENT %d (%d,%d)", sdl_event.window.event, sdl_event.window.data1, sdl_event.window.data2);
             break;
         case SDL_WINDOWEVENT_CLOSE:
-            nputlogr->info("SDL_WINDOWEVENT_CLOSE");
+            nputlogr->trace("SDL_WINDOWEVENT_CLOSE");
             submit = false;
             break;
         case SDL_QUIT:
+            nputlogr->trace("SDL_QUIT");
             df_event.type = df_input_event_t::DF_QUIT;
             break;
 

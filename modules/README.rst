@@ -90,7 +90,10 @@ mingw-w64 build
 ---------------
 
 Build script needs writing. For now I'll just leave this here::
-
+    get latest from http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Automated%20Builds/
+    point PATH there
+    fix path in w64-mingw32-gcc-4.8.cmake
+    
     lxnt@bigbox:~/00DFGL/build-win32/sdl2$ ../../fgtestbed/deps/SDL/configure --host=i686-w64-mingw32 --prefix=/home/lxnt/00DFGL/prefix-win32/
     make -j 4
     make install
@@ -102,7 +105,7 @@ Build script needs writing. For now I'll just leave this here::
     cp include/* ~/00DFGL/prefix-win32/include/
     cp bin/*.dll  ~/00DFGL/prefix-win32/bin/
 
-    lxnt@bigbox:~/00DFGL/build-win32/sdl_pnglite$ cmake -DCMAKE_TOOLCHAIN_FILE=../w32tc.cmake -DCMAKE_INSTALL_PREFIX=/home/lxnt/00DFGL/prefix-win32/ ~/projects/SDL_pnglite/
+    lxnt@bigbox:~/00DFGL/build-win32/sdl_pnglite$ cmake -DCMAKE_TOOLCHAIN_FILE=~/00DFGL/rendumper/w64-mingw32-gcc-4.8.cmake -DCMAKE_INSTALL_PREFIX=/home/lxnt/00DFGL/prefix-win32/ ~/projects/SDL_pnglite/
 
     get glew-1.9.0 source - http://glew.sf.net/
 

@@ -35,8 +35,8 @@ vec2 ansiconvert(vec3 c) { // { fg, bg, bold }, returns {fg_idx, bg_idx}
 
 void main() {
     vec2 grid;
-    grid.x = floor(vertex_id / grid_wh.y);
-    grid.y = grid_wh.y - mod(vertex_id, grid_wh.y) - 1.0;
+    grid.x = floor((vertex_id + 0.5)/grid_wh.y);
+    grid.y = ceil(grid_wh.y - mod(vertex_id + 0.5, grid_wh.y) - 1.0);
 
     vec2 posn = 2.0 * (grid.xy + 0.5)/grid_wh - 1.0;
     gl_Position = vec4(posn.x, posn.y, 0.0, 1.0);

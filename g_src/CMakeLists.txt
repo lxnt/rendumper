@@ -78,7 +78,7 @@ if(BUILD_FORTRESS)
     install(TARGETS Dwarf_Fortress RUNTIME DESTINATION bin/libs)
 endif()
 
-if(LIBGRAPHICS)
+if(BUILD_LIBGRAPHICS)
     # build libgraphics.so
     add_library( graphics SHARED ${SOURCE} ${FGD_SOURCE} ${UNIX_ONLY_SOURCE})
     target_link_libraries(graphics glue ${LIBS} ${FGD_LIBS})

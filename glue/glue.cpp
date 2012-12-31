@@ -92,7 +92,6 @@ static getkeyboard_t   *keyboard_ep[23] = { NULL };
 static const char      *module_name[23] = { NULL };
 
 static int module_load_count = 0;
-static int root_log_level = 0;
 
 /* master dispatch table - gets replicated to the above
    and used by the executable this code gets linked to */
@@ -177,12 +176,13 @@ static int load_module(const char *soname) {
 
     if ((sym = _get_sym(lib, "getplatform"))) {
         rv |= DFMOD_EP_PLATFORM; getplatform = (getplatform_t) sym;
-        if (!logr) {
-            iplatform *tp = getplatform();
-            logr = tp->getlogr("glue.load_module");
-        } else
+        if (!logr)
+            logr = getplatform()->getlogr("glue.load_module");
+        else
             logr->fatal("second platform load attempt detected."); // also catch this
-        getplatform()->logconf(NULL, root_log_level);
+        getplatform()->logconf(NULL, LL_WARN);
+        if (getenv("DF_LOG"))
+            getplatform()->configure_logging(getenv("DF_LOG"));
         logr->info("%s provides iplatform (getplatform=%p)", fname.c_str(), sym);
     } else {
         if (module_load_count == 0) {
@@ -254,9 +254,7 @@ static int load_module(const char *soname) {
     return rv;
 }
 
-bool lock_and_load(const char *printmode, const char *modpath, int rll) {
-    root_log_level = rll;
-
+bool lock_and_load(const char *printmode, const char *modpath) {
     if (!printmode)
         printmode = getenv("DF_PRINTMODE");
     if (!printmode)
@@ -283,7 +281,7 @@ bool lock_and_load(const char *printmode, const char *modpath, int rll) {
     }
 
     ilogger *logr = getplatform()->getlogr("glue");
-    
+
     if (!load_module("common_code")) {
         logr->error("Failed to load common_code");
         return false;

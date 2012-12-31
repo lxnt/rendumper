@@ -134,6 +134,7 @@ struct iplatform {
     virtual NORETURN void fatal(const char *, ...) = 0;
     virtual void lock_logging() = 0;
     virtual void unlock_logging() = 0;
+    virtual void configure_logging(const char *config) = 0;
 
     /*  Puts a string into the buffer. string gets truncated at size characters,
         or at the buffer border; no wrapping.

@@ -111,6 +111,7 @@ struct implementation : public iplatform {
 
     void lock_logging() { SDL_LockMutex(_logging_mutex); }
     void unlock_logging() { SDL_UnlockMutex(_logging_mutex); }
+    void configure_logging(const char *config) { log_impl.configure(config); }
 
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                                 size_t size, uint32_t attrs, const char *fmt, ...) {

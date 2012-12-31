@@ -198,6 +198,10 @@ struct implementation : public iplatform {
         pthread_mutex_unlock(&_logging_mutex);
     }
 
+    void configure_logging(const char *config) {
+        log_impl->configure(config);
+    }
+
     int bufprintf(df_buffer_t *buffer, uint32_t x, uint32_t y,
                                 size_t size, uint32_t attrs, const char *fmt, ...);
     const char * const *glob(const char* pattern, const char* const exclude[],

@@ -28,8 +28,13 @@
 #include "logging.h"
 
 #if defined(LOGGING_LOGGING)
-#define LTRACE(fmt, args...) do { fprintf(stderr, fmt, ## args); } while(0)
-#define LTRACE_DUMP(fmt, args...) do { fprintf(stderr, fmt, ## args); dump_config(); } while(0)
+#define LTRACE(fmt, args...) do { fprintf(stderr, fmt "\n", ## args); } while(0)
+#define LTRACE_DUMP(fmt, args...) do { fprintf(stderr, fmt "\n", ## args); \
+    for (auto logr = config.cbegin(); logr != config.cend(); ++logr)       \
+        fprintf(stderr, "    confdump: '%s' l=%d e=%d\n",                  \
+                logr->first.c_str(), logr->second->level,                  \
+                                    logr->second->effective);              \
+    } while(0)
 #else
 #define LTRACE(fmt, args...)
 #define LTRACE_DUMP(fmt, args...)
@@ -116,13 +121,59 @@ log_implementation::log_implementation(iplatform *p, FILE *d) {
     root_logger = new alogger("", LL_WARN, LL_WARN, this);
 }
 
-void log_implementation::dump_conf() {
-#if defined(LOGGING_LOGGING)
-    for (auto logr = config.cbegin(); logr != config.cend(); ++logr)
-        fprintf(stderr, "confdump: '%s' l=%d e=%d\n",
-                logr->first.c_str(), logr->second->level,
-                                    logr->second->effective);
-#endif
+static int ll_lookup(const char *ls) {
+    if (strcmp(ls, "trace")) {
+        if (strcmp(ls, "info")) {
+            if (strcmp(ls, "warn")) {
+                if (strcmp(ls, "error")) {
+                    if (strcmp(ls, "fatal")) {
+                        return LL_NONE;
+                    } else {
+                        return LL_FATAL;
+                    }
+                } else {
+                    return LL_ERROR;
+                }
+            } else {
+                return LL_WARN;
+            }
+        } else {
+            return LL_INFO;
+        }
+    } else {
+        return LL_TRACE;
+    }
+}
+
+/* cfg format: logrname=level, comma-separated,
+    where 'root' represents the root logr */
+void log_implementation::configure(const char *cfg) {
+    if (!cfg)
+        return;
+
+    std::string dup(cfg), name, level;
+    size_t next, li, pos = 0;
+    LTRACE("configure('%s')", cfg);
+    do {
+        li = dup.find_first_of("=", pos);
+        if (li == dup.npos)
+            break;
+        next = dup.find_first_of(',', li + 1);
+        LTRACE("dup.find_first_of(',', %d) = %d", li + 1, (int)next);
+        name = dup.substr(pos, li - pos);
+
+        if (next == dup.npos)
+            level = dup.substr(li + 1, dup.npos);
+        else
+            level = dup.substr(li + 1, next - (li + 1));
+
+        LTRACE("setting %s to %s (%d)", name.c_str(), level.c_str(), ll_lookup(level.c_str()));
+        logconf(name == "root" ? NULL : name.c_str(), ll_lookup(level.c_str()));
+
+        pos = next + 1;
+
+    } while (next != dup.npos);
+
 }
 
 void log_implementation::reconf_chain(alogger *leaf) {
@@ -140,13 +191,13 @@ void log_implementation::reconf_chain(alogger *leaf) {
 
     std::forward_list<std::string> descendants;
 
-    LTRACE("reconf_chain(%s)\n", leaf->name.c_str());
+    LTRACE("reconf_chain(%s)", leaf->name.c_str());
 
     if (leaf == root_logger) {
         if ( (leaf->effective != leaf->level) ||
              (leaf->effective == LL_NONE) ) {
                  /* aw, it's all fubar */
-                LTRACE("logging.h: root's fubar.\n");
+                LTRACE("logging.h: root's fubar: e=%d, l=%d.", leaf->effective, leaf->level);
                 abort();
              }
 
@@ -191,16 +242,16 @@ void log_implementation::reconf_chain(alogger *leaf) {
             descendants.push_front(leaf->name);
     }
 
-    LTRACE("reconf_chain(%s) descendants (%u) list:\n", leaf->name.c_str(), config.size());
+    LTRACE("reconf_chain(%s) descendants (%u) list:", leaf->name.c_str(), config.size());
 #if defined(LOGGING_LOGGING)
     for (auto boo = descendants.cbegin(); boo != descendants.cend(); ++boo) {
-        LTRACE("reconf_chain(%s): %s\n", leaf->name.c_str(), boo->c_str());
+        LTRACE("reconf_chain(%s): %s", leaf->name.c_str(), boo->c_str());
     }
-#endif
     fflush(stderr);
+#endif
     /* don't weed out non-leaf descendants - not worth it. */
     for (auto logr = descendants.begin(); logr != descendants.end(); ++logr) {
-        LTRACE("reconfing %s\n", logr->c_str());
+        LTRACE("reconfing %s", logr->c_str());
 
         size_t lpos, pos;
         std::string ancestor;
@@ -209,7 +260,7 @@ void log_implementation::reconf_chain(alogger *leaf) {
         do {
             pos = logr->find('.', lpos);
             ancestor = logr->substr(0, pos);
-            LTRACE("pos=%u lpos=%u ancestor='%s'\n", pos, lpos, ancestor.c_str());
+            LTRACE("pos=%u lpos=%u ancestor='%s'", pos, lpos, ancestor.c_str());
             auto got = config.find(ancestor);
             if (got != config.end()) {
                 if (got->second->level == LL_NONE)
@@ -225,14 +276,14 @@ void log_implementation::reconf_chain(alogger *leaf) {
 }
 
 ilogger *log_implementation::logconf(const char *n, int level)  {
-    LTRACE_DUMP("logconf(%s, %d): %u loggers out.\n", n, level, config.size());
+    LTRACE_DUMP("logconf(%s, %d): %u loggers out.", n, level, config.size());
     if ((n == NULL) || (strlen(n) == 0)) {
         if (root_logger->level != level) {
             root_logger->level = root_logger->effective = level;
             platform->lock_logging();
             reconf_chain(root_logger);
             platform->unlock_logging();
-            LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.\n", n, level, config.size());
+            LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.", n, level, config.size());
         }
         return root_logger;
     }
@@ -245,18 +296,18 @@ ilogger *log_implementation::logconf(const char *n, int level)  {
     if (got != config.end()) {
         rv = got->second;
         rv->level = level;
-        LTRACE("logconf(%s, %d): found it.\n", n, level);
+        LTRACE("logconf(%s, %d): found it.", n, level);
     } else {
         rv = new alogger(name, level, level, this);
         config.insert({{ name, rv }});
-        LTRACE("logconf(%s, %d): created it.\n", n, level);
+        LTRACE("logconf(%s, %d): created it.", n, level);
     }
 
     reconf_chain(rv);
 
     platform->unlock_logging();
 
-    LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.\n", n, level, config.size());
+    LTRACE_DUMP("logconf(%s, %d): after: %u loggers out.", n, level, config.size());
     return rv;
 }
 

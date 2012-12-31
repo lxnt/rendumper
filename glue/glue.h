@@ -11,6 +11,6 @@
 
 int load_module(const char *soname);
 
-bool lock_and_load(const char *printmode, const char *modpath, int root_log_level);
+bool lock_and_load(const char *printmode, const char *modpath);
 
 #endif

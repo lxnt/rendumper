@@ -10,7 +10,7 @@ int main (int argc, char* argv[]) {
 	fprintf(stderr, "Usage: %s platform-name\n", argv[0]);
 	return 1;
     }
-    if (!lock_and_load(argv[1], NULL, LL_TRACE))
+    if (!lock_and_load(argv[1], NULL))
         return 1;
 
     iplatform *platform = getplatform();

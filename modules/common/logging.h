@@ -53,6 +53,7 @@ struct log_implementation : public ilogsink {
     const char *ll_names(int l);
 
     log_implementation(iplatform *p, FILE *d);
+    void configure(const char*);
     void dump_conf();
     void reconf_chain(alogger *leaf);
     ilogger *logconf(const char *n, int level);

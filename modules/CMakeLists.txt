@@ -51,7 +51,6 @@ else(MSVC)
 
 endif(MSVC)
 
-
 if (PKG_OPENAL_FOUND AND PKG_SNDFILE_FOUND)
     set(OPENAL_DEPS ON)
 else()
@@ -89,6 +88,12 @@ if(FMOD_BUILD_ENABLED)
         set_target_properties(sound_fmodex PROPERTIES PREFIX "")
         install(TARGETS sound_fmodex LIBRARY DESTINATION ${DFMOD_DESTDIR})
     endif()
+endif()
+
+
+option(LOGGING_DEBUG "Trace logging work" OFF)
+if (LOGGING_DEBUG)
+   set_source_files_properties( common/logging.cpp PROPERTIES COMPILE_DEFINITIONS LOGGING_LOGGING )
 endif()
 
 include_directories(common)

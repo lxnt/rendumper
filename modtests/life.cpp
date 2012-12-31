@@ -461,7 +461,7 @@ int main (int argc, char* argv[]) {
         return 1;
     }
 
-    if (!lock_and_load(argv[1], NULL, LL_INFO))
+    if (!lock_and_load(argv[1], NULL, getenv("DF_TRACE") ? LL_TRACE : LL_INFO))
         return 1;
 
     int w = 128, h = 32;

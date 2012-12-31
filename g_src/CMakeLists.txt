@@ -6,7 +6,11 @@ if(NOT MSVC)
     add_definitions(-Wno-sign-compare)
 endif()
 
-set ( LIBS m z )
+if(MSVC)
+set(LIBS z)
+else()
+set(LIBS m z)
+endif()
 
 if(FG_DUMPER)
     set(FGD_LIBS lwapi)

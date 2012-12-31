@@ -91,15 +91,21 @@ typedef int (*thread_foo_t)(void *);
 #define LL_ERROR    4
 #define LL_FATAL    5
 
+#if defined(__GNUC___)
+# define PRINTFLIKE __attribute__ ((format (printf, 1, 2)));
+#else
+# define PRINTFLIKE
+#endif
+
 struct ilogger {
     virtual bool enabled(const int) = 0;
 
-    virtual void trace(const char *, ...) = 0;
-    virtual void info(const char *, ...) = 0;
-    virtual void warn(const char *, ...) = 0;
-    virtual void error(const char *, ...) = 0;
+    virtual void trace(const char *, ...) = 0 PRINTFLIKE;
+    virtual void info(const char *, ...) = 0 PRINTFLIKE;
+    virtual void warn(const char *, ...) = 0 PRINTFLIKE;
+    virtual void error(const char *, ...) = 0 PRINTFLIKE;
 
-    virtual NORETURN void fatal(const char *, ...) = 0;
+    virtual NORETURN void fatal(const char *, ...) = 0 PRINTFLIKE;
 };
 
 struct iplatform {

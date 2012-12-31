@@ -102,8 +102,8 @@ const char *log_implementation::ll_names(int l) {
     switch (l) {
     case LL_NONE:   return "none ";
     case LL_TRACE:  return "trace";
-    case LL_INFO:   return "warn ";
-    case LL_WARN:   return "info ";
+    case LL_INFO:   return "info ";
+    case LL_WARN:   return "warn ";
     case LL_ERROR:  return "error";
     case LL_FATAL:  return "fatal";
     default:        return "~unk~";

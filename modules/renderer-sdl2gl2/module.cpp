@@ -1299,7 +1299,7 @@ void implementation::renderer_thread(void) {
                 logr->trace("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
 
         df_buffer_t *buf = NULL;
-        unsigned read_timeout_ms = 10;
+        int read_timeout_ms = 10;
         while (true) {
             void *vbuf; size_t vlen;
             rv = mqueue->recv(incoming_q, &vbuf, &vlen, read_timeout_ms);
@@ -1308,8 +1308,10 @@ void implementation::renderer_thread(void) {
             if (rv == IMQ_TIMEDOUT)
                 break;
 
-            if (rv != 0)
-                logr->fatal("render_thread(): %d from mqueue->recv().");
+            if (rv != IMQ_OK) {
+                logr->error("render_thread(): %d from mqueue->recv(); read_timeout=%d.", rv, read_timeout_ms);
+                break;
+            }
 
             itc_message_t *msg = (itc_message_t *)vbuf;
 

@@ -6,6 +6,10 @@
 #include "SDL_atomic.h"
 #include "SDL_timer.h"
 
+
+#include "errno.h"
+#include "string.h"
+
 #include "iplatform.h"
 
 #define DFMODULE_BUILD
@@ -171,6 +175,7 @@ static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeou
                     I take it since the state of the mutex hasn't been modified, we still have to
                     unlock it before returning. */
                 SDL_UnlockMutex(mutex);
+                platform->getlogr("mq.wait_on_cond")->error("timeout=%d, rv=%d, clowns detected.", timeout, rv);
                 return IMQ_CLOWNS;
             }
         } else {
@@ -189,6 +194,7 @@ static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeou
                 if ((timeout < 1) || (rv == SDL_MUTEX_TIMEDOUT))
                     return IMQ_TIMEDOUT;
                 /* unknown error */
+                platform->getlogr("mq.wait_on_cond_timed")->error("timeout=%d, rv=%d, errno=%s, clowns detected.", timeout, rv, strerror(errno));
                 return IMQ_CLOWNS;
             }
         }
@@ -224,6 +230,22 @@ int the_queue::pop(the_message& into, int timeout) {
         }
         SDL_UnlockMutex(messages_mtx);
         SDL_UnlockMutex(readable_mtx);
+    } else {
+        switch (rv) {
+        case IMQ_OK:
+        case IMQ_TIMEDOUT:
+            break;
+        case IMQ_EXIST:
+        case IMQ_NOENT:
+        case IMQ_BADF:
+        case IMQ_INVAL:
+        case IMQ_CLOWNS:
+            platform->getlogr("mq.the_queue")->error("pop(): rv=%d (known)", rv);
+            break;
+        default:
+            platform->getlogr("mq.the_queue")->error("pop(): rv=%d", rv);
+            break;
+        }
     }
     return rv;
 }
@@ -383,8 +405,24 @@ int implementation::recv(imqd_t qd, void **buf, size_t *len, int timeout) {
 
     the_message m;
     int rv = q->pop(m, timeout);
-    if (rv)
+    if (rv) {
+        switch (rv) {
+        case IMQ_OK:
+        case IMQ_TIMEDOUT:
+            break;
+        case IMQ_EXIST:
+        case IMQ_NOENT:
+        case IMQ_BADF:
+        case IMQ_INVAL:
+        case IMQ_CLOWNS:
+            platform->getlogr("mq.recv")->error("q->pop(): rv=%d (known)", rv);
+            break;
+        default:
+            platform->getlogr("mq.recv")->error("q->pop(): rv=%d (wtf)", rv);
+            break;
+        }
         return rv;
+    }
 
     *buf = m.buf;
     *len = m.len;

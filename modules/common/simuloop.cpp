@@ -21,6 +21,13 @@ struct implementation : public isimuloop {
                        assimilate_buffer_foo_t,
                        add_input_event_foo_t);
 
+
+    void add_string(const char *s, unsigned x, unsigned y, unsigned space, uint8_t attr, justi_t justi);
+    void add_attred_string(const char *s, unsigned x, unsigned y, const uint8_t *attrs);
+    void make_it_rain(unsigned x, unsigned y);
+    void make_it_snow(unsigned x, unsigned y);
+    void make_it_dim(unsigned x, unsigned y, unsigned dim);
+
     void start();
     void join();
     void render();
@@ -66,6 +73,14 @@ struct implementation : public isimuloop {
     /* ITC */
     imqd_t incoming_q; // stuff from renderer or whoever
 
+    df_buffer_t *renderbuf;
+
+    ilogger *logr;
+    ilogger *logr_timing;
+    ilogger *logr_bufs;
+    ilogger *logr_str;
+    irenderer *renderer;
+
     implementation() :
                       started(false),
                       paused(false),
@@ -80,6 +95,42 @@ struct implementation : public isimuloop {
                       render_things_period_ms(0.025, 10.0, 5)
                        { }
 };
+
+void implementation::add_string(const char *s, unsigned x, unsigned y, unsigned space, uint8_t attr, isimuloop::justi_t justi) {
+    logr_str->trace("add_string('%s', +%u+%u, space=%u, attr=%o, justi=%u)", s, x, y,  space, (unsigned)attr, (unsigned)justi);
+}
+
+void implementation::add_attred_string(const char *s, unsigned x, unsigned y, const uint8_t *attrs) {
+    logr_str->trace("add_attred_string('%s', +%u+%u, %p)", s, x, y, attrs);
+}
+
+void implementation::make_it_rain(unsigned x, unsigned y) {
+    if (renderbuf) {
+        logr_str->trace("make_it_rain(%d, %d)", x, y);
+        renderbuf->fx[y + renderbuf->h*x] |= 0x80;
+    } else {
+        logr_str->trace("make_it_rain(%d, %d): skipped.", x, y);
+    }
+}
+
+void implementation::make_it_snow(unsigned x, unsigned y) {
+    if (renderbuf) {
+        logr_str->trace("make_it_snow(%d, %d)", x, y);
+        renderbuf->fx[y + renderbuf->h*x] |= 0x40;
+    } else {
+        logr_str->trace("make_it_snow(%d, %d): skipped.", x, y);
+    }
+}
+
+/* beware of double-dimming */
+void implementation::make_it_dim(unsigned x, unsigned y, unsigned dim) {
+    if (renderbuf) {
+        logr_str->trace("make_it_dim(%d, %d, %d)", x, y, dim);
+        renderbuf->fx[y + renderbuf->h*x] |= dim;
+    } else {
+        logr_str->trace("make_it_dim(%d, %d, %d), skipped.", x, y, dim);
+    }
+}
 
 void implementation::set_callbacks(mainloop_foo_t ml,
                    render_things_foo_t rt,
@@ -158,16 +209,16 @@ uint32_t implementation::get_actual_rfps() { return render_things_period_ms.get(
     also need to get rid of render message. it is not needed.
 */
 void implementation::simulation_thread() {
-    irenderer *renderer = _getrenderer();
-    ilogger *logr = platform->getlogr("cc.simuloop");
-    ilogger *logr_timing = platform->getlogr("cc.simuloop.timing");
-    ilogger *logr_bufs = platform->getlogr("cc.simuloop.bufs");
-
+    renderer = _getrenderer();
+    logr = platform->getlogr("cc.simuloop");
+    logr_timing = platform->getlogr("cc.simuloop.timing");
+    logr_bufs = platform->getlogr("cc.simuloop.bufs");
+    logr_str = platform->getlogr("cc.simuloop.str");
 
     incoming_q = mqueue->open("simuloop", 1<<10);
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
-    df_buffer_t *renderbuf = NULL;
+    renderbuf = NULL;
     df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
     assimilate_buffer_cb(backup_buf);
     logr->trace("backup_buf is %p", backup_buf);
@@ -270,6 +321,7 @@ void implementation::simulation_thread() {
                 render_things_cb();
                 uint32_t rt_end_ms = platform->GetTickCount();
                 renderer->submit_buffer(renderbuf);
+                renderbuf = NULL;
                 assimilate_buffer_cb(backup_buf); // so that gps pointers stay valid: is this really needed?
 
                 renders ++;

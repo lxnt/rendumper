@@ -5,11 +5,6 @@
 #include "ttf_manager.hpp"
 #endif
 
-#ifdef _WIN32
-typedef int32_t VIndex;
-typedef int32_t Ordinal;
-#endif
-
 #include "enabler.h"
 #include "find_files.h"
 #include "texture_handler.h"
@@ -19,12 +14,6 @@ typedef int32_t Ordinal;
 
 using namespace std;
 
-#if defined(__GNUC__)
-#define UNUSED __attribute__((unused))
-#else
-#define UNUSED
-#endif
-
 extern enablerst enabler;
 extern texture_handlerst texture;
 graphicst gps;
@@ -33,12 +22,6 @@ extern interfacest gview;
 extern string errorlog_prefix;
 
 void process_object_lines(textlinesst &lines,string &chktype,string &graphics_dir);
-
-// Add, then increment to the (possible) PBO alignment requirement
-static UNUSED void align(size_t &sz, off_t inc) {
-  sz += inc;
-  while (sz%64) sz++; // So.. tired.. FIXME.
-}
 
 void graphicst::resize(int x, int y)  {
   dimx = x; dimy = y;

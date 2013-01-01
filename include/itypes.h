@@ -43,8 +43,13 @@ typedef void (*dep_foo_t)(getplatform_t **, getmqueue_t **,
     rest of pointers  - 64bit-aligned.
 
     tail points to grid_w*grid_h*tail_sizeof bytes,
-    for lumping the whole shebang into a single bo
-    or something. Not for use outside the backend.
+    for undefined extra stuff that's expected to be useful
+    for something or something.
+    Not for use outside the backend.
+    Well, not for extensive use, as in using the methods
+    from df_buffer.h. That would fail.
+    Assimilation, and use as a target for (offscreen rendering)
+    blits are ok obviously.
 */
 struct df_buffer_t {
     uint32_t w, h;

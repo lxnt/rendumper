@@ -6,10 +6,10 @@
 #include "renderer.h"
 #include "irenderer.h"
 
-Either<texture_fullid,texture_ttfid> renderer::screen_to_texid(int , int ) {
+Either<texture_fullid, int> renderer::screen_to_texid(int , int ) {
     DFM_STUB(renderer::screen_to_texid);
-    texture_ttfid ret = 0;
-    return Either<texture_fullid,texture_ttfid>(ret);
+    int ret = 0;
+    return Either<texture_fullid, int>(ret);
 }
 
 void renderer::display()                { DFM_STUB(renderer::display); }

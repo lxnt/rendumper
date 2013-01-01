@@ -18,23 +18,9 @@ enum Texture
 
 /* screen array layout
  *
- *
  * X*Y tiles of 4 bytes each in column-major order (FIXME: This is inefficient! It should be row-major!)
  * For each tile, byte 0 is the character, 1 is foreground color, 2 is bacground, and 3 denotes bold.
- *
- * As there are only 8 different colors and bold is a boolean, this leaves a lot of free space. Therefore,
- * without involving the graphics arrays, out-of-gamut values can be used for designating TTF objects.
- *
- * This means setting the bold byte to all 1s (0xff), and then using the other three bytes as a designator.
- *
- * Time will tell whether this was a good idea or not.
  */
-
-// So yeah, we store "type" in the previously bold byte. This means we have quite a lot of free types yet.
-#define GRAPHICSTYPE_TTF 0xff
-// This type denotes a tile that is covered by truetype, but is not the tile it starts on.
-#define GRAPHICSTYPE_TTFCONT 0xfe
-
 
 class graphicst
 {

@@ -22,10 +22,6 @@ typedef int32_t Ordinal;
 
 #endif
 
-#if defined(TTF_SUPPORT)
-# include "ttf_manager.hpp"
-#endif
-
 #include "basics.h"
 
 extern string errorlog_prefix;
@@ -531,17 +527,10 @@ static void abbreviate_string_helper(string &str, int len) {
 
 void abbreviate_string(string &str, int32_t len)
 {
-#if defined(TTF_SUPPORT)
-  if (ttf_manager.ttf_active()) {
-    // We'll need to use TTF-aware text shrinking.
-    while (ttf_manager.size_text(str) > len)
-      abbreviate_string_helper(str, str.length() - 1);
-  } else
-#endif
- if(str.length()>len){
-    // 1 letter = 1 tile.
-    abbreviate_string_helper(str, len);
-  }
+    /* TTF ellipsizer was here, but this function
+        does not appear to be used from the binary, or at all. */
+    if (str.length() > len)
+        abbreviate_string_helper(str, len);
 }
 
 

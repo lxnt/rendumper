@@ -1,8 +1,6 @@
 #if !defined(RENDERER_H)
 #define RENDERER_H
 
-typedef int texture_ttfid; // Just the texpos
-
 struct texture_fullid {
     int texpos;
     float r, g, b;
@@ -55,7 +53,7 @@ class renderer {
     unsigned char *screentexpos_cbr_old;
 
     void gps_allocate(int x, int y);
-    Either<texture_fullid,texture_ttfid> screen_to_texid(int x, int y);
+    Either<texture_fullid, int> screen_to_texid(int x, int y);
 
   public:
     void display();
@@ -88,7 +86,7 @@ class renderer_2d_base : public renderer {
     virtual bool init_video(int w, int h);
 
   public:
-    std::list<std::pair<void *, uint64_t>> ttfs_to_render;
+    std::list<std::pair<void *, uint64_t>> martians_to_render;
 
     void update_tile(int x, int y);
     void update_all();

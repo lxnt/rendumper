@@ -506,33 +506,6 @@ class curses_text_boxst
 #define ENABLERFLAG_RENDER BIT1
 #define ENABLERFLAG_MAXFPS BIT2
 
-#if defined(TTF_SUPPORT)
-// Covers every allowed permutation of text
-struct ttf_id {
-  std::string text;
-  unsigned char fg, bg, bold;
-  
-  bool operator< (const ttf_id &other) const {
-    if (fg != other.fg) return fg < other.fg;
-    if (bg != other.bg) return bg < other.bg;
-    if (bold != other.bold) return bold < other.bold;
-    return text < other.text;
-  }
-
-  bool operator== (const ttf_id &other) const {
-    return fg == other.fg && bg == other.bg && bold == other.bold && text == other.text;
-  }
-};
-
-namespace std {
-  template<> struct hash<ttf_id> {
-    size_t operator()(ttf_id val) const {
-      // Not the ideal hash function, but it'll do. And it's better than GCC's. id? Seriously?
-      return hash<string>()(val.text) + val.fg + (val.bg << 4) + (val.bold << 8);
-    }
-  };
-}
-#endif
 // Being a texture catalog interface, with opengl, sdl and truetype capability
 class textures
 {

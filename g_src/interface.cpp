@@ -10,10 +10,6 @@
 #include "interface.h"
 #include "KeybindingScreen.h"
 
-#if defined(TTF_SUPPORT)
-#include "ttf_manager.hpp"
-#endif
-
 #include <list>
 #include <set>
 
@@ -906,12 +902,9 @@ char interfacest::loop() {
             repeats = enabler.prefix_end();
           }
         }
-#if defined (TTF_SUPPORT)
-        // TTF toggle
         if (era.count(INTERFACEKEY_TOGGLE_TTF)) {
           if (init.font.use_ttf == ttf_auto) {
-            // Do whatever produces a visible result.
-            if (ttf_manager.ttf_active())
+            if (init.font.use_ttf == ttf_on)
               init.font.use_ttf = ttf_off;
             else
               init.font.use_ttf = ttf_on;
@@ -922,7 +915,6 @@ char interfacest::loop() {
           }
           gps.force_full_display_count++;
         }
-#endif
         // Zoom commands
         if (era.count(INTERFACEKEY_ZOOM_IN))
           enabler.zoom_display(zoom_in);

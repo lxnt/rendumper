@@ -30,6 +30,8 @@ In no particular order:
 - maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
 - ncurses mouse input
+- sdl2gl2 GL_POINT positioning suffers rounding errors: eats pixels.
+  visible with DF_LOG=sdl.reshape=trace.
 
 Stuff I'd like to GSoC off:
 
@@ -42,6 +44,23 @@ Stuff I'd like to GSoC off:
 Starting up, paths and stuff
 ----------------------------
 
+Quickstart: build modules and the libgraphics.so, install into some prefix; links all .so-s
+into DF's libs/ like this::
+
+    lrwxrwxrwx 1 lxnt lxnt       37 Dec 31 16:38 common_code.so -> /tmp/prefix/lib/dfmodules/common_code.so
+    -rwxr-xr-x 1 lxnt lxnt 15104448 Jun  4  2012 Dwarf_Fortress
+    -rw-r--r-- 1 lxnt lxnt   466491 Jun  4  2012 libgcc_s.so.1.orig
+    lrwxrwxrwx 1 lxnt lxnt       27 Dec 31 16:38 libgraphics.so -> /tmp/prefix/lib/libgraphics.so
+    -rwxr-xr-x 1 lxnt lxnt  1451966 Jun  4  2012 libgraphics.so.orig
+    lrwxrwxrwx 1 lxnt lxnt       29 Dec 31 16:39 libSDL-1.2.so.0 -> /tmp/prefix/lib/libSDL2-2.0.so.0
+    -rwxr-xr-x 1 lxnt lxnt  4852343 Jun  4  2012 libstdc++.so.6.orig
+    lrwxrwxrwx 1 lxnt lxnt       39 Dec 31 16:38 platform_sdl2.so -> /tmp/prefix/lib/dfmodules/platform_sdl2.so
+    lrwxrwxrwx 1 lxnt lxnt       42 Dec 31 16:38 renderer_sdl2gl2.so -> /tmp/prefix/lib/dfmodules/renderer_sdl2gl2.so
+
+Notice renamed libgcc_s.so.1 and libstdc++.so.6.
+
+Launch as usual.
+
 Mode of operation is: program binary (df, etc), calls ``glue.cpp::lock_and_load()``.
 It expects renderer name and module path.
 
@@ -50,7 +69,8 @@ and ``<prefix-when-built>/lib/df-modules`` for tests mode.
 It is all hardcoded into load_platform()'s callers.
 
 Default shader source path shall be ``data/shaders`` for fortress mode, and ``something else``
-for tests mode. Shaders are embedded anyway, so this is optional.
+for tests mode. Shaders are embedded anyway, so this is optional. They get searched for there before
+using embedded versions though.
 
 Renderer name shall be accepted from the command line or from an environment variable ``DF_PRINTMODE``.
 Platform name is inferred from the renderer name in the loader.
@@ -62,14 +82,15 @@ Logging configuration is the DF_LOG environment variable.
 Format is loggername=level,logger2=level[,....]
 
 Beware: setting root=trace will dump texalbum and dump vertex buffers as they are drawn,
-plus generate a dozen lines of timing trace per frame. Use with care.
+plus generate a dozen lines of timing trace per frame.
+Use with care, best on a tmpfs mount with output redirected.
 
 Simuloop, sound and renderer options.
-These are - fps caps, sound module name and enable/disable, renderer initial font,
-shaders path, preferred window size, (fullscreen ?), color map - overriden in fortress mode,
-whatever else.
 
-Configuration access is via iplatform interface, ``const char *getprop(const char *name)`` method.
+These are - fps caps, sound module name and enable/disable, renderer initial font,
+shaders path, preferred window size, (fullscreen ?), color map, whatever else.
+
+Configuration access is via iplatform interface, ``const char *getprop(const char *name)`` method (TBD).
 
 Notes
 -----

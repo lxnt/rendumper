@@ -366,6 +366,7 @@ struct itc_message_t {
 	zoom_resetgrid,
 
         render_buffer,  // buffer submission to the renderer
+        offscreen_buffer, // offscreen rendering duty, tail contains the file name.
         input_event   // renderthread->simuthread, ncurses input in d.inp
 
     } t;

@@ -858,7 +858,29 @@ struct implementation : public irenderer {
     GLuint findextex;
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
     ilogger *logr, *nputlogr;
+    void export_buffer(df_buffer_t *buf, const char *name);
 };
+
+void implementation::export_buffer(df_buffer_t *buf, const char *name) {
+    logr->info("exporting offscreen buffer %dx%d into %s", buf->w, buf->h, name);
+    std::string fname(name);
+    if (fname.substr(fname.size() - 4, 4) == ".bmp")
+        fname = fname.substr(0, fname.size() - 4);
+    logr->info("%s %s", fname.substr(fname.size() - 4, 4).c_str(), fname.substr(0, fname.size() - 4).c_str() );
+    std::string dumpfname(fname);
+    dumpfname += ".dump";
+    dump_buffer_t(buf, dumpfname.c_str());
+    /* okay, so what do we do here.
+
+        - work in 1024x1024 chunks, should be supported much anywhere.
+            - set up framebuffer with such chunk attached as target, PBO.
+            - set up shaders to draw just the corresponding part
+            - take care to split parts on tile boundary, or some GL_POINTS
+              might get clipped, and they are clipped totally.
+            - fetch pixel data, SDL-blit it into the resulting surface
+        - then call SDL_SavePNG on it
+    */
+}
 
 void implementation::initialize() {
     nputlogr = platform->getlogr("sdl.input");
@@ -1292,6 +1314,10 @@ void implementation::renderer_thread(void) {
             itc_message_t *msg = (itc_message_t *)vbuf;
 
             switch (msg->t) {
+                case itc_message_t::offscreen_buffer:
+                    export_buffer(msg->d.buffer, (char *)msg->d.buffer->tail);
+                    free_buffer_t(msg->d.buffer);
+                    break;
                 case itc_message_t::render_buffer:
                     if (buf) {
                         logr->warn("dropped frame (buf %d)", grid_streamer.find(buf));
@@ -1433,11 +1459,6 @@ implementation::implementation() {
         logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
 }
 
-void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name) {
-    logr->info("exporting buf %p to %s", buf, name);
-    free_buffer_t(buf);
-}
-
 /* Below is code copied from renderer_ncurses.
    All curses-specific code and all comments were
    ripped out. All SDL/GL specific code is to be
@@ -1446,7 +1467,20 @@ void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name)
 //{  All those methods want to go into a parent class.
 
 df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
-    return allocate_buffer_t(w, h);
+    df_buffer_t *rv = allocate_buffer_t(w, h, 1);
+    memset_buffer_t(rv, 0);
+    return rv;
+}
+
+void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name) {
+    logr->info("exporting buf %p to %s", buf, name);
+    strncpy((char *)buf->tail, name, buf->w * buf->h - 1);
+    itc_message_t msg;
+    memset(&msg, 0, sizeof(msg)); // appease its valgrindiness
+    buf->pstate = BS_INBOUND_Q;
+    msg.t = itc_message_t::offscreen_buffer;
+    msg.d.buffer = buf;
+    mqueue->copy(incoming_q, &msg, sizeof(itc_message_t), -1);
 }
 
 void implementation::submit_buffer(df_buffer_t *buf) {

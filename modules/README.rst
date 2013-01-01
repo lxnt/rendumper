@@ -1,32 +1,32 @@
-This is DF modular backend bla-bla
-----------------------------------
+This is DF modular backend
+--------------------------
 
 Todo list
 ---------
 
+Missing features - priority.
+
+- SDL mouse input
+- TTF support
+
 In no particular order.
 
-- logging initialization / config file
 - renderer/simuloop config api its use with initst and a file for tests.
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t
-- move emafilter.h to common code.
-- see if libgraphics.so still builds.
-- do the TTF support
 - offload  dim/rain/snow effects to the renderer, implement in shaders,
-  reimplement original in the ncurses renderer, maybe do grid init by memcpy.
+  reimplement original in the ncurses renderer.
 - compile with the same flags as SDL is: -mmx -3dnow -sse
-- do a knob for max-optimization builds.
+- make a knob for max-optimization builds.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
 - rewrite df-structures/codegen.py, it rotted; revive
 - "ld.so understands the string $ORIGIN (or equivalently ${ORIGIN}) in
   an rpath specification (DT_RPATH or DT_RUNPATH) to mean the directory
   containing the application executable."
 - sdl2gl3 renderer - clone sdl2gl2; move common code to common/
-- maybe get rid of vbstreamer in sdl2gl2. 
-- generate grid in shader using gl_VertexID in sdl2gl3
+- maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
-
+- ncurses mouse input
 
 Starting up, paths and stuff
 ----------------------------
@@ -39,15 +39,16 @@ and ``<prefix-when-built>/lib/df-modules`` for tests mode.
 It is all hardcoded into load_platform()'s callers.
 
 Default shader source path shall be ``data/shaders`` for fortress mode, and ``something else``
-for tests mode. Shaders are embedded anyway, so this is not strictly required.
+for tests mode. Shaders are embedded anyway, so this is optional.
 
 Renderer name shall be accepted from the command line or from an environment variable ``DF_PRINTMODE``.
 Platform name is inferred from the renderer name in the loader.
 This is because platform implementation must be loaded before init.txt
 or any other configuration can be read; and each renderer requires strictly certain platform.
 
-Logging configuration file is logging.properties.
-It is searched for in current directory and data/init or ``<prefix-when-built>/etc/df-modules``.
+Logging configuration is the DF_LOG environment variable.
+
+Format is loggername=level,logger2=level[,....]
 
 Simuloop, sound and renderer options.
 These are - fps caps, sound module name and enable/disable, renderer initial font,
@@ -81,19 +82,39 @@ Notes
    And, why are they needed at all?
 
 8. logging: getlogr and logconf are slow by design.
-   getplatform()->getlogr(some-random-name)->trace() inside a loop
+   getplatform()->getlogr(some-varying-name)->trace() inside a loop
    is a very bad practice. don't do it.
 
 9. gps_locator kills any hope for write-only df_buffer_t-s
 
-mingw-w64 build
----------------
+
+i686-linux-gnu build
+--------------------
+
+For both native and crosscompile from x86-64 host.
+
+Use init-prefix.sh::
+
+    mkdir /tmp/prefix ../build ; cd ../build ; ../rendumper/init-prefix.sh ../build /tmp/prefix
+
+Then::
+
+    mkdir rd-build; cd rd-build
+
+    ccmake -DCMAKE_TOOLCHAIN_FILE=../../rendumper/gcc-4.5.cmake -DCMAKE_INSTALL_PREFIX=/tmp/prefix ../../rendumper
+
+    make && make install
+
+
+i686-w64-mingw32 build
+----------------------
 
 Build script needs writing. For now I'll just leave this here::
+
     get latest from http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Automated%20Builds/
     point PATH there
     fix path in w64-mingw32-gcc-4.8.cmake
-    
+
     lxnt@bigbox:~/00DFGL/build-win32/sdl2$ ../../fgtestbed/deps/SDL/configure --host=i686-w64-mingw32 --prefix=/home/lxnt/00DFGL/prefix-win32/
     make -j 4
     make install
@@ -121,3 +142,20 @@ Build script needs writing. For now I'll just leave this here::
 
     cd /home/lxnt/00DFGL/prefix-win32/
     wine test-life.exe sdl2gl2
+
+
+MSVC build
+----------
+
+Use VS Express 2010. Other versions were not tested.
+
+Use cmake-gui.
+
+Building modules has not been tested, probably needs additional
+support in CMakeLists. Will require python in path.
+
+FG_DUMPER and lwapi codegen was not tested. Will require python in path.
+
+Building dependencies - SDL2 and SDL_pnglite - was not tested.
+
+Tests and fake-df build ok.

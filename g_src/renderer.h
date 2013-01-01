@@ -113,6 +113,7 @@ class renderer_2d_base : public renderer {
 
 class renderer_offscreen : public renderer_2d_base {
     virtual bool init_video(int, int);
+    df_buffer_t *world;
 
   public:
     virtual ~renderer_offscreen();

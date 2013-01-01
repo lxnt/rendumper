@@ -1,10 +1,11 @@
 This is DF modular backend
---------------------------
+**************************
 
 Todo list
 ---------
 
 Missing features - priority:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - SDL mouse input
 - TTF support
@@ -13,6 +14,7 @@ Missing features - priority:
   (currently it's SDL_SaveBMP buried in the binary)
 
 In no particular order:
+^^^^^^^^^^^^^^^^^^^^^^^
 
 - renderer/simuloop config api its use with initst and a file for tests.
 - decide if data races are really wanted. move everything to mqueues if not.
@@ -34,18 +36,23 @@ In no particular order:
   visible with DF_LOG=sdl.reshape=trace.
 
 Stuff I'd like to GSoC off:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - pure SDL2 renderer ala PRINT_MODE:2D
 - pure SDL2 sound module, if it's possible
 - OpenAL sound module
 - Offscreen ncurses renderer complete with finding the appropriate file
   format and viewer
+- i686-apple-darwin10 build
 
 Starting up, paths and stuff
 ----------------------------
 
-Quickstart: build modules and the libgraphics.so, install into some prefix; links all .so-s
-into DF's libs/ like this::
+Quickstart
+^^^^^^^^^^
+
+Build modules and the libgraphics.so, install into some prefix;
+link all .so-s into DF's libs/ like this::
 
     lrwxrwxrwx 1 lxnt lxnt       37 Dec 31 16:38 common_code.so -> /tmp/prefix/lib/dfmodules/common_code.so
     -rwxr-xr-x 1 lxnt lxnt 15104448 Jun  4  2012 Dwarf_Fortress
@@ -61,15 +68,20 @@ Notice renamed libgcc_s.so.1 and libstdc++.so.6.
 
 Launch as usual.
 
-Mode of operation is: program binary (df, etc), calls ``glue.cpp::lock_and_load()``.
+
+Mode of operation is:
+^^^^^^^^^^^^^^^^^^^^^
+
+Program binary (df, etc), calls ``glue.cpp::lock_and_load()``.
 It expects renderer name and module path.
 
-Default module path shall be ``libs/`` for fortress mode,
-and ``<prefix-when-built>/lib/df-modules`` for tests mode.
-It is all hardcoded into load_platform()'s callers.
+Default module path is set up at configure time, and by even more default is
+``<install-prefix>/lib/dfmodules``
 
-Default shader source path shall be ``data/shaders`` for fortress mode, and ``something else``
-for tests mode. Shaders are embedded anyway, so this is optional. They get searched for there before
+Module path of ``libs/`` is hardcoded into the libgraphics.so.
+
+Default shader source path shall be ``data/shaders`` for libgraphics.so, and ``something else``
+for the tests. Shaders are embedded anyway, so this is highly optional. They get searched for there before
 using embedded versions though.
 
 Renderer name shall be accepted from the command line or from an environment variable ``DF_PRINTMODE``.
@@ -123,8 +135,11 @@ Notes
 9. gps_locator kills any hope for write-only df_buffer_t-s
 
 
+Building this:
+--------------
+
 i686-linux-gnu build
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 For both native and crosscompile from x86-64 host.
 
@@ -142,7 +157,7 @@ Then::
 
 
 i686-w64-mingw32 build
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 
 Build script needs writing. For now I'll just leave this here::
 
@@ -180,7 +195,7 @@ Build script needs writing. For now I'll just leave this here::
 
 
 MSVC build
-----------
+^^^^^^^^^^
 
 Use VS Express 2010. Other versions were not tested.
 
@@ -194,3 +209,9 @@ FG_DUMPER and lwapi codegen were not tested. Will require python in path.
 Building dependencies - SDL2 and SDL_pnglite - was not tested.
 
 Tests and fake-df build ok.
+
+
+i686-apple-darwin10 build
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Volunteers?

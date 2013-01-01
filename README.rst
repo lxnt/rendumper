@@ -8,8 +8,11 @@ Missing features - priority:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - SDL mouse input
-- TTF support
-- Offscreen rendering support
+- TTF support - convert addst/addcoloredst/whatever else that can be to just submitting
+  strings, positions and attributes along with the df_buffer_t and let the renderer
+  sort'em out.
+- Offscreen rendering support - interface part done, buffer's in the renderer.
+  Now implement actual rendering.
 - Decide what to do with 2D world map drawing and export
   (currently it's SDL_SaveBMP buried in the binary)
 

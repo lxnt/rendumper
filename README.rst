@@ -4,12 +4,15 @@ This is DF modular backend
 Todo list
 ---------
 
-Missing features - priority.
+Missing features - priority:
 
 - SDL mouse input
 - TTF support
+- Offscreen rendering support
+- Decide what to do with 2D world map drawing and export
+  (currently it's SDL_SaveBMP buried in the binary)
 
-In no particular order.
+In no particular order:
 
 - renderer/simuloop config api its use with initst and a file for tests.
 - decide if data races are really wanted. move everything to mqueues if not.
@@ -27,6 +30,14 @@ In no particular order.
 - maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
 - ncurses mouse input
+
+Stuff I'd like to GSoC off:
+
+- pure SDL2 renderer ala PRINT_MODE:2D
+- pure SDL2 sound module, if it's possible
+- OpenAL sound module
+- Offscreen ncurses renderer complete with finding the appropriate file
+  format and viewer
 
 Starting up, paths and stuff
 ----------------------------

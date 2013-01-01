@@ -71,71 +71,62 @@ void graphicst::addcoloredst(const char *str,const char *colorstr)
 static list<ttf_id> ttfstr;
 #endif
 
+static bool startsncasewith(const std::string& wha, const char *s, unsigned n) {
+#if defined(_WIN32)
+    return _strnicmp(wha.c_str(), s, n) == 0;
+#else
+    return strncasecmp(wha.c_str(), s, n) == 0;
+#endif
+
+}
+
 static void abbreviate_string_helper_hackaroundmissingcode(string &str, int len) {
-       if(str.length()>=2)
-		{
-		if((str[0]=='A'||str[0]=='a')&&
-			str[1]==' ')
-			{
-			str.erase(str.begin()+1);
-			str.erase(str.begin());
+    if (str.length() >= 2) {
+        if (startsncasewith(str, "a ", 2)) {
+            str.erase(0, 2);
+            if (str.length() <= len)
+                return;
+        }
+        if (str.length() >= 3) {
+            if (startsncasewith(str, "an ", 3)) {
+                str.erase(0, 3);
+                if (str.length() <= len)
+                    return;
+            }
+            if (str.length() >= 4) {
+                if (startsncasewith(str, "the ", 4)) {
+                    str.erase(0, 4);
+                    if (str.length() <= len)
+                        return;
+                }
+            }
+        }
+    }
+    for (size_t l = str.length() - 1; l >= 1 ; l--) {
+        switch(str[l]) {
+        case ' ':
+            continue;
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o':
+        case 'u':
+        case 'A':
+        case 'E':
+        case 'I':
+        case 'O':
+        case 'U':
+            str.erase( str.begin() + l );
+            if (str.length() <= len)
+                return;
+            break;
+        default:
+            break;
+        }
+    }
 
-			if(str.length()<=len)return;
-			}
-
-		if(str.length()>=3)
-			{
-			if((str[0]=='A'||str[0]=='a')&&
-				(str[1]=='N'||str[1]=='n')&&
-				str[2]==' ')
-				{
-				str.erase(str.begin()+2);
-				str.erase(str.begin()+1);
-				str.erase(str.begin());
-
-				if(str.length()<=len)return;
-				}
-
-			if(str.length()>=4)
-				{
-				if((str[0]=='T'||str[0]=='t')&&
-					(str[1]=='H'||str[1]=='h')&&
-					(str[2]=='E'||str[2]=='e')&&
-					str[3]==' ')
-					{
-					str.erase(str.begin()+3);
-					str.erase(str.begin()+2);
-					str.erase(str.begin()+1);
-					str.erase(str.begin());
-
-					if(str.length()<=len)return;
-					}
-				}
-			}
-		}
-
-	int32_t l;
-	for(l=(int32_t)str.length()-1;l>=1;l--)
-		{
-		if(str[l-1]==' ')continue;
-
-		if(str[l]=='a'||
-			str[l]=='e'||
-			str[l]=='i'||
-			str[l]=='o'||
-			str[l]=='u'||
-			str[l]=='A'||
-			str[l]=='E'||
-			str[l]=='I'||
-			str[l]=='O'||
-			str[l]=='U')
-			{
-			str.erase(str.begin()+l);
-			if(str.length()<=len)return;
-			}
-		}
-
-	if(str.length()>len)str.resize(len);
+    if (str.length() > len)
+        str.resize(len);
 }
 
 

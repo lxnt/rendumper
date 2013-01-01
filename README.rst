@@ -14,7 +14,9 @@ Missing features - priority:
 - Offscreen rendering support - interface part done, buffer's in the renderer.
   Now implement actual rendering.
 - Decide what to do with 2D world map drawing and export
-  (currently it's SDL_SaveBMP buried in the binary)
+  (currently it's SDL_SaveBMP buried in the binary).
+  Well, got to have a glimpse on what API is used to draw this. Otherwise it's just
+  reimplementing rgba32 SDL_Surface, and this ain't no fun.
 
 In no particular order:
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -76,7 +76,7 @@ using std::queue;
 
 #include "iplatform.h"
 extern ilogger *stubs_logr;
-#define DFM_STUB(foo) stubs_logr->error("Stub '%s' called.\n", #foo)
+#define DFM_STUB(foo) stubs_logr->error("Stub '%s' called", #foo)
 
 #define GAME_TITLE_STRING "Dwarf Fortress"
 

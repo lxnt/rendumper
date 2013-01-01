@@ -485,6 +485,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     // to find and release pressed unicode keys with this scancode
     if (e.type == df_input_event_t::DF_KEY_UP) {
       for (pkit = pressed_keys.begin(); pkit != pressed_keys.end(); ++pkit) {
+          nputlogr->trace("pressed key sym=%x %s e.sym=%x", pkit->sym, pkit->type == type_unicode ? "UNI" : "NUN",  e.sym);
         if (pkit->type == type_unicode && pkit->sym == e.sym) {
           KeyEvent synth;
           synth.release = true;

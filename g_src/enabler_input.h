@@ -29,11 +29,9 @@ struct EventMatch {
   MatchType type;
   uint8_t mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
   uint8_t scancode; // not defined for type=button; unused in lieu of the sym
-  union {
     uint16_t unicode;
     DFKeySym sym;
     uint8_t button;
-  };
   
   bool operator== (const EventMatch &other) const {
     if (mod != other.mod) return false;

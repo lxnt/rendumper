@@ -18,6 +18,8 @@ extern initst init;
 #include "itypes.h"
 #include "isimuloop.h"
 
+extern ilogger *nputlogr;
+
 // The timeline events we actually pass back from get_input. Well, no,
 // that's just k, but..
 struct Event {
@@ -443,10 +445,6 @@ void enabler_inputst::add_input(df_input_event_t& e) {
   //   These are of course separate keypresses, and must be kept separate.
   //   That's what the serial is for.
 
-#if defined(DEBUG_INPUT)
-    getplatform()->log_info("Got: type=%d mod=%x sym=%x uni=%x rr=%d now=%x",
-        e.type, e.mod, e.sym, e.unicode, e.reports_release, e.now);
-#endif
     if (!e.reports_release) {
         add_input_ncurses(e);
         return;
@@ -456,7 +454,10 @@ void enabler_inputst::add_input(df_input_event_t& e) {
   set<EventMatch>::iterator pkit;
   list<pair<KeyEvent, uint32_t> > synthetics;
   update_modstate(e);
-  
+
+    nputlogr->trace("Got: type=%d mod=%x sym=%x uni=%x rr=%d now=%x modstate=%d",
+        e.type, e.mod, e.sym, e.unicode, e.reports_release, e.now, modState);
+
   // Convert modifier state changes
   if ((e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_KEY_DOWN) &&
       (e.sym == DFKS_RSHIFT ||

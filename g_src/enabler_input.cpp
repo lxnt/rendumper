@@ -511,14 +511,13 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     }
     if (e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_KEY_DOWN) {
       real.match.type = type_key;
-      real.match.scancode = 0;
       real.match.sym = e.sym;
       synthetics.push_back(make_pair(real, serial));
     }
     if (e.type == df_input_event_t::DF_KEY_DOWN && e.unicode && getModState() < 2) {
       real.match.mod = DFMOD_NONE;
       real.match.type = type_unicode;
-      real.match.scancode = e.sym;
+      real.match.sym = e.sym;
       real.match.unicode = e.unicode;
       synthetics.push_back(make_pair(real, serial));
     }

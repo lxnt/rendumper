@@ -1057,6 +1057,7 @@ void implementation::slurp_keys() {
     df_input_event_t df_keydown;
     uint32_t now = platform->GetTickCount();
     bool keydown_waiting = false;
+    bool simulate_wheel_release = false;
 
     const df_input_event_t df_empty_event = {
         now,
@@ -1150,9 +1151,11 @@ void implementation::slurp_keys() {
             if (sdl_event.wheel.y < 0) {
                 df_event.type = df_input_event_t::DF_BUTTON_DOWN;
                 df_event.button = df_input_event_t::DF_WHEEL_UP;
+                simulate_wheel_release = true;
             } else if (sdl_event.wheel.y > 0) {
                 df_event.type = df_input_event_t::DF_BUTTON_DOWN;
                 df_event.button = df_input_event_t::DF_WHEEL_DOWN;
+                simulate_wheel_release = true;
             } else if (sdl_event.wheel.y == 0) {
                 continue;
             }
@@ -1195,7 +1198,17 @@ void implementation::slurp_keys() {
             keydown_waiting = false;
             df_keydown = df_empty_event;
         }
-        simuloop->add_input_event(&df_event);
+
+        if (simulate_wheel_release) {
+            df_input_event_t wheel_release = df_event;
+            wheel_release.type = df_input_event_t::DF_BUTTON_UP;
+            simuloop->add_input_event(&df_event);
+            simuloop->add_input_event(&wheel_release);
+            simulate_wheel_release = false;
+        } else {
+            simuloop->add_input_event(&df_event);
+        }
+
         df_event = df_empty_event;
     }
 

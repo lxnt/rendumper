@@ -163,10 +163,12 @@ struct irenderer : public imessagesender {
     virtual int mouse_state(int *mx, int *my) = 0; // ala sdl2's one.
 
     virtual uint32_t get_gridsize() = 0;
-    virtual void set_gridsize(unsigned _w, unsigned _h) = 0;
+    virtual void set_gridsize(unsigned, unsigned) = 0;
 
     virtual df_buffer_t *get_buffer() = 0;
     virtual void submit_buffer(df_buffer_t *buf) = 0;
+    virtual df_buffer_t *get_offscreen_buffer(unsigned, unsigned) = 0;
+    virtual void export_offscreen_buffer(df_buffer_t *, const char *) = 0;
 
     /* starts the renderer thread. */
     virtual void start() = 0;

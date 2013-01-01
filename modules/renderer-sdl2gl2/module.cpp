@@ -809,6 +809,8 @@ struct implementation : public irenderer {
 
     df_buffer_t *get_buffer();
     void submit_buffer(df_buffer_t *buf);
+    df_buffer_t *get_offscreen_buffer(unsigned w, unsigned h);
+    void export_offscreen_buffer(df_buffer_t *buf, const char *name);
 
     void acknowledge(const itc_message_t&) {}
 
@@ -1431,12 +1433,21 @@ implementation::implementation() {
         logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
 }
 
+void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name) {
+    logr->info("exporting buf %p to %s", buf, name);
+    free_buffer_t(buf);
+}
+
 /* Below is code copied from renderer_ncurses.
    All curses-specific code and all comments were
    ripped out. All SDL/GL specific code is to be
    put into other methods or helper functions. */
 
 //{  All those methods want to go into a parent class.
+
+df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
+    return allocate_buffer_t(w, h);
+}
 
 void implementation::submit_buffer(df_buffer_t *buf) {
     itc_message_t msg;

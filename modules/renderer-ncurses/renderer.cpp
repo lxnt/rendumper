@@ -28,7 +28,8 @@ struct implementation : public irenderer {
 
     df_buffer_t *get_buffer();
     void submit_buffer(df_buffer_t *buf);
-
+    df_buffer_t *get_offscreen_buffer(unsigned w, unsigned h);
+    void export_offscreen_buffer(df_buffer_t *buf, const char *name);
     void reset_textures();
 
     void acknowledge(const itc_message_t&) {}
@@ -81,7 +82,14 @@ void implementation::override_grid_size(unsigned, unsigned) { NOT_IMPLEMENTED(ov
 void implementation::release_grid_size() { NOT_IMPLEMENTED(release_grid_size); }
 int implementation::mouse_state(int *mx, int *my) { return *mx = 0, *my = 0, 0; }
 
+void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name) {
+    logr->info("exporting buf %p to %s", buf, name);
+    free_buffer_t(buf);
+}
 
+df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
+    return allocate_buffer_t(w, h);
+}
 
 /*  This is called from the simulation thread.
     Since this is a simplest possible implementation,

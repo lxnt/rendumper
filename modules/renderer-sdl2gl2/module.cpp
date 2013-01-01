@@ -1323,7 +1323,7 @@ void implementation::renderer_thread(void) {
                     break;
                 case itc_message_t::render_buffer:
                     if (buf) {
-                        logr->warn("dropped frame (buf %d)", grid_streamer.find(buf));
+                        logr->info("dropped frame (buf %d)", grid_streamer.find(buf));
                         dropped_frames ++;
                         grid_streamer.remap_buf(buf);
                     }

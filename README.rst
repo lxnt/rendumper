@@ -50,6 +50,9 @@ Logging configuration is the DF_LOG environment variable.
 
 Format is loggername=level,logger2=level[,....]
 
+Beware: setting root=trace will dump texalbum and dump vertex buffers as they are drawn,
+plus generate a dozen lines of timing trace per frame. Use with care.
+
 Simuloop, sound and renderer options.
 These are - fps caps, sound module name and enable/disable, renderer initial font,
 shaders path, preferred window size, (fullscreen ?), color map - overriden in fortress mode,
@@ -154,7 +157,7 @@ Use cmake-gui.
 Building modules has not been tested, probably needs additional
 support in CMakeLists. Will require python in path.
 
-FG_DUMPER and lwapi codegen was not tested. Will require python in path.
+FG_DUMPER and lwapi codegen were not tested. Will require python in path.
 
 Building dependencies - SDL2 and SDL_pnglite - was not tested.
 

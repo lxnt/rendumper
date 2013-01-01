@@ -75,8 +75,12 @@ using std::queue;
 #endif
 
 #include "iplatform.h"
+#include "isimuloop.h"
+
 extern ilogger *stubs_logr;
-#define DFM_STUB(foo) stubs_logr->error("Stub '%s' called", #foo)
+extern isimuloop *simuloop;
+
+#define DFM_STUB(foo) stubs_logr->trace("Stub '%s' called", #foo)
 
 #define GAME_TITLE_STRING "Dwarf Fortress"
 

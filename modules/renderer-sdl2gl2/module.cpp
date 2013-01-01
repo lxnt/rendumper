@@ -857,7 +857,7 @@ struct implementation : public irenderer {
     GLuint fonttex;
     GLuint findextex;
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
-    ilogger *logr, *nputlogr;
+    ilogger *logr, *nputlogr, *rshlogr;
     void export_buffer(df_buffer_t *buf, const char *name);
 };
 
@@ -884,6 +884,7 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
 
 void implementation::initialize() {
     nputlogr = platform->getlogr("sdl.input");
+    rshlogr = platform->getlogr("sdl.reshape");
     ilogger *glclogr = platform->getlogr("gl.context");
 
     /* this GL renderer needs or uses no SDL internal rendering
@@ -1335,7 +1336,10 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
-            glClearColor(0.25,0.75,0.25,1);
+            if (rshlogr->enabled(LL_TRACE))
+                glClearColor(0.25, 0.75, 0.25, 1.0);
+            else
+                glClearColor(0.0, 0.0, 0.0, 1.0);
             glClear(GL_COLOR_BUFFER_BIT);
             grid_shader.set_at_frame(1.0);
             grid_streamer.draw(buf);
@@ -1356,7 +1360,7 @@ see fgt.gl.rednerer.reshape()
 
 */
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
-    logr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
+    rshlogr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
         new_window_w, new_window_h, new_psz, Parx, Pary);
 
     if (!album || !album->count) { // can't draw anything without textures anyway
@@ -1375,23 +1379,49 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     int new_grid_w = new_window_w / (new_psz * Parx);
     int new_grid_h = new_window_h / (new_psz * Pary);
 
-    logr->trace("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
+    rshlogr->trace("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
         new_window_w, new_window_h, Psz * Parx, Psz * Pary, new_grid_w, new_grid_h);
 
     new_grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
     new_grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
 
-    logr->trace("reshape(): clamped_grid_wh: %dx%d", new_grid_w, new_grid_h);
-
     viewport_w = lrint(new_grid_w * new_psz * Parx);
     viewport_h = lrint(new_grid_h * new_psz * Pary);
 
-    if ((viewport_w > new_window_w) || ( viewport_h > new_window_h)) {
-        SDL_SetWindowSize(gl_window, viewport_w, viewport_h);
-        viewport_x = viewport_y = 0;
-    } else {
+    rshlogr->trace("reshape(): clamped_grid_wh: %dx%d; res vp %dx%d",
+                        new_grid_w, new_grid_h, viewport_w, viewport_h);
+
+    bool force_window_w = false;
+    bool force_window_h = false;
+
+    if (viewport_w > new_window_w)
+        force_window_w = true;
+    else
         viewport_x = ( new_window_w - viewport_w ) / 2;
+
+    if (viewport_h > new_window_h)
+        force_window_h = true;
+    else
         viewport_y = ( new_window_h - viewport_h ) / 2;
+
+    if (force_window_w) {
+        if (force_window_h) { /* both */
+            SDL_SetWindowSize(gl_window, viewport_w, viewport_h);
+            viewport_x = viewport_y = 0;
+        } else { /* w but not h */
+            SDL_SetWindowSize(gl_window, viewport_w, new_window_h);
+            viewport_x = 0;
+            viewport_y = ( new_window_h - viewport_h ) / 2;
+        }
+    } else {
+        if (force_window_h) { /* h but not w */
+            SDL_SetWindowSize(gl_window, new_window_w, viewport_h);
+            viewport_y = ( new_window_h - viewport_h ) / 2;
+            viewport_y = 0;
+        } else { /* neither */
+            viewport_x = ( new_window_w - viewport_w ) / 2;
+            viewport_y = ( new_window_h - viewport_h ) / 2;
+        }
     }
 
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
@@ -1402,7 +1432,7 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
 
-    logr->trace("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
+    rshlogr->trace("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
                         viewport_w, viewport_h, viewport_x, viewport_y,
                         grid_w, grid_h, Psz, Parx, Pary);
 

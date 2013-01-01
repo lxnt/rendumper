@@ -482,7 +482,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     }
   } else {
     // It's not a modifier. If this is a key release, then we still need
-    // to find and release pressed unicode keys with this scancode
+    // to find and release pressed unicode keys with this keysym
     if (e.type == df_input_event_t::DF_KEY_UP) {
       for (pkit = pressed_keys.begin(); pkit != pressed_keys.end(); ++pkit) {
           nputlogr->trace("pressed key sym=%x %s e.sym=%x", pkit->sym, pkit->type == type_unicode ? "UNI" : "NUN",  e.sym);
@@ -506,7 +506,6 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     real.match.mod = getModState();
     if (e.type == df_input_event_t::DF_BUTTON_UP || e.type == df_input_event_t::DF_BUTTON_DOWN) {
       real.match.type = type_button;
-      // let valgrind bring it on real.match.scancode = 0;
       real.match.button = e.button;
       synthetics.push_back(make_pair(real, serial));
     }
@@ -544,7 +543,6 @@ void enabler_inputst::add_input_ncurses(df_input_event_t& event) {
   const int serial = next_serial();
   key.type = type_key;
   uni.type = type_unicode;
-  key.scancode = uni.scancode = 0; // We don't use this.. hang on, who does? ..nobody. FIXME!
   key.mod = uni.mod = event.mod;
   key.sym = event.sym;
   uni.unicode = event.unicode;

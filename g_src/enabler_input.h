@@ -28,7 +28,6 @@ std::string encode_utf8(int unicode);
 struct EventMatch {
   MatchType type;
   uint8_t mod;      // not defined for type=unicode. 1: shift, 2: ctrl, 4:alt
-  uint8_t scancode; // not defined for type=button; unused in lieu of the sym
     uint16_t unicode;
     DFKeySym sym;
     uint8_t button;

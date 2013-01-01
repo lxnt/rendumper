@@ -134,10 +134,11 @@ int main (int argc, char* argv[]) {
     }
 
     if (beginroutine()) { // TODO: think of moving to simuloop.
-        renderer->start();
         simuloop->start();
 
-        renderer->join();
+        renderer->run_here();
+        /* renderer has quit. what to do if simuloop didn't? */
+        simuloop->join();
 
         endroutine();
     } else {

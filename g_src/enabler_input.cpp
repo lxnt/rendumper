@@ -503,7 +503,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     KeyEvent real;
     real.release = (e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_BUTTON_UP) ? true : false;
     real.match.mod = getModState();
-    if (e.type == df_input_event_t::DF_BUTTON_UP || e.type == df_input_event_t::DF_BUTTON_UP) {
+    if (e.type == df_input_event_t::DF_BUTTON_UP || e.type == df_input_event_t::DF_BUTTON_DOWN) {
       real.match.type = type_button;
       // let valgrind bring it on real.match.scancode = 0;
       real.match.button = e.button;

@@ -32,20 +32,22 @@ then
     fi
 
     GLEW_TGT=$PREFIX/lib/libGLEW.so
-
-    for GLEW in 1.8 1.7 1.6 
-    do
-        ln -s /usr/lib/i386-linux-gnu/libGLEW.so.$GLEW $GLEW_TGT && break
-    done
-
-    ln -s /usr/lib/i386-linux-gnu/mesa/libGL.so.1.2.0 $PREFIX/lib/libGL.so
-
     if [ ! -e $GLEW_TGT ]
     then
-        echo "Please install libglew-dev and corresponding version of libglew:i386"
-        exit
+        for GLEW in 1.8 1.7 1.6
+        do
+            ln -s /usr/lib/i386-linux-gnu/libGLEW.so.$GLEW $GLEW_TGT && break
+        done
+
+        if [ ! -e $GLEW_TGT ]
+        then
+            echo "Please install libglew-dev and corresponding version of libglew:i386"
+            exit
+        fi
     fi
-    
+
+    ln -sf /usr/lib/i386-linux-gnu/mesa/libGL.so.1.2.0 $PREFIX/lib/libGL.so
+
     B32="-DBUILD_32BIT=ON"
     HOST="--host=i686-linux-gnu"
     LDFLAGS="-L$PREFIX/lib -L/usr/lib/i386-linux-gnu -L/usr/lib32"
@@ -73,7 +75,7 @@ then
     hg clone http://hg.libsdl.org/SDL_ttf $SOURCE/SDL_ttf
 fi
 
-rm -fr sdl2 sdl2ttf sdl2pnglite 
+rm -fr sdl2 sdl2ttf sdl2pnglite
 mkdir -p sdl2 sdl2ttf sdl2pnglite
 
 #export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig

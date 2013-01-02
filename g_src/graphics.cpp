@@ -1,6 +1,10 @@
 #include <iomanip>  // setw
 #include <stdint.h>
 
+#if defined(TTF_SUPPORT)
+#include "ttf_manager.hpp"
+#endif
+
 #include "enabler.h"
 #include "find_files.h"
 #include "texture_handler.h"
@@ -28,15 +32,159 @@ void graphicst::resize(int x, int y)  {
   screen_limit = screen + dimx * dimy * 4;
 }
 
-void graphicst::addcoloredst(const char *str, const char *colorstr)
+void graphicst::addcoloredst(const char *str,const char *colorstr)
 {
-    simuloop->add_attred_string(str, (unsigned)screenx, (unsigned)screeny, (uint8_t *)colorstr);
+  const int slen = strlen(str);
+  int s;
+  for(s=0; s < slen && screenx < init.display.grid_x; s++)
+    {
+      if(screenx<0)
+        {
+          s-=screenx;
+          screenx=0;
+          if (s >= slen) break;
+        }
+      
+      changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
+      addchar(str[s]);
+    }
+}
+
+#if TTF_SUPPORT
+static list<ttf_id> ttfstr;
+#endif
+
+static bool startsncasewith(const std::string& wha, const char *s, unsigned n) {
+#if defined(_WIN32)
+    return _strnicmp(wha.c_str(), s, n) == 0;
+#else
+    return strncasecmp(wha.c_str(), s, n) == 0;
+#endif
+
+}
+
+static void abbreviate_string_helper_hackaroundmissingcode(string &str, int len) {
+    if (str.length() >= 2) {
+        if (startsncasewith(str, "a ", 2)) {
+            str.erase(0, 2);
+            if (str.length() <= len)
+                return;
+        }
+        if (str.length() >= 3) {
+            if (startsncasewith(str, "an ", 3)) {
+                str.erase(0, 3);
+                if (str.length() <= len)
+                    return;
+            }
+            if (str.length() >= 4) {
+                if (startsncasewith(str, "the ", 4)) {
+                    str.erase(0, 4);
+                    if (str.length() <= len)
+                        return;
+                }
+            }
+        }
+    }
+    for (size_t l = str.length() - 1; l >= 1 ; l--) {
+        switch(str[l]) {
+        case ' ':
+            continue;
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o':
+        case 'u':
+        case 'A':
+        case 'E':
+        case 'I':
+        case 'O':
+        case 'U':
+            str.erase( str.begin() + l );
+            if (str.length() <= len)
+                return;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (str.length() > len)
+        str.resize(len);
+}
+
+
+static void abbreviate_string_hackaroundmissingcode(string &str, int32_t len)
+{
+#if defined(TTF_SUPPORT)
+    if (ttf_manager.ttf_active()) {
+        // We'll need to use TTF-aware text shrinking.
+        while (ttf_manager.size_text(str) > len)
+            abbreviate_string_helper_hackaroundmissingcode(str, str.length() - 1);
+    } else {
+#else
+    {
+#endif
+        if (str.length() > len) {
+            // 1 letter = 1 tile.
+            abbreviate_string_helper_hackaroundmissingcode(str, len);
+        }
+    }
 }
 
 void graphicst::addst(const string &str_orig, justification just, int space)
 {
-    uint8_t attr = screenbright<<6 | ((screenb&7)<< 3) | (screenf&7);
-    simuloop->add_string(str_orig.c_str(), (unsigned)screenx, (unsigned)screeny, (unsigned)space, attr, (isimuloop::justi_t)just);
+    if (!str_orig.size())
+        return;
+
+    string str = str_orig;
+    if (space)
+        abbreviate_string_hackaroundmissingcode(str, space);
+
+#if defined(TTF_SUPPORT)
+    if (just == not_truetype || !ttf_manager.ttf_active()) {
+#endif
+        for (int s = 0; s < str.length() && screenx < init.display.grid_x ; s++) {
+            if (screenx < 0) {
+                s -= screenx;
+                screenx = 0;
+                if (s >= str.length())
+                    break;
+            }
+            addchar(str[s]);
+        }
+#if defined(TTF_SUPPORT)
+    } else {
+        // Truetype
+        if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
+            str[1] = '\t'; // EVIL HACK
+        
+        struct ttf_id id = { str, screenf, screenb, screenbright };
+        ttfstr.push_back(id);
+        if (just == justify_cont)
+            return; // More later
+
+        // This string is done. Time to render.
+        ttf_details details = ttf_manager.get_handle(ttfstr, just);
+        const int handle = details.handle;
+        const int offset = details.offset;
+        int width = details.width;
+        const int ourx = screenx + offset;
+        unsigned int * const s = ((unsigned int*)screen + ourx*dimy + screeny);
+        if (s < (unsigned int *) screen_limit)
+            s[0] = (((unsigned int)GRAPHICSTYPE_TTF) << 24) | handle;
+
+        // Also set the other tiles this text covers, but don't write past the end.
+        if (width + ourx >= dimx)
+            width = dimx - ourx - 1;
+
+        for (int x = 1; x < width; ++x)
+            s[x * dimy] = (((unsigned int)GRAPHICSTYPE_TTFCONT) << 24) | handle;
+
+        // Clean up, prepare for next string.
+        screenx = ourx + width;
+        ttfstr.clear();
+    }
+#endif
 }
 
 void graphicst::erasescreen_clip()
@@ -85,8 +233,7 @@ void graphicst::setclipping(long x1,long x2,long y1,long y2)
 }
 
 
-enum df_3bitcolors : unsigned char
-{
+enum df_3bitcolors : unsigned char {
     BLACK = 0,
     BLUE = 1,
     GREEN = 2,

@@ -10,7 +10,7 @@ Missing features - priority:
 - SDL mouse input
 - TTF support - convert addst/addcoloredst/whatever else that can be to just submitting
   strings, positions and attributes along with the df_buffer_t and let the renderer
-  sort'em out.
+  sort'em out. Have to write something to the screen and advance pointers there though.
 - Offscreen rendering support - interface part done, buffer's in the renderer.
   Now implement actual rendering.
 - Decide what to do with 2D world map drawing and export
@@ -138,6 +138,10 @@ Notes
    is a very bad practice. don't do it.
 
 9. gps_locator kills any hope for write-only df_buffer_t-s
+   also fx code with its |=-s isn't very helpful.
+   and I'm afraid it all is going to have to move to uint32_t
+   writes before it can go write-only. Can as well move to
+   row-major interleaved then.
 
 
 Building this:

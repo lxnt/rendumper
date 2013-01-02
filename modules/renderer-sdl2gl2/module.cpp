@@ -1343,6 +1343,18 @@ void implementation::renderer_thread(void) {
             glClear(GL_COLOR_BUFFER_BIT);
             grid_shader.set_at_frame(1.0);
             grid_streamer.draw(buf);
+
+            if (0) {
+                SDL_Rect dst, dstsz;
+                dst.x = 0, dst.y = 0, dst.w = 300, dst.h = 150;
+                dstsz.w = viewport_w, dstsz.h = viewport_h;
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, fonttex);
+                blitter.opaque(&dst, &dstsz);
+                //blitter.fill(&dst, &dstsz, 255,0,255,255);
+            }
+
             SDL_GL_SwapWindow(gl_window);
             logr->trace("swap");
         }

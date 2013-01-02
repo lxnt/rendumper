@@ -16,7 +16,6 @@ static iplatform *platform = NULL;
 ilogger *stubs_logr = NULL;
 ilogger *mainlogr = NULL;
 ilogger *nputlogr = NULL;
-isimuloop *simuloop = NULL;
 
 enablerst enabler;
 
@@ -110,7 +109,7 @@ int main (int argc, char* argv[]) {
     stubs_logr = platform->getlogr("df.stubs");
     nputlogr = platform->getlogr("df.input");
     irenderer *renderer = getrenderer();
-    simuloop = getsimuloop();
+    isimuloop *simuloop = getsimuloop();
 
     simuloop->set_callbacks(mainloop,
                             render_things,

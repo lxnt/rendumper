@@ -1,9 +1,8 @@
 #include <iomanip>  // setw
-#include <stdint.h>
+#include <tuple>
+#include <list>
 
-#if defined(TTF_SUPPORT)
-#include "ttf_manager.hpp"
-#endif
+#include <stdint.h>
 
 #include "enabler.h"
 #include "find_files.h"
@@ -11,6 +10,10 @@
 #include "graphics.h"
 #include "init.h"
 #include "interface.h"
+
+#include "isimuloop.h"
+extern isimuloop *simuloop;
+extern ilogger *addst_logr;
 
 using namespace std;
 
@@ -32,159 +35,99 @@ void graphicst::resize(int x, int y)  {
   screen_limit = screen + dimx * dimy * 4;
 }
 
-void graphicst::addcoloredst(const char *str,const char *colorstr)
+void graphicst::addcoloredst(const char *str, const char *colorstr)
 {
-  const int slen = strlen(str);
-  int s;
-  for(s=0; s < slen && screenx < init.display.grid_x; s++)
-    {
-      if(screenx<0)
-        {
-          s-=screenx;
-          screenx=0;
-          if (s >= slen) break;
-        }
-      
-      changecolor((colorstr[s] & 7),((colorstr[s] & 56))>>3,((colorstr[s] & 64))>>6);
-      addchar(str[s]);
+    if ((screeny < clipy[0]) || (screeny > clipy[1]))
+        return;
+
+    std::string copy(str);
+    std::string colors(colorstr, copy.size());
+
+    int head_cut = clipx[0] - screenx;
+
+    if (head_cut > 0) {
+        copy.erase(0, head_cut);
+        colors.erase(0, head_cut);
     }
+    int tail_size = screenx + copy.size() - clipx[1];
+
+    if (tail_size > 0) {
+        copy.resize(copy.size() - tail_size);
+        colors.resize(copy.size() - tail_size);
+    }
+    screenx += simuloop->add_string(copy.c_str(), colors.data(), screenx, screeny, DF_MONOSPACE_LEFT, 0);
 }
 
-#if TTF_SUPPORT
-static list<ttf_id> ttfstr;
-#endif
-
-static bool startsncasewith(const std::string& wha, const char *s, unsigned n) {
-#if defined(_WIN32)
-    return _strnicmp(wha.c_str(), s, n) == 0;
-#else
-    return strncasecmp(wha.c_str(), s, n) == 0;
-#endif
-
-}
-
-static void abbreviate_string_helper_hackaroundmissingcode(string &str, int len) {
-    if (str.length() >= 2) {
-        if (startsncasewith(str, "a ", 2)) {
-            str.erase(0, 2);
-            if (str.length() <= len)
-                return;
-        }
-        if (str.length() >= 3) {
-            if (startsncasewith(str, "an ", 3)) {
-                str.erase(0, 3);
-                if (str.length() <= len)
-                    return;
-            }
-            if (str.length() >= 4) {
-                if (startsncasewith(str, "the ", 4)) {
-                    str.erase(0, 4);
-                    if (str.length() <= len)
-                        return;
-                }
-            }
-        }
-    }
-    for (size_t l = str.length() - 1; l >= 1 ; l--) {
-        switch(str[l]) {
-        case ' ':
-            continue;
-        case 'a':
-        case 'e':
-        case 'i':
-        case 'o':
-        case 'u':
-        case 'A':
-        case 'E':
-        case 'I':
-        case 'O':
-        case 'U':
-            str.erase( str.begin() + l );
-            if (str.length() <= len)
-                return;
-            break;
-        default:
-            break;
-        }
-    }
-
-    if (str.length() > len)
-        str.resize(len);
-}
-
-
-static void abbreviate_string_hackaroundmissingcode(string &str, int32_t len)
-{
-#if defined(TTF_SUPPORT)
-    if (ttf_manager.ttf_active()) {
-        // We'll need to use TTF-aware text shrinking.
-        while (ttf_manager.size_text(str) > len)
-            abbreviate_string_helper_hackaroundmissingcode(str, str.length() - 1);
-    } else {
-#else
-    {
-#endif
-        if (str.length() > len) {
-            // 1 letter = 1 tile.
-            abbreviate_string_helper_hackaroundmissingcode(str, len);
-        }
-    }
-}
+typedef std::pair<std::string, unsigned> to_be_continued_t;
+static std::list<to_be_continued_t> previously;
 
 void graphicst::addst(const string &str_orig, justification just, int space)
 {
-    if (!str_orig.size())
+    /* just don't bother if it's y-clipped. */
+    if ((screeny < clipy[0]) || (screeny > clipy[1]))
         return;
 
-    string str = str_orig;
-    if (space)
-        abbreviate_string_hackaroundmissingcode(str, space);
+    /* also don't bother with zero-length strings */
+    if (str_orig.size() == 0)
+        return;
 
-#if defined(TTF_SUPPORT)
-    if (just == not_truetype || !ttf_manager.ttf_active()) {
-#endif
-        for (int s = 0; s < str.length() && screenx < init.display.grid_x ; s++) {
-            if (screenx < 0) {
-                s -= screenx;
-                screenx = 0;
-                if (s >= str.length())
-                    break;
-            }
-            addchar(str[s]);
-        }
-#if defined(TTF_SUPPORT)
-    } else {
-        // Truetype
-        if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
-            str[1] = '\t'; // EVIL HACK
-        
-        struct ttf_id id = { str, screenf, screenb, screenbright };
-        ttfstr.push_back(id);
-        if (just == justify_cont)
-            return; // More later
+    unsigned attr = ((screenbright << 6) | ((screenb & 7) << 3) | (screenf & 7)) & 0xFFu;
 
-        // This string is done. Time to render.
-        ttf_details details = ttf_manager.get_handle(ttfstr, just);
-        const int handle = details.handle;
-        const int offset = details.offset;
-        int width = details.width;
-        const int ourx = screenx + offset;
-        unsigned int * const s = ((unsigned int*)screen + ourx*dimy + screeny);
-        if (s < (unsigned int *) screen_limit)
-            s[0] = (((unsigned int)GRAPHICSTYPE_TTF) << 24) | handle;
+    /* Poor little msvc 2010 can't emplace stuff. Oh, the sorrow. */
+    to_be_continued_t tmp(str_orig, attr);
+    previously.push_back(tmp);
 
-        // Also set the other tiles this text covers, but don't write past the end.
-        if (width + ourx >= dimx)
-            width = dimx - ourx - 1;
-
-        for (int x = 1; x < width; ++x)
-            s[x * dimy] = (((unsigned int)GRAPHICSTYPE_TTFCONT) << 24) | handle;
-
-        // Clean up, prepare for next string.
-        screenx = ourx + width;
-        ttfstr.clear();
+    if (just == justify_cont) {
+        if (space)
+            addst_logr->warn("nonzero space on justify_cont: \"%s\", space=%d", str_orig.c_str(), space);
+        return; /* more to follow, and without touching screenx. hopefully. */
     }
-#endif
+
+    /* TODO: optimize for non-justify_cont case. But profile first. */
+
+    std::string copy;
+    std::string colors;
+
+    for (auto i = previously.begin(); i != previously.end(); ++i) {
+        copy.append(i->first);
+        colors.append(i->first.size(), i->second);
+    }
+    previously.clear();
+
+    /* this head clipping will have funny effect with ttf on -
+       it'd cut less that would have been if amount was calculated ttf-warily
+       a rare corner case, hopefully. */
+    int head_cut = clipx[0] - screenx;
+    if (head_cut > 0) {
+        copy.erase(0, head_cut);
+        colors.erase(0, head_cut);
+    }
+
+    int tail_size = screenx + copy.length() - clipx[1];
+
+    if (tail_size > 0) {
+        if ((space == 0) || (space > copy.length() - tail_size))
+            space = copy.length() - tail_size;
+    }
+
+    uint32_t align;
+    switch (just) {
+    case justify_left:
+        align = DF_TEXTALIGN_LEFT;
+        break;
+    case justify_center:
+        align = DF_TEXTALIGN_CENTER;
+        break;
+    case justify_right:
+        align = DF_TEXTALIGN_RIGHT;
+        break;
+    case justify_cont: // can't be here.
+    case not_truetype:
+    default:
+        align = DF_MONOSPACE_LEFT;
+        break;
+    }
+    screenx += simuloop->add_string(copy.c_str(), colors.data(), screenx, screeny, align, space);
 }
 
 void graphicst::erasescreen_clip()

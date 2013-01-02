@@ -137,11 +137,12 @@ Notes
    getplatform()->getlogr(some-varying-name)->trace() inside a loop
    is a very bad practice. don't do it.
 
-9. gps_locator kills any hope for write-only df_buffer_t-s
-   also fx code with its |=-s isn't very helpful.
-   and I'm afraid it all is going to have to move to uint32_t
+9. gps_locator kills any hope for write-only df_buffer_t-s.
+   Also fx code with its \|=-s isn't very helpful.
+   And I'm afraid it all is going to have to move to uint32_t
    writes before it can go write-only. Can as well move to
-   row-major interleaved then.
+   row-major interleaved then. Btw, gps_locator seem to be used
+   only for FPS display, might be possible to get rid of it.
 
 
 Building this:
@@ -224,3 +225,117 @@ i686-apple-darwin10 build
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Volunteers?
+
+
+TTF support design
+------------------
+
+Slightly less horrible interface than the previous version.
+
+Basically follows what the original ttf_manager did, but has all
+aspects separated from each other.
+
+``idfbuffer`` interface - ``df_buffer_t`` grew to be a backdoor replacement
+for the ``class graphicsst``. Wait on actually adding it though - let it be
+a part of ``isimuloop`` while it matures.
+
+``addcoloredst()`` and ``addst()`` become wrappers around simulthread part of it,
+and handle clipping by adjusting space or discarding strings altogether.
+Difference - string will be discarded entirely if it starts outside the
+clip rectangle. Let's see if this breaks stuff. Alternative would be to chop
+off starting characters, this won't be ttf-aware at all (but what would original
+code do in addst() case is even less sane). In fact, do this for addcoloredst() now.
+
+Advance screenx by the value returned.
+
+much uncertainity with that - does something rely on the value of screenx?
+(the reason of the tab hack)?
+or can I just ignore it, always return 1 or something, and do the layout myself,
+with a different type of the tab hack?
+
+stuff gets written into the buffer somehow
+
+on buffer submission the renderer knows how to draw the text.
+
+should keep two copies of the font open, so that glyph size lookup
+and glyph render do not kill each other from different threads.
+
+how's the data passed around?
+
+Simuloop side when ttf's enabled:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Abbreviation is done always here.
+
+justify_cont - I guess it's an aid for changing attrs in the middle of string.
+Do as old ttf cont does and accumulate that into a single string before clipping
+or otherwise processing. We'll have to do attr per char anyway.
+
+Difference from the old code:  something surely will creep out. Abbreviation will
+deviate noticeably from operating on whole string. Using space in the middle of
+cont-ed string will become unsupported?
+
+Length in pixels gets gotten from the cache, or computed and stored there.
+
+The cache: http://timday.bitbucket.org/lru.html: abbreviated_str -> width_pixels
+
+Difference from the ttf_manager.cpp:
+
+Colors are not hashed because shaders don't care.
+
+Justification is not stored because justification seems to be done only inside the
+difference between grid_width*Pszx and pixel_width, so is irrelevant here.
+
+Length in grid units gets computed wrt current Pszxy.
+
+"Current Pszxy" is the one at the time of the buffer being added to the free_q
+in the renderer. If it changes before buffer is accepted to be drawn, the frame
+just gets dropped, just like with the grid size change.
+
+Tuple of:
+(abbreviated_str, grid_x, grid_y, colors, width_pixels, width_grid ~~)
+
+Gets stored in the buffer's forward_list or something like it.
+Can it be a std::forward_list? Hmm. No, it crosses module borders.
+
+So, something pod-like, like packed forward list:
+
+{ uint32_t record_len, grid_x, grid_y, colors, width_pixels, width_grid, ~~;
+    uint8_t str[total_len - sizeof(whatever)] ~zero-padded to 8 bytes. }
+
+in some chunk of memory independent of ptr - see df_buffer.h
+
+The renderer side:
+^^^^^^^^^^^^^^^^^^
+
+Has an LRU cache for itself: string -> SDL_Surface of it (blend mode, although
+only the alpha channel is of interest).
+
+Plus, ideally, it would need a representation of this cache as a texture album,
+so that just rect/tex coords can be streamed to the blitter.
+
+Now, an LRU texalbum of variable-sized glyphs is an overkill, really.
+Since DF is not going to be internationalized any time soon, just have the codepage
+prerendered and uploaded.
+
+DF also doesn't use styles, so it's just 256 glyphs max.
+
+So, a std::vector of glyph rects in the prerendered texture, indexed by the codepage
+codepoint, not unicode, and let the GPU sort'em out.
+
+
+Resize strategy:
+^^^^^^^^^^^^^^^^
+
+Whatever. Let's make it work first.
+
+Thus, font height is fixed at Pszy, that is grid cell height in pixels.
+
+Any change triggers cache flushes and texalbum reupload.
+
+Sizes below ``ttf_floor`` (like, 8px or something) disable ttf entirely.
+
+Much room for thought, though.
+
+For example, a ``ttf_ceil`` might make sense, since 32x32 tiles might make sense,
+but 32pt font - much less likely.

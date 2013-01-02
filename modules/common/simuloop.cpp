@@ -1,5 +1,6 @@
 #include <cstdarg>
 #include <cstring>
+#include <string>
 
 #include "common_code_deps.h"
 
@@ -30,6 +31,8 @@ struct implementation : public isimuloop {
 
     uint32_t get_actual_sfps();
     uint32_t get_actual_rfps();
+
+    int add_string(const char *str, const char *attrs, int x, int y, int just, int space);
 
     void add_input_event(df_input_event_t *);
 
@@ -66,6 +69,10 @@ struct implementation : public isimuloop {
     /* ITC */
     imqd_t incoming_q; // stuff from renderer or whoever
 
+    df_buffer_t *renderbuf;
+    ilogger *logr_bufs;
+    ilogger *logr_string;
+
     implementation() :
                       started(false),
                       paused(false),
@@ -77,7 +84,11 @@ struct implementation : public isimuloop {
                       mainloop_time_ms(0.025, 10.0, 5),
                       render_things_time_ms(0.025, 10.0, 5),
                       mainloop_period_ms(0.025, 10.0, 5),
-                      render_things_period_ms(0.025, 10.0, 5)
+                      render_things_period_ms(0.025, 10.0, 5),
+                      incoming_q(-1),
+                      renderbuf(NULL),
+                      logr_bufs(NULL),
+                      logr_string(NULL)
                        { }
 };
 
@@ -161,13 +172,14 @@ void implementation::simulation_thread() {
     irenderer *renderer = _getrenderer();
     ilogger *logr = platform->getlogr("cc.simuloop");
     ilogger *logr_timing = platform->getlogr("cc.simuloop.timing");
-    ilogger *logr_bufs = platform->getlogr("cc.simuloop.bufs");
+    logr_bufs = platform->getlogr("cc.simuloop.bufs");
+    logr_string = platform->getlogr("cc.simuloop.addst");
 
 
     incoming_q = mqueue->open("simuloop", 1<<10);
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
-    df_buffer_t *renderbuf = NULL;
+    renderbuf = NULL;
     df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
     assimilate_buffer_cb(backup_buf);
     logr->trace("backup_buf is %p", backup_buf);
@@ -270,6 +282,7 @@ void implementation::simulation_thread() {
                 render_things_cb();
                 uint32_t rt_end_ms = platform->GetTickCount();
                 renderer->submit_buffer(renderbuf);
+                renderbuf = NULL;
                 assimilate_buffer_cb(backup_buf); // so that gps pointers stay valid: is this really needed?
 
                 renders ++;
@@ -306,6 +319,118 @@ void implementation::simulation_thread() {
         /* the following obvously can result in negative number which must be clamped to zero */
         read_timeout_ms = next_renderth_in > next_mainloop_in ? next_mainloop_in : next_renderth_in;
         read_timeout_ms = read_timeout_ms < 0 ? 0 : read_timeout_ms;
+    }
+}
+
+/* this abbreviation stuff doesn't belong here, but I haven't got an idea where to put it yet */
+
+static bool startsncasewith(const std::string& wha, const char *s, unsigned n) {
+#if defined(_WIN32)
+    return _strnicmp(wha.c_str(), s, n) == 0;
+#else
+    return strncasecmp(wha.c_str(), s, n) == 0;
+#endif
+
+}
+
+/* cuts off any articles off the beginning, then starts cutting vowels
+   from the end. If it's not enough, just cuts off tail */
+static void strshrink(std::string& str, std::string& attrs, unsigned len) {
+    if (str.size() <= len)
+        return;
+
+    if (str.size() >= 2) {
+        if (startsncasewith(str, "a ", 2)) {
+            str.erase(0, 2);
+            attrs.erase(0, 2);
+            if (str.size() <= len)
+                return;
+        }
+        if (str.length() >= 3) {
+            if (startsncasewith(str, "an ", 3)) {
+                str.erase(0, 3);
+                attrs.erase(0, 3);
+                if (str.size() <= len)
+                    return;
+            }
+            if (str.size() >= 4) {
+                if (startsncasewith(str, "the ", 4)) {
+                    str.erase(0, 4);
+                    attrs.erase(0, 4);
+                    if (str.size() <= len)
+                        return;
+                }
+            }
+        }
+    }
+    for (size_t l = str.size() - 1; l >= 1; l--) {
+        switch(str[l]) {
+        case ' ':
+            continue;
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o':
+        case 'u':
+        case 'A':
+        case 'E':
+        case 'I':
+        case 'O':
+        case 'U':
+            str.erase(l, 1);
+            attrs.erase(l, 1);
+            if (str.size() <= len)
+                return;
+            break;
+        default:
+            break;
+        }
+    }
+    if (str.length() > len) {
+        str.resize(len);
+        attrs.resize(len);
+    }
+}
+
+/* returns resulting size in tiles, ceil */
+static int strshrink_prop(std::string& str, std::string& attrs, unsigned space, unsigned cellwidth, unsigned fontheight) {
+    /* cache lookup on full string, add if no hit */
+    /* cache lookup on full string+space, add if no hit? result being abbreviated string? */
+    /* forget the cache? */
+    strshrink(str, attrs, space); // okay, fuck it.
+#define TTF_SOMEHOW_DISABLED 42
+    return TTF_SOMEHOW_DISABLED/cellwidth + fontheight/TTF_SOMEHOW_DISABLED;
+}
+
+int implementation::add_string(const char *str, const char *attrs, int x, int y, int textalign, int space) {
+    if (!renderbuf) {
+        logr_string->error("add_string w/o assimilated buffer");
+        return 1;
+    }
+    if (!space)
+        space = renderbuf->w - x;
+
+    if (space < 1)
+        logr_string->fatal("add_string: ended up with space=%d", space);
+
+    /* now space is always >1 and is in fact the space where the string must fit. */
+    /* there is a bug in the original - it ttf-shrinks when the opposite is requested. */
+    if (!TTF_SOMEHOW_DISABLED && (textalign != DF_MONOSPACE_LEFT)) {
+        std::string copy(str);
+        std::string colors(attrs);
+        strshrink_prop(copy, colors, space, renderbuf->cell_w, renderbuf->cell_h);
+
+        return bputs_attrs(renderbuf, x, y, copy.size(), copy.c_str(), colors.c_str());
+    } else {
+        int grid_w = 0;
+        if ((unsigned)space >= strlen(str)) {
+            return bputs_attrs(renderbuf, x, y, strlen(str), str, attrs);
+        } else {
+            std::string copy(str);
+            std::string colors(attrs);
+            strshrink(copy, colors, space);
+            return bputs_attrs(renderbuf, x, y, grid_w, copy.data(), colors.data());
+        }
     }
 }
 

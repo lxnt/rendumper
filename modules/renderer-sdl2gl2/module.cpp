@@ -1292,12 +1292,16 @@ void implementation::renderer_thread(void) {
 
         int rv;
         df_buffer_t *tbuf;
-        while ((tbuf = grid_streamer.get_a_buffer()) != NULL)
+        while ((tbuf = grid_streamer.get_a_buffer()) != NULL) {
+            /* better get rid of those float<->int conversions at each snort */
+            tbuf->cell_w = Parx > Pary ? Psz : Psz * Parx;
+            tbuf->cell_h = Parx < Pary ? Psz : Psz * Pary;
             if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
                 logr->fatal("%s: %d from mqueue->copy()", __func__, rv);
             else
                 tbuf->pstate = BS_FREE_Q,
                 logr->trace("placed buf %d (%p) into free_buf_q", grid_streamer.find(tbuf), tbuf);
+        }
 
         df_buffer_t *buf = NULL;
         int read_timeout_ms = 10;

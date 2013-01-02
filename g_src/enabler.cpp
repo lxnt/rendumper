@@ -13,9 +13,11 @@
 using namespace std;
 
 static iplatform *platform = NULL;
+isimuloop *simuloop = NULL;
 ilogger *stubs_logr = NULL;
 ilogger *mainlogr = NULL;
 ilogger *nputlogr = NULL;
+ilogger *addst_logr = NULL;
 
 enablerst enabler;
 
@@ -108,8 +110,9 @@ int main (int argc, char* argv[]) {
     mainlogr = platform->getlogr("df");
     stubs_logr = platform->getlogr("df.stubs");
     nputlogr = platform->getlogr("df.input");
+    addst_logr = platform->getlogr("df.addst");
     irenderer *renderer = getrenderer();
-    isimuloop *simuloop = getsimuloop();
+    simuloop = getsimuloop();
 
     simuloop->set_callbacks(mainloop,
                             render_things,

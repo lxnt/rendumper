@@ -45,12 +45,26 @@ typedef void (*dep_foo_t)(getplatform_t **, getmqueue_t **,
     tail points to grid_w*grid_h*tail_sizeof bytes,
     for undefined extra stuff that's expected to be useful
     for something or something.
+
     Not for use outside the backend.
+
     Well, not for extensive use, as in using the methods
     from df_buffer.h. That would fail.
+
     Assimilation, and use as a target for (offscreen rendering)
     blits are ok obviously.
+
+    Well, it seems with TTF support ending up here, it grew
+    into a shadow implementation of graphicsst.
+
+    A pure-C pointer-arithmetic-heavy design is mandated by the fact
+    that this structure is being used all over the place,
+    crossing both thread and module - thus compiler and runtime boundaries.
+
+    Think of it more as an interprocess communication / networking protocol,
+    rather than a data type.
 */
+
 struct df_buffer_t {
     uint32_t w, h;
     uint32_t tail_sizeof;
@@ -67,6 +81,29 @@ struct df_buffer_t {
     unsigned char *fx;         // dim, snow, rain
 
     uint8_t *tail;
+
+    uint32_t allocated_text;
+    uint32_t used_text;
+    uint8_t *text;   // df_string_t-s and their payload live here.
+    uint32_t cell_w, cell_h;  // Pszxy at the time of being free_q-ed
+};
+
+#define DF_TEXTALIGN_LEFT     0
+#define DF_TEXTALIGN_RIGHT    1
+#define DF_TEXTALIGN_CENTER   2
+#define DF_MONOSPACE_LEFT     3
+#define DF_TEXTALIGN_JUSTIFY -100500  // doesn't exist.
+
+struct df_string_t {
+    uint32_t size;  // pot_align(sizeof(*this) + strlen(s) + 1, 3), always zero-padded.
+    uint32_t grid_x;
+    uint32_t grid_y;
+    uint32_t len;
+    uint32_t align;
+    uint32_t width_pixels;
+    uint32_t width_grid;
+    uint32_t gorgeous_padding;
+    /* string follows the struct, at least 1 (zero) byte, zero-padded to 64 bits overall. */
 };
 
 struct itc_message_t;

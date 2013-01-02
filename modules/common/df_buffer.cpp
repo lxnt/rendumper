@@ -93,6 +93,10 @@ df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
     buf->ptr = NULL;
     buf->tail_sizeof = tail_sizeof;
     buf->w = w, buf->h = h;
+    buf->text = (uint8_t *)malloc(4096);   // a page for text should be enough for most cases
+    buf->allocated_text = 4096; // and not cause much reallocs
+    buf->used_text = 0;
+    buf->cell_w = buf->cell_h = 0; // disables attempts at ttf by default because of ttf_floor
     return buf;
 }
 
@@ -135,6 +139,8 @@ void dump_buffer_t(df_buffer_t *buf, const char *name) {
             fputs("\ncf:\n", fp);
         if (p + bc == buf->cbr)
             fputs("\ncbr:\n", fp);
+        if (p + bc == buf->fx)
+            fputs("\nfx:\n", fp);
         if (p + bc == buf->tail)
             fputs("\ntail:\n", fp);
         if (p + bc == buf->tail + buf->w*buf->h*buf->tail_sizeof)
@@ -181,7 +187,25 @@ static void windoze_crap() {
 #define vsnprintf _vsnprintf
 #endif
 
-int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t attrs, const char *fmt, va_list ap) {
+static inline void bputc(df_buffer_t *buffer, uint32_t x, uint32_t y, uint8_t c, uint8_t attr) {
+    uint32_t *ptr = (uint32_t *)(buffer->screen);
+    uint32_t offset = x * buffer->h + y;
+
+    /* achtung: endianness. screen is { Ch, Fg, Bg, Br }
+        on lil-endian this becomes 0xBrBgFgCh  */
+    uint32_t value = c;
+
+    value |=  (attr & 7)       <<  8; // fg
+    value |= ((attr >> 3) & 7) << 16; // bg
+    value |=  (attr >> 6)      << 24; // br
+
+    *( ptr + offset ) = value;
+}
+
+int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, uint8_t attr, const char *fmt, va_list ap) {
+    if (size == 0)
+        return 0;
+
     char tbuf[size + 1];
 
     memset(tbuf, 0, size+1);
@@ -205,11 +229,93 @@ int vbprintf(df_buffer_t *buffer, uint32_t x, uint32_t y, size_t size, uint32_t 
 #endif
     uint32_t printed = rv;
     uint32_t i;
-    uint32_t *ptr = (uint32_t *)(buffer->screen);
 
-    for (i = 0 ; (i < buffer->w - x) && ( i < printed ); i++) {
-        uint32_t offset = (x + i) * buffer->h + y;
-        *( ptr + offset ) = attrs | tbuf[i];
-    }
+    for (i = 0 ; (i < buffer->w - x) && ( i < printed ); i++)
+        bputc(buffer, x + i, y, tbuf[i], attr);
+
     return i;
+}
+
+unsigned bputs(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, const char *str, uint8_t attr) {
+    unsigned i = 0;
+
+    for (i = 0; ( i < buffer->w - x) && ( i < size ); i++)
+        bputc(buffer, x + i, y, str[i], attr);
+
+    return i;
+}
+
+unsigned bputs_attrs(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, const char *str, const char *attrs) {
+    unsigned i = 0;
+
+    for (i = 0; ( i < buffer->w - x) && ( i < size ); i++)
+        bputc(buffer, x + i, y, str[i], attrs[i]);
+
+    return i;
+}
+
+unsigned bputnc(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, const char c, const char a) {
+    unsigned i = 0;
+
+    for (i = 0; ( i < buffer->w - x) && ( i < size ); i++)
+        bputc(buffer, x + i, y, c, a);
+
+    return i;
+}
+
+void add_text_buffer_t(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t len,
+            uint32_t align, uint32_t wpix, uint32_t wgrid, const char *str, const char *attrs) {
+
+    uint32_t strspace = pot_align(len + 1, 3);
+    uint32_t needed_space = sizeof(df_buffer_t) + 2 * strspace;
+
+    if (buffer->allocated_text - buffer->used_text < needed_space) {
+        buffer->text = (uint8_t *) realloc(buffer->text,  2 * buffer->allocated_text);
+        buffer->allocated_text  = 2 * buffer->allocated_text;
+    }
+    df_string_t *target = (df_string_t *) (buffer->text + buffer->used_text);
+
+    char *strdest = ((char *) target) + sizeof(df_string_t);
+    char *attrdest = strdest + strspace;
+
+    memset(strdest + len, 0, strspace - len);
+    memcpy(strdest, str, len);
+    memcpy(attrdest, attrs, len);
+
+    buffer->used_text += needed_space;
+
+    target->size = needed_space;
+    target->grid_x = x;
+    target->grid_y = y;
+    target->len = len;
+    target->align = align;
+    target->width_pixels = wpix;
+    target->width_grid = wgrid;
+}
+
+const char *iter_text_buffer_t(df_buffer_t *buffer, df_string_t **state, uint8_t **attrs) {
+    if (buffer->used_text == 0) {
+        *state = NULL;
+        *attrs = NULL;
+        return NULL;
+    }
+
+    if (*state == NULL)
+        *state = (df_string_t *)buffer->text;
+
+    uint32_t offset = (((uint8_t *)*state) - ((uint8_t *)buffer->text)) + (*state)->size;
+
+    if (offset > buffer->used_text) {
+        *state = NULL;
+        return NULL;
+    }
+
+    *state = (df_string_t *) (((uint8_t *) buffer->text) + offset);
+    *attrs = ((uint8_t *) *state) + (*state)->len + sizeof(df_string_t);
+
+    return  ((char *) (*state)) + sizeof(df_string_t);
+}
+
+void reset_text_buffer_t(df_buffer_t *buffer) {
+    buffer->used_text = 0;
 }

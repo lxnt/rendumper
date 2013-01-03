@@ -264,7 +264,7 @@ unsigned bputnc(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, cons
 }
 
 void add_text_buffer_t(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t len,
-            uint32_t align, uint32_t wpix, uint32_t wgrid, const char *str, const char *attrs) {
+            uint32_t align, uint32_t wpix, uint32_t wgrid, uint16_t *str, const char *attrs) {
 
     uint32_t strspace = pot_align(len + 1, 3);
     uint32_t needed_space = sizeof(df_buffer_t) + 2 * strspace;

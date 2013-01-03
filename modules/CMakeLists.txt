@@ -118,6 +118,7 @@ set(GL_COMMON
     common/la_muerte_el_gl.cpp
     common/df_buffer.cpp
     common/shaders.cpp
+    common/cp437.cpp
 )
 
 option(SOUND_OPENAL "build sound-openal module" OFF)
@@ -182,7 +183,7 @@ option(RENDERER_NCURSES "build ncurses renderer module" ${HAVE_NCURSES})
         if(NOT HAVE_NCURSES)
             message(SEND_ERROR "ncursesw/ncurses not found.")
         endif()
-        add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp)
+        add_library(renderer_ncurses SHARED renderer-ncurses/renderer.cpp common/cp437.cpp)
         include_directories( ${NCURSES_INCLUDE_DIRS} )
         target_link_libraries(renderer_ncurses ${NCURSES_LIBRARIES})
         set_target_properties(renderer_ncurses PROPERTIES PREFIX "")

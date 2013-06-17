@@ -71,6 +71,7 @@ struct implementation : public isimuloop {
     imqd_t incoming_q; // stuff from renderer or whoever
 
     df_buffer_t *renderbuf;
+    ilogger *logr_fps;
     ilogger *logr_bufs;
     ilogger *logr_string;
 
@@ -82,12 +83,13 @@ struct implementation : public isimuloop {
                       target_renderth_ms(20),
                       frames(0),
                       renders(0),
-                      mainloop_time_ms(0.025, 10.0, 5),
-                      render_things_time_ms(0.025, 10.0, 5),
-                      mainloop_period_ms(0.025, 10.0, 5),
-                      render_things_period_ms(0.025, 10.0, 5),
+                      mainloop_time_ms(0.02, 10.0, 0.5),
+                      render_things_time_ms(0.02, 10.0, 0.5),
+                      mainloop_period_ms(0.02, 10.0, 0.5),
+                      render_things_period_ms(0.02, 10.0, 0.5),
                       incoming_q(-1),
                       renderbuf(NULL),
+                      logr_fps(NULL),
                       logr_bufs(NULL),
                       logr_string(NULL)
                        { }
@@ -151,11 +153,13 @@ void implementation::set_target_sfps(uint32_t fps) {
         pedal_to_the_metal = false;
         target_mainloop_ms = 1000/fps;
     }
+    logr_fps->info("set_target_sfps(%d): target_mainloop_ms=%d", fps, target_mainloop_ms);
 }
 
 void implementation::set_target_rfps(uint32_t fps) {
     if (fps)
         target_renderth_ms = 1000/fps;
+    logr_fps->info("set_target_sfps(%d): target_mainloop_ms=%d", fps, target_renderth_ms);
 }
 
 uint32_t implementation::get_actual_sfps() { return mainloop_period_ms.get(); };
@@ -175,7 +179,6 @@ void implementation::simulation_thread() {
     ilogger *logr_timing = platform->getlogr("cc.simuloop.timing");
     logr_bufs = platform->getlogr("cc.simuloop.bufs");
     logr_string = platform->getlogr("cc.simuloop.addst");
-
 
     incoming_q = mqueue->open("simuloop", 1<<10);
 
@@ -262,11 +265,12 @@ void implementation::simulation_thread() {
             uint32_t ml_end_ms = platform->GetTickCount();
             mainloop_period_ms.update(ml_end_ms - last_mainloop_at);
             mainloop_time_ms.update(ml_end_ms - ml_start_ms);
+            logr_timing->trace("s-frame %d; %d ms work, %d ms period ema_work %f ema_period %f", frames, ml_end_ms - ml_start_ms, ml_end_ms - last_mainloop_at,
+            mainloop_time_ms.get(), mainloop_period_ms.get());
             last_mainloop_at = ml_end_ms;
-            logr_timing->trace("frame %d; %d ms", frames, ml_end_ms - ml_start_ms);
         }
 
-        logr_timing->trace("last_renderth_at=%d target_renderth_ms=%d", last_renderth_at, target_renderth_ms);
+        //logr_timing->trace("last_renderth_at=%d target_renderth_ms=%d", last_renderth_at, target_renderth_ms);
         if ((platform->GetTickCount() - last_renderth_at) >= target_renderth_ms)
             due_renderth = true;
 
@@ -289,6 +293,8 @@ void implementation::simulation_thread() {
                 renders ++;
                 render_things_period_ms.update(rt_end_ms - last_renderth_at);
                 render_things_time_ms.update(rt_end_ms - rt_start_ms);
+                logr_timing->trace("r-frame %d; %d ms work, %d ms period ema_work %f ema_period %f", renders, rt_end_ms - rt_start_ms, rt_end_ms - last_renderth_at,
+                     render_things_time_ms.get(), render_things_period_ms.get());
                 last_renderth_at = rt_end_ms;
             } else {
                 logr_bufs->trace("[%d] graphics frame skipped: no buffer from the renderer", events_done_at);
@@ -311,7 +317,7 @@ void implementation::simulation_thread() {
         uint32_t now = platform->GetTickCount();
         int next_renderth_in = last_renderth_at + target_renderth_ms - now;
         int next_mainloop_in = last_mainloop_at + target_mainloop_ms - now;
-        logr_timing->trace("next_renderth_in %d next_mainloop_in %d", next_renderth_in, next_mainloop_in);
+        //logr_timing->trace("next_renderth_in %d next_mainloop_in %d", next_renderth_in, next_mainloop_in);
         if ((next_renderth_in < 0) or (next_mainloop_in < 0)) {
             read_timeout_ms = 0;
             continue;
@@ -369,6 +375,8 @@ extern "C" DFM_EXPORT isimuloop * DFM_APIEP getsimuloop(void) {
         _get_deps();
         simulogger = platform->getlogr("cc.simuloop");
         impl = new implementation();
+        impl->logr_fps = platform->getlogr("cc.simuloop.fps");
+
     }
     return impl;
 }

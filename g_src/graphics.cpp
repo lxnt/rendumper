@@ -471,7 +471,7 @@ void render_things()
     if (true)
       {
           char boof[1024];
-          sprintf(boof, "fps=%12d gfps=%12d", enabler.calculate_fps(), enabler.calculate_gfps());
+          sprintf(boof, "fps=%3d gfps=%3d", enabler.calculate_fps(), enabler.calculate_gfps());
           fps_stream << std::string(boof);
       }
     else

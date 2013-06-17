@@ -61,8 +61,8 @@ void enablerst::update_gfps()           { DFM_STUB(enablerst::update_gfps); }
 int call_loop(void *)                   { DFM_STUB(call_loop); return 0; }
 int enablerst::loop(string)             { DFM_STUB(enablerst::loop); return 0; }
 
-int enablerst::calculate_fps()          { return getsimuloop()->get_actual_sfps(); }
-int enablerst::calculate_gfps()         { return getsimuloop()->get_actual_rfps(); }
+int enablerst::calculate_fps()          { return 1000/getsimuloop()->get_actual_sfps(); }
+int enablerst::calculate_gfps()         { return 1000/getsimuloop()->get_actual_rfps(); }
 void enablerst::override_grid_size(int x, int y) { getrenderer()->override_grid_size(x, y); }
 void enablerst::release_grid_size()     { getrenderer()->release_grid_size(); }
 void enablerst::zoom_display(zoom_commands command) {

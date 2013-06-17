@@ -27,7 +27,7 @@
     Don't set it too low, or it'll keep dropping data
     and reseeding all the time.
 
-    Default negative value disables this functionality.
+    Default very large value disables this functionality.
 */
 
 class ema_filter_t {
@@ -39,7 +39,7 @@ class ema_filter_t {
     float reseed_threshold;
 
 public:
-    ema_filter_t(float _alpha, float _value, unsigned _seedceil, float _reseed_threshold = -23) :
+    ema_filter_t(float _alpha, float _value, unsigned _seedceil, float _reseed_threshold = 100500) :
         alpha(_alpha),
         value(_value),
         seedsum(0),
@@ -49,8 +49,8 @@ public:
 
     float update(float sample) {
         if (fabsf((sample-value)/value) > reseed_threshold) {
-            reset(value);
-            return value;
+            reset(sample);
+            return sample;
         }
 
         if (seedcount < seedceil) {

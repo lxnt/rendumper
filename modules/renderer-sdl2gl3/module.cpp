@@ -1017,10 +1017,6 @@ void implementation::upload_album() {
     glBindTexture(GL_TEXTURE_2D, findextex);
     GL_DEAD_YET();
 
-    GLint pupbuf;
-    glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &pupbuf);
-    GL_DEAD_YET();
-    logr->info("wh = %dx%d data=%p pupbuf=%d", findex_w, findex_h, data, pupbuf );
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16I, findex_w, findex_h, 0, GL_RGBA_INTEGER , GL_SHORT, data);
     GL_DEAD_YET();
 

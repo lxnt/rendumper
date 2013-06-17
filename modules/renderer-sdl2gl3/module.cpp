@@ -931,7 +931,6 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
 
     GL_DEAD_YET();
     Uint32 Rmask, Bmask, Gmask, Amask; int bpp;
-    /* beware of endianness vs ABGR */
     SDL_PixelFormatEnumToMasks(SDL_PIXELFORMAT_RGBA8888, &bpp, &Rmask, &Bmask, &Gmask, &Amask);
     SDL_Surface *surf = SDL_CreateRGBSurface(0, vp_w, vp_h, bpp, Rmask, Bmask, Gmask, Amask);
 

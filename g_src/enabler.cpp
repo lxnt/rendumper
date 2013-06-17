@@ -41,6 +41,7 @@ enablerst::enablerst() {
   fps = 100; gfps = 20;
   fps_per_gfps = fps / gfps;
   last_tick = 0;
+  tracking_on = 1;
 }
 
 bool enablerst::is_fullscreen()         { DFM_STUB(enablerst::is_fullscreen); return false; }
@@ -98,6 +99,35 @@ static void assimilate_buffer(df_buffer_t *buf) {
 }
 
 static void add_input_event(df_input_event_t *event) {
+    /* TODO: move the mouse tracking into enabler_input
+       ALSO: fix this sad excuse of an 'interface'
+       NOTE: this differs from the original:
+            does not honor the INIT_INPUT_FLAG_MOUSE_OFF
+            does not do mouse hiding.
+    */
+    if (event->type == df_input_event_t::DF_BUTTON_UP
+        || event->type == df_input_event_t::DF_BUTTON_DOWN) {
+        gps.mouse_x = event->button_grid_x;
+        gps.mouse_y = event->button_grid_y;
+        switch (event->button) {
+        case df_input_event_t::DF_BUTTON_LEFT:
+            enabler.mouse_lbut = event->type == df_input_event_t::DF_BUTTON_DOWN;
+            enabler.mouse_lbut_down = enabler.mouse_lbut;
+            if (!enabler.mouse_lbut)
+                enabler.mouse_lbut_lift = 0;
+            return;
+            break;
+        case df_input_event_t::DF_BUTTON_RIGHT:
+            enabler.mouse_rbut = event->type == df_input_event_t::DF_BUTTON_DOWN;
+            enabler.mouse_rbut_down = enabler.mouse_rbut;
+            if (!enabler.mouse_rbut)
+                enabler.mouse_rbut_lift = 0;
+            return;
+            break;
+        default:
+            break;
+        }
+    }
     enabler.add_input(*event);
 }
 

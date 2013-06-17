@@ -6,6 +6,7 @@
 #include "glew.h"
 
 #include "SDL.h"
+#include "SDL_pnglite.h"
 
 #include "iplatform.h"
 #include "imqueue.h"
@@ -842,14 +843,15 @@ struct implementation : public irenderer {
 };
 
 void implementation::export_buffer(df_buffer_t *buf, const char *name) {
-    logr->info("exporting offscreen buffer %dx%d into %s", buf->w, buf->h, name);
+    logr->trace("exporting offscreen buffer %dx%d into %s", buf->w, buf->h, name);
     std::string fname(name);
     if (fname.substr(fname.size() - 4, 4) == ".bmp")
         fname = fname.substr(0, fname.size() - 4);
-    logr->info("%s %s", fname.substr(fname.size() - 4, 4).c_str(), fname.substr(0, fname.size() - 4).c_str() );
+    logr->trace("%s %s", fname.substr(fname.size() - 4, 4).c_str(), fname.substr(0, fname.size() - 4).c_str() );
     std::string dumpfname(fname);
     dumpfname += ".dump";
     dump_buffer_t(buf, dumpfname.c_str());
+    logr->trace("raw buffer dump written");
     /* okay, so what do we do here.
 
         - work in 1024x1024 chunks, should be supported much anywhere.
@@ -860,6 +862,98 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
             - fetch pixel data, SDL-blit it into the resulting surface
         - then call SDL_SavePNG on it
     */
+    /* first take would be just a single pass, error out if GL can't handle the size */
+    /* and the size is calculated from the first celpage */
+    int cw = album->index[0].rect.w;
+    int ch = album->index[0].rect.h;
+    float parx, pary;
+    int psz;
+    if (cw > ch) {
+        parx = 1.0;
+        pary = (float)ch/(float)cw;
+        psz = cw;
+    } else {
+        parx = (float)cw/(float)ch;
+        pary = 1.0;
+        psz = ch;
+    }
+    int vp_w = buf->w * cw;
+    int vp_h = buf->h * ch;
+
+    GLuint fb_name, rb_name, va_name, bo_name;
+    glGenFramebuffers(1, &fb_name);
+    glGenRenderbuffers(1, &rb_name);
+    glGenVertexArrays(1, &va_name);
+    glGenBuffers(1, &bo_name);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_name);
+    glBindRenderbuffer(GL_RENDERBUFFER, rb_name);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, vp_w, vp_h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rb_name);
+    GL_DEAD_YET();
+    if (GL_FRAMEBUFFER_COMPLETE != glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
+        logr->fatal("framebuffer incomplete");
+    }
+    glViewport(0, 0, vp_w, vp_h);
+    glClearColor(0.4, 0.8, 0.4, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    GL_DEAD_YET();
+
+    // VAO & BO setup copied from the vbstreamer
+    glBindVertexArray(va_name);
+    glBindBuffer(GL_ARRAY_BUFFER, bo_name);
+    glEnableVertexAttribArray(grid_streamer.screen_posn);
+    glVertexAttribIPointer(grid_streamer.screen_posn,    4, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, screen));
+    glEnableVertexAttribArray(grid_streamer.texpos_posn);
+    glVertexAttribIPointer(grid_streamer.texpos_posn,    1, GL_UNSIGNED_INT,   0, DFBUFOFFS(buf, texpos));
+    glEnableVertexAttribArray(grid_streamer.addcolor_posn);
+    glVertexAttribIPointer(grid_streamer.addcolor_posn,  1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, addcolor));
+    glEnableVertexAttribArray(grid_streamer.grayscale_posn);
+    glVertexAttribIPointer(grid_streamer.grayscale_posn, 1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, grayscale));
+    glEnableVertexAttribArray(grid_streamer.cf_posn);
+    glVertexAttribIPointer(grid_streamer.cf_posn,        1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, cf));
+    glEnableVertexAttribArray(grid_streamer.cbr_posn);
+    glVertexAttribIPointer(grid_streamer.cbr_posn,       1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, cbr));
+    glEnableVertexAttribArray(grid_streamer.fx_posn);
+    glVertexAttribIPointer(grid_streamer.fx_posn,        1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, fx));
+    glBufferData(GL_ARRAY_BUFFER, buf->required_sz, buf->ptr, GL_STREAM_DRAW);
+    GL_DEAD_YET();
+
+    grid_shader.set_at_resize(parx, pary, psz, buf->w, buf->h);
+    grid_shader.set_at_frame(1.0);
+    GL_DEAD_YET();
+
+    glDrawArrays(GL_POINTS, 0, buf->w * buf->h);
+    GL_DEAD_YET();
+    glFinish();
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GL_DEAD_YET();
+    Uint32 Rmask, Bmask, Gmask, Amask; int bpp;
+    /* beware of endianness vs ABGR */
+    SDL_PixelFormatEnumToMasks(SDL_PIXELFORMAT_RGBA8888, &bpp, &Rmask, &Bmask, &Gmask, &Amask);
+    SDL_Surface *surf = SDL_CreateRGBSurface(0, vp_w, vp_h, bpp, Rmask, Bmask, Gmask, Amask);
+
+    /* flip while reading */
+    for (int i = 0; i < vp_h ; i++)
+        glReadPixels(0, i, vp_w, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
+            ((uint8_t *)surf->pixels) + surf->pitch * (vp_h - i - 1));
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteRenderbuffers(1, &rb_name);
+    glDeleteFramebuffers(1, &fb_name);
+    glDeleteVertexArrays(1, &va_name);
+    glDeleteBuffers(1, &bo_name);
+
+    dumpfname = fname;
+    dumpfname += ".png";
+    SDL_SavePNG(surf, dumpfname.c_str());
+    SDL_FreeSurface(surf);
+
+    /* restore gridshader and viewport state */
+    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
+    glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 }
 
 void implementation::initialize() {

@@ -121,8 +121,6 @@ void dump_buffer_t(df_buffer_t *buf, const char *name) {
     unsigned bc = 0;
     uint8_t *p = buf->ptr;
     while(bc < buf->required_sz) {
-        bc++;
-        fprintf(fp, "%02x ", (unsigned)p[bc]);
         if (bc%4 == 0)
             fputc(' ', fp);
         if (bc%32 == 0)
@@ -145,7 +143,8 @@ void dump_buffer_t(df_buffer_t *buf, const char *name) {
             fputs("\ntail:\n", fp);
         if (p + bc == buf->tail + buf->w*buf->h*buf->tail_sizeof)
             fputs("\nunused:\n", fp);
-
+        fprintf(fp, "%02x ", (unsigned)p[bc]);
+        bc++;
     }
     fputc('\n', fp);
     fclose(fp);

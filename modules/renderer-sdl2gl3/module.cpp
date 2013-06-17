@@ -1503,6 +1503,8 @@ implementation::implementation() {
 //{  All those methods want to go into a parent class.
 
 df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
+    /* tail_sizeof of 1 provides us with w*h bytes where to store export name
+       (see below) */
     df_buffer_t *rv = allocate_buffer_t(w, h, 1);
     memset_buffer_t(rv, 0);
     return rv;

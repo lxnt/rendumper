@@ -981,7 +981,6 @@ void implementation::upload_album() {
     glBindTexture(GL_TEXTURE_2D, fonttex);
     font_w = album->album->w;
     font_h = album->height;
-    //font_h = album->album->h;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_w, font_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, album->album->pixels);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1023,9 +1022,8 @@ void implementation::upload_album() {
     GL_DEAD_YET();
     logr->info("wh = %dx%d data=%p pupbuf=%d", findex_w, findex_h, data, pupbuf );
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16I, findex_w, findex_h, 0, GL_RGBA_INTEGER , GL_SHORT, data);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16I, findex_w, findex_h, 0, GL_RGBA, GL_SHORT, data);
     GL_DEAD_YET();
-#if 1
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     GL_DEAD_YET();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1034,7 +1032,6 @@ void implementation::upload_album() {
     GL_DEAD_YET();
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     GL_DEAD_YET();
-#endif
 
     delete []data;
 

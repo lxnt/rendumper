@@ -29,7 +29,7 @@ ivec2 ansiconvert(ivec3 c) { // { fg, bg, bold }, returns { fg_idx, bg_idx }
 void main() {
     ivec2 grid;
     grid.x = gl_VertexID / grid_wh.y;
-    grid.y = grid_wh.y - gl_VertexID % grid_wh.y;
+    grid.y = grid_wh.y - gl_VertexID % grid_wh.y - 1;
 
     vec2 posn = 2.0 * (grid.xy + 0.5)/grid_wh - 1.0;
     gl_Position = vec4(posn.x, posn.y, 0.0, 1.0);

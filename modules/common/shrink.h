@@ -85,8 +85,8 @@ void the_shrink(chardata_t& chardata, std::string& attrdata, unsigned len) {
     if (chardata.size() <= len)
         return;
 
-    for (auto l = chardata.end(); l != chardata.begin(); --l)
-        switch (*l) {
+    for (int32_t l = chardata.size() - 1; (l > 0) && (chardata.size() > len); --l)
+        switch (chardata[l]) {
         case 'a':
         case 'e':
         case 'i':
@@ -97,12 +97,12 @@ void the_shrink(chardata_t& chardata, std::string& attrdata, unsigned len) {
         case 'I':
         case 'O':
         case 'U':
-            attrdata.erase(l - chardata.begin(), 1);
-            l = chardata.erase(l) - 1;
-            continue;
+            chardata.erase(chardata.begin() + l, chardata.end());
+            attrdata.erase(l);
+            break;
         case ' ':
         default:
-            continue;
+            break;
         }
 
     if (chardata.size() > len) {

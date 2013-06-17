@@ -133,7 +133,7 @@ static void add_input_event(df_input_event_t *event) {
 
 int main (int argc, char* argv[]) {
     /* here decide what platform to load, without init.txt. somehow. */
-    if (!lock_and_load(argc > 1 ? argv[1] : "sdl2gl2", NULL))
+    if (!lock_and_load(argc > 1 ? argv[1] : "sdl2gl3", NULL))
         return 1;
 
     platform = getplatform();

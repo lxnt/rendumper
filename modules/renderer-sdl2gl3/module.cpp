@@ -93,7 +93,6 @@ struct vbstreamer_t {
     uint32_t w, h;
     uint32_t pot;   // preferred alignment of data as a power-of-two, in bytes
     unsigned last_drawn; // hottest vao in our rr
-    uint16_t *vtx_ids; // pregenerated vertex ids
 
     const uint32_t tail_sizeof;
 
@@ -105,7 +104,6 @@ struct vbstreamer_t {
     const GLuint cf_posn;
     const GLuint cbr_posn;
     const GLuint fx_posn;
-    const GLuint vertexid_posn;
 
     vbstreamer_t(unsigned rr = 3) :
         rrlen(rr),
@@ -117,16 +115,14 @@ struct vbstreamer_t {
         h(0),
         pot(6),
         last_drawn(0),
-        vtx_ids(0),
-        tail_sizeof(8), // 4*GLushort
+        tail_sizeof(0), // not used
         screen_posn(0),
         texpos_posn(1),
         addcolor_posn(2),
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        fx_posn(6),
-        vertexid_posn(7) {}
+        fx_posn(6) {}
 
     void initialize();
     df_buffer_t *get_a_buffer();
@@ -164,17 +160,12 @@ void vbstreamer_t::initialize() {
         glEnableVertexAttribArray(cf_posn);
         glEnableVertexAttribArray(cbr_posn);
         glEnableVertexAttribArray(fx_posn);
-        glEnableVertexAttribArray(vertexid_posn);
         bufs[i] = new_buffer_t(0, 0, tail_sizeof);
     }
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     GL_DEAD_YET();
-
-    vtx_ids = new uint16_t[65536];
-    for (uint32_t i = 0; i < 65536; i++)
-        vtx_ids[i] = i;
 }
 
 df_buffer_t *vbstreamer_t::get_a_buffer() {
@@ -329,19 +320,15 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
 
     setup_buffer_t(buf, pot);
 
-    /* set up vertex ids */
-    memcpy(buf->tail, vtx_ids, w*h*2);
-
     if (reset_vao) {
         glBindVertexArray(va_names[find(buf)]);
-        glVertexAttribPointer(screen_posn,    4, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, screen));
-        glVertexAttribPointer(texpos_posn,    1, GL_UNSIGNED_INT,   GL_FALSE, 0, DFBUFOFFS(buf, texpos));
-        glVertexAttribPointer(addcolor_posn,  1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, addcolor));
-        glVertexAttribPointer(grayscale_posn, 1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, grayscale));
-        glVertexAttribPointer(cf_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cf));
-        glVertexAttribPointer(cbr_posn,       1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, cbr));
-        glVertexAttribPointer(fx_posn,        1, GL_UNSIGNED_BYTE,  GL_FALSE, 0, DFBUFOFFS(buf, fx));
-        glVertexAttribPointer(vertexid_posn,  1, GL_UNSIGNED_SHORT, GL_FALSE, 0, DFBUFOFFS(buf, tail));
+        glVertexAttribIPointer(screen_posn,    4, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, screen));
+        glVertexAttribIPointer(texpos_posn,    1, GL_UNSIGNED_INT,   0, DFBUFOFFS(buf, texpos));
+        glVertexAttribIPointer(addcolor_posn,  1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, addcolor));
+        glVertexAttribIPointer(grayscale_posn, 1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, grayscale));
+        glVertexAttribIPointer(cf_posn,        1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, cf));
+        glVertexAttribIPointer(cbr_posn,       1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, cbr));
+        glVertexAttribIPointer(fx_posn,        1, GL_UNSIGNED_BYTE,  0, DFBUFOFFS(buf, fx));
         glBindVertexArray(0);
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -369,7 +356,6 @@ void vbstreamer_t::finalize() {
     delete[] bo_names;
     delete[] va_names;
     delete[] syncs;
-    delete[] vtx_ids;
     GL_DEAD_YET();
 }
 //} vbstreamer_t
@@ -399,6 +385,8 @@ GLuint shader_t::compile(const char *setname, GLuint type) {
 
     std::string fname(DFM_SHADERS_PATH);
     std::string stype;
+    if (fname[fname.size()-1] != '/')
+        fname += '/';
     fname += setname;
     switch (type) {
     case GL_VERTEX_SHADER:
@@ -427,6 +415,8 @@ GLuint shader_t::compile(const char *setname, GLuint type) {
         f.close();
         buf[len] = 0;
         delete_buf = true;
+    } else {
+        logr->trace("open(%s) failed; ignoring.", fname.c_str());
     }
 
     if (buf == NULL)
@@ -513,14 +503,12 @@ struct grid_shader_t : public shader_t {
     const GLuint cf_posn;
     const GLuint cbr_posn;
     const GLuint fx_posn;
-    const GLuint vtxid_posn;
 
     /* uniform locations */
     int u_font_sampler;
     int u_findex_sampler;
     int u_final_alpha;
     int u_pszar;
-    int u_fofindex_wh;
     int u_grid_wh;
     int u_colors;
 
@@ -531,15 +519,14 @@ struct grid_shader_t : public shader_t {
         grayscale_posn(3),
         cf_posn(4),
         cbr_posn(5),
-        fx_posn(6),
-        vtxid_posn(7) {}
+        fx_posn(6) {}
 
     void bind_attribute_locs();
     void get_uniform_locs();
 
     void set_at_frame(float);
     void set_at_resize(float, float, int, unsigned, unsigned);
-    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, ansi_colors_t);
+    void set_at_font(int, int, ansi_colors_t);
 
 };
 
@@ -552,7 +539,6 @@ void grid_shader_t::bind_attribute_locs() {
     glBindAttribLocation(program, cf_posn, "cf");
     glBindAttribLocation(program, cbr_posn, "cbr");
     glBindAttribLocation(program, fx_posn, "fx");
-    glBindAttribLocation(program, vtxid_posn, "vertex_id");
 
     //glBindFragDataLocation(program, 0, "frag");
 
@@ -564,7 +550,6 @@ void grid_shader_t::bind_attribute_locs() {
     logr->trace("%s: %d", "va cf_posn", cf_posn);
     logr->trace("%s: %d", "va cbr_posn", cbr_posn);
     logr->trace("%s: %d", "va fx_posn", fx_posn);
-    logr->trace("%s: %d", "va vtxid_posn", vtxid_posn);
 
 }
 
@@ -574,7 +559,6 @@ void grid_shader_t::get_uniform_locs() {
     u_findex_sampler    = glGetUniformLocation(program, "findex");
     u_final_alpha       = glGetUniformLocation(program, "final_alpha");
     u_pszar             = glGetUniformLocation(program, "pszar");
-    u_fofindex_wh       = glGetUniformLocation(program, "fofindex_wh");
     u_grid_wh           = glGetUniformLocation(program, "grid_wh");
     u_colors            = glGetUniformLocation(program, "colors");
     if (u_colors == -1)
@@ -586,7 +570,6 @@ void grid_shader_t::get_uniform_locs() {
     logr->trace("%s: %d", "uf findex_sampler", u_findex_sampler);
     logr->trace("%s: %d", "uf final_alpha", u_final_alpha);
     logr->trace("%s: %d", "uf pszar", u_pszar);
-    logr->trace("%s: %d", "uf fofindex_wh", u_fofindex_wh);
     logr->trace("%s: %d", "uf colors", u_colors);
 }
 
@@ -599,12 +582,10 @@ void grid_shader_t::set_at_resize(float parx, float pary, int psz,
                                 unsigned grid_w, unsigned grid_h) {
     glUseProgram(program);
     glUniform3f(u_pszar, parx, pary, psz);      GL_DEAD_YET();
-    glUniform2f(u_grid_wh, grid_w, grid_h);     GL_DEAD_YET();
+    glUniform2i(u_grid_wh, grid_w, grid_h);     GL_DEAD_YET();
 }
 
 void grid_shader_t::set_at_font(int tu_font, int tu_findex,
-                         unsigned font_w, unsigned font_h,
-                         unsigned findex_w, unsigned findex_h,
                                          ansi_colors_t ccolors) {
 
     GLfloat fcolors[16*4];
@@ -619,7 +600,6 @@ void grid_shader_t::set_at_font(int tu_font, int tu_findex,
     glUseProgram(program);
     glUniform1i(u_font_sampler, tu_font);       GL_DEAD_YET();
     glUniform1i(u_findex_sampler, tu_findex);   GL_DEAD_YET();
-    glUniform4f(u_fofindex_wh, font_w, font_h, findex_w, findex_h); GL_DEAD_YET();
     glUniform4fv(u_colors, 16, fcolors);        GL_DEAD_YET();
 }
 
@@ -734,7 +714,7 @@ struct blitter_t {
 };
 
 void blitter_t::initialize() {
-    shader.initialize("blit120");
+    shader.initialize("blit130");
     glGenVertexArrays(1, &vaoname);
     glGenBuffers(1, &bufname);
     glBindVertexArray(vaoname);
@@ -789,7 +769,7 @@ void blitter_t::_blit( blit_shader_t::blitmode_t blitmode,
 
 //} blitter_t
 
-/*  OpenGL 2.1 renderer, rewrite of PRINT_MODE:SHADER. */
+/*  OpenGL 3.0 renderer, rewrite of renderer_sdl2gl2. */
 
 struct implementation : public irenderer {
     void release(void);
@@ -981,8 +961,8 @@ void implementation::initialize() {
     GL_DEAD_YET();
 
     grid_streamer.initialize();
-    grid_shader.initialize("grid120");
-    blitter.initialize();
+    grid_shader.initialize("grid130");
+    //blitter.initialize();
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
     album = NULL;
@@ -1010,42 +990,51 @@ void implementation::upload_album() {
 
     GL_DEAD_YET();
 
+    /* GL_RGBA16UI: x, y, w|magentic , h|gray (leftmost bit, that is, negative.) */
     findex_w = 128;
     findex_h = album->count/findex_w + 1; // todo: pot_align(sqrt(album->count))
     findex_h = 128;
     if (album->count > findex_w * findex_h)
         logr->fatal("whoa, index too large. %d > %d * %d", album->count, findex_w, findex_h);
-    const unsigned findex_sz = findex_w * findex_h * 4 * 2;
-    const unsigned layersz = findex_w * findex_h * 4;
+    const unsigned findex_sz = findex_w * findex_h * 8;
 
-    uint8_t *data = new uint8_t[findex_sz];
+    int16_t *data = new int16_t[findex_w * findex_h * 4];
     memset(data, 0, findex_sz);
 
     for (uint32_t i = 0; i < album->count; i++) {
-        data[4*i + 0] = album->index[i].rect.x >> 8;
-        data[4*i + 1] = album->index[i].rect.x & 0xFFu;
-        data[4*i + 2] = album->index[i].rect.y >> 8;
-        data[4*i + 3] = album->index[i].rect.y & 0xFFu;
-
-        data[layersz + 4*i + 0] = album->index[i].rect.w;
-        data[layersz + 4*i + 1] = album->index[i].rect.h;
-        data[layersz + 4*i + 2] = album->index[i].magentic ? 255 : 0;
-        data[layersz + 4*i + 3] = album->index[i].gray ? 255 : 0;
+        data[4*i + 0] = album->index[i].rect.x;
+        data[4*i + 1] = album->index[i].rect.y;
+        data[4*i + 2] = album->index[i].rect.w * ( album->index[i].magentic ? -1 : 1 );
+        data[4*i + 3] = album->index[i].rect.h * ( album->index[i].gray ? -1 : 1 );
     }
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_3D, findextex);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, findex_w, findex_h, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     if (logr->enabled(LL_TRACE)) {
         std::fstream fid("findex.dump", std::ios::binary | std::ios::out);
         fid.write((char*)data, findex_sz);
         fid.close();
     }
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, findextex);
+    GL_DEAD_YET();
+
+    GLint pupbuf;
+    glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &pupbuf);
+    GL_DEAD_YET();
+    logr->info("wh = %dx%d data=%p pupbuf=%d", findex_w, findex_h, data, pupbuf );
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16I, findex_w, findex_h, 0, GL_RGBA_INTEGER , GL_SHORT, data);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16I, findex_w, findex_h, 0, GL_RGBA, GL_SHORT, data);
+    GL_DEAD_YET();
+#if 1
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    GL_DEAD_YET();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    GL_DEAD_YET();
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    GL_DEAD_YET();
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    GL_DEAD_YET();
+#endif
 
     delete []data;
 
@@ -1055,7 +1044,7 @@ void implementation::upload_album() {
 
     ansi_colors_t ccolors = ANSI_COLORS_VGA;
 
-    grid_shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, ccolors);
+    grid_shader.set_at_font(0, 1, ccolors);
 }
 
 DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
@@ -1347,7 +1336,7 @@ void implementation::renderer_thread(void) {
             glClear(GL_COLOR_BUFFER_BIT);
             grid_shader.set_at_frame(1.0);
             grid_streamer.draw(buf);
-
+#if 0
             if (0) {
                 SDL_Rect dst, dstsz;
                 dst.x = 0, dst.y = 0, dst.w = 300, dst.h = 150;
@@ -1358,7 +1347,7 @@ void implementation::renderer_thread(void) {
                 blitter.opaque(&dst, &dstsz);
                 //blitter.fill(&dst, &dstsz, 255,0,255,255);
             }
-
+#endif
             SDL_GL_SwapWindow(gl_window);
             logr->trace("swap");
         }

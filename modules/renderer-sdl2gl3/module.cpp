@@ -1131,6 +1131,10 @@ void implementation::slurp_keys() {
                                                     df_event.mod, df_event.unicode);
             break;
         case SDL_MOUSEMOTION:
+            mouse_xw = sdl_event.motion.x;
+            mouse_yw = sdl_event.motion.y;
+            mouse_xg = (sdl_event.motion.x - viewport_x) / (Parx * Psz);
+            mouse_yg = (sdl_event.motion.y - viewport_y) / (Pary * Psz);
             continue;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
@@ -1156,6 +1160,8 @@ void implementation::slurp_keys() {
 
             df_event.type = sdl_event.type == SDL_MOUSEBUTTONDOWN ?
                 df_input_event_t::DF_BUTTON_DOWN : df_input_event_t::DF_BUTTON_UP;
+            df_event.button_grid_x = mouse_xg;
+            df_event.button_grid_y = mouse_yg;
             break;
         case SDL_MOUSEWHEEL:
             nputlogr->trace("SDL_MOUSEWHEEL: x=%d y=%d", sdl_event.wheel.x, sdl_event.wheel.y);
@@ -1170,6 +1176,8 @@ void implementation::slurp_keys() {
             } else if (sdl_event.wheel.y == 0) {
                 continue;
             }
+            df_event.button_grid_x = mouse_xg;
+            df_event.button_grid_y = mouse_yg;
             break;
         case SDL_WINDOWEVENT:
             switch (sdl_event.window.event) {
@@ -1229,12 +1237,6 @@ void implementation::slurp_keys() {
         nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx uni=%x", df_keydown.sym,
                                                 df_keydown.mod, df_keydown.unicode);
         simuloop->add_input_event(&df_keydown);
-    }
-
-    { // update mouse state
-        SDL_GetMouseState(&mouse_xw, &mouse_yw);
-        mouse_xg = (mouse_xw - viewport_x) / (Parx * Psz);
-        mouse_yg = (mouse_yw - viewport_y) / (Pary * Psz);
     }
 }
 

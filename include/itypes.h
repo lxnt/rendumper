@@ -363,7 +363,7 @@ enum DFKeySym : int32_t {
 struct df_input_event_t {
     uint32_t now;
     enum ev_type : uint8_t { DF_TNONE = 0, DF_KEY_UP, DF_KEY_DOWN, DF_BUTTON_UP, DF_BUTTON_DOWN, DF_QUIT } type;
-    enum but_num : uint8_t { DF_BNONE = 0, DF_BUTTON_LEFT, DF_BUTTON_RIGHT, DF_BUTTON_MIDDLE, DF_WHEEL_UP, DF_WHEEL_DOWN } button;
+    enum but_num : uint8_t { DF_BNONE = 0, DF_BUTTON_LEFT, DF_BUTTON_MIDDLE, DF_BUTTON_RIGHT, DF_WHEEL_UP, DF_WHEEL_DOWN } button;
     uint16_t mod;
     DFKeySym sym;
     int32_t button_grid_x, button_grid_y;

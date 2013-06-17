@@ -1153,10 +1153,10 @@ void implementation::slurp_keys() {
                 df_event.button = df_input_event_t::DF_BUTTON_LEFT;
                 break;
             case SDL_BUTTON_MIDDLE:
-                df_event.button = df_input_event_t::DF_BUTTON_RIGHT;
+                df_event.button = df_input_event_t::DF_BUTTON_MIDDLE;
                 break;
             case SDL_BUTTON_RIGHT:
-                df_event.button = df_input_event_t::DF_BUTTON_MIDDLE;
+                df_event.button = df_input_event_t::DF_BUTTON_RIGHT;
                 break;
             case SDL_BUTTON_X1:
             case SDL_BUTTON_X2:

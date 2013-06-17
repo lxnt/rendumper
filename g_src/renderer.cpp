@@ -69,14 +69,15 @@ void renderer_offscreen::update_all(int offset_x, int offset_y) {
     stubs_logr->info("update_all(%d, %d); gps.dimxy %dx%d, blit_wh %dx%d",
                         offset_x, offset_y, gps.dimx, gps.dimy, blit_w, blit_h);
     /* aw, again this column-wisery */
-    for(int x = offset_x; x < offset_x + blit_w ; x++) {
-        unsigned offs = x * world->h;
-        memcpy(world->screen + offs*4,  gps.screen,                 blit_h * 4);
-        memcpy(world->texpos + offs,    gps.screentexpos,           blit_h * 4);
-        memcpy(world->addcolor + offs,  gps.screentexpos_addcolor,  blit_h);
-        memcpy(world->grayscale + offs, gps.screentexpos_grayscale, blit_h);
-        memcpy(world->cf + offs,        gps.screentexpos_cf,        blit_h);
-        memcpy(world->cbr + offs,       gps.screentexpos_cbr,       blit_h);
+    for(int x = 0; x < blit_w ; x++) {
+        unsigned buf_offs = (x + offset_x) * world->h + offset_y;
+        unsigned gps_offs = x * gps.dimy;
+        memcpy(world->screen + buf_offs*4,  gps.screen + gps_offs*4,               blit_h * 4);
+        memcpy(world->texpos + buf_offs,    gps.screentexpos + gps_offs,           blit_h * 4);
+        memcpy(world->addcolor + buf_offs,  gps.screentexpos_addcolor + gps_offs,  blit_h);
+        memcpy(world->grayscale + buf_offs, gps.screentexpos_grayscale + gps_offs, blit_h);
+        memcpy(world->cf + buf_offs,        gps.screentexpos_cf + gps_offs,        blit_h);
+        memcpy(world->cbr + buf_offs,       gps.screentexpos_cbr + gps_offs,       blit_h);
     }
 }
 

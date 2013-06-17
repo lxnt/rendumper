@@ -7,12 +7,9 @@ Todo list
 Missing features - priority:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- SDL mouse input
 - TTF support - convert addst/addcoloredst/whatever else that can be to just submitting
   strings, positions and attributes along with the df_buffer_t and let the renderer
   sort'em out. Have to write something to the screen and advance pointers there though.
-- Offscreen rendering support - interface part done, buffer's in the renderer.
-  Now implement actual rendering.
 - Decide what to do with 2D world map drawing and export
   (currently it's SDL_SaveBMP buried in the binary).
   Well, got to have a glimpse on what API is used to draw this. Otherwise it's just
@@ -21,6 +18,7 @@ Missing features - priority:
 In no particular order:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+- fix SDL mouse input: continuous drawing does not work for some reason
 - renderer/simuloop config api its use with initst and a file for tests.
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t
@@ -33,7 +31,7 @@ In no particular order:
 - "ld.so understands the string $ORIGIN (or equivalently ${ORIGIN}) in
   an rpath specification (DT_RPATH or DT_RUNPATH) to mean the directory
   containing the application executable."
-- sdl2gl3 renderer - clone sdl2gl2; move common code to common/
+- sdl2gl* renderers - move common code to common/
 - maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
 - ncurses mouse input

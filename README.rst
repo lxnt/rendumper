@@ -10,6 +10,7 @@ Missing features - priority:
 - TTF support - convert addst/addcoloredst/whatever else that can be to just submitting
   strings, positions and attributes along with the df_buffer_t and let the renderer
   sort'em out. Have to write something to the screen and advance pointers there though.
+- Do something like replacing std::forward_list with utlist.h so that it doesn't spam .so/.dll namespace.
 - Decide what to do with 2D world map drawing and export
   (currently it's SDL_SaveBMP buried in the binary).
   Well, got to have a glimpse on what API is used to draw this. Otherwise it's just

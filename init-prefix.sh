@@ -1,18 +1,23 @@
 #!/bin/sh -xe
 
-SOURCE=$1
-PREFIX=$2
 
-SOURCE=`realpath $1` || true
-PREFIX=`realpath $2` || true
+SOURCE=`dirname $0` || true
+SOURCE=`realpath $SOURCE` || true
+DEPSOURCE=$1
+BUILD=$2
+PREFIX=$3
+
+DEPSOURCE=`realpath $1` || true
+BUILD=`realpath $2` || true
+PREFIX=`realpath $3` || true
 
 if [ -z "${PREFIX}" -o -z "${SOURCE}" ]
 then
-    echo "Usage: $0 deps/dir dest/prefix "
+    echo "Usage: $0 sources/dir build/dir dest/prefix "
     exit 1
 fi
 
-mkdir -p $PREFIX/lib $PREFIX/bin $PREFIX/include
+mkdir -p $PREFIX/lib $PREFIX/bin $PREFIX/include $BUILD
 
 if [ "x86_64" = `uname -m` ]
 then
@@ -57,36 +62,60 @@ else
     LDFLAGS="-L$PREFIX/lib"
 fi
 
-if [ ! -d $SOURCE/SDL ]
+if [ ! -d $DEPSOURCE/SDL2-2.0.0 ]
 then
-    echo "Cloning SDL2 repository"
-    hg clone http://hg.libsdl.org/SDL $SOURCE/SDL
+    echo "Downloading SDL2 source"
+    cd $DEPSOURCE
+    wget http://www.libsdl.org/tmp/release/SDL2-2.0.0.tar.gz
+    tar zxf SDL2-2.0.0.tar.gz
 fi
 
-if [ ! -d $SOURCE/SDL_pnglite ]
+if [ ! -d $DEPSOURCE/SDL_pnglite ]
 then
     echo "Cloning SDL_pngline repository"
-    git clone git@github.com:lxnt/SDL_pnglite.git $SOURCE/SDL_pnglite
+    git clone git://github.com/lxnt/SDL_pnglite.git $DEPSOURCE/SDL_pnglite
 fi
 
-if [ ! -d $SOURCE/SDL_ttf ]
+if [ ! -d $DEPSOURCE/harfbuzz-0.9.18 ]
 then
-    echo "Cloning SDL_ttf repository"
-    hg clone http://hg.libsdl.org/SDL_ttf $SOURCE/SDL_ttf
+    echo "Downloading HarfBuzz source"
+    cd $DEPSOURCE
+    wget http://www.freedesktop.org/software/harfbuzz/release/harfbuzz-0.9.18.tar.bz2
+    tar jxf harfbuzz-0.9.18.tar.bz2
 fi
 
-rm -fr sdl2 sdl2ttf sdl2pnglite
-mkdir -p sdl2 sdl2ttf sdl2pnglite
+if [ ! -d $DEPSOURCE/zhban ]
+then
+    echo "Cloning zhban repository"
+    git clone git://github.com/lxnt/zhban.git $DEPSOURCE/zhban
+fi
 
-#export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
+cd $BUILD
+#rm -fr sdl2 harfbuzz zhban sdl2pnglite rdx
+mkdir -p sdl2 harfbuzz zhban sdl2pnglite rdx
+
+export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
 export LDFLAGS
 
-( cd sdl2 && $SOURCE/SDL/configure $HOST --prefix=$PREFIX && make -j6 install ) || exit
+#( cd $BUILD/sdl2 && $DEPSOURCE/SDL2-2.0.0/configure --prefix=$PREFIX && make -j4 install ) || exit
 
-( cd sdl2ttf && $SOURCE/SDL_ttf/configure $HOST --with-freetype-prefix=$PREFIX --prefix=$PREFIX && make -j4 install ) || exit
+#( cd $BUILD/sdl2pnglite && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Release $DEPSOURCE/SDL_pnglite && make -j2 install ) || exit
 
-( cd sdl2pnglite && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX $B32 $SOURCE/SDL_pnglite && make -j2 install ) || exit
+#( cd $BUILD/harfbuzz && $DEPSOURCE/harfbuzz-0.9.18/configure --prefix=$PREFIX --without-glib --without-cairo && make -j4 install ) || exit
 
+#( cd $BUILD/zhban && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Debug $DEPSOURCE/zhban && make -j2 install ) || exit
+
+# cp /usr/lib/i386-linux-gnu/libGLEW.so.1.6 /usr/lib/i386-linux-gnu/libGLEW.so.1.6.0 $PREFIX/lib/ # they dropped it from 12.10 or smth
+
+( cd $BUILD/rdx && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_MODULES=on \
+    -DBUILD_LIBGRAPHICS=on \
+    -DRENDERER_SDL2GL2=off \
+    -DRENDERER_NCURSES=off \
+    -DPLATFORM_NCURSES=off \
+    $SOURCE \
+    && make -j2 install ) || exit
 
 
 

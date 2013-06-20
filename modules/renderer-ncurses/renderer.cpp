@@ -36,6 +36,10 @@ struct implementation : public irenderer {
 
     void acknowledge(const itc_message_t&) {}
 
+    void ttf_set_size(int);
+    int ttf_active();
+    int ttf_gridwidth(const uint16_t*, uint32_t, uint32_t*, uint32_t*, uint32_t*, uint32_t*);
+
     void start();
     void join();
     void run_here();
@@ -83,6 +87,10 @@ void implementation::toggle_fullscreen() { NOT_IMPLEMENTED(toggle_fullscreen); }
 void implementation::override_grid_size(unsigned, unsigned) { NOT_IMPLEMENTED(override_grid_size); }
 void implementation::release_grid_size() { NOT_IMPLEMENTED(release_grid_size); }
 int implementation::mouse_state(int *mx, int *my) { return *mx = 0, *my = 0, 0; }
+
+void implementation::ttf_set_size(int) { };
+int implementation::ttf_active() { return 0; }
+int implementation::ttf_gridwidth(const uint16_t*, uint32_t a, uint32_t*, uint32_t*, uint32_t*, uint32_t*) { NOT_IMPLEMENTED(ttf_width); return a; }
 
 void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name) {
     logr->info("exporting buf %p to %s", buf, name);

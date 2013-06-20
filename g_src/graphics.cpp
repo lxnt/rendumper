@@ -40,27 +40,24 @@ void graphicst::addcoloredst(const char *str, const char *colorstr)
     if ((screeny < clipy[0]) || (screeny > clipy[1]))
         return;
 
-    std::string copy(str);
-    std::string colors(colorstr, copy.size());
+    int len = strlen(str);
 
     int head_cut = clipx[0] - screenx;
+    head_cut = head_cut > 0 ? head_cut : 0;
 
-    if (head_cut > 0) {
-        copy.erase(0, head_cut);
-        colors.erase(0, head_cut);
-    }
-    int tail_size = screenx + copy.size() - clipx[1];
+    int tail_cut = screenx + len - head_cut - clipx[1];
+    tail_cut = tail_cut > 0 ? tail_cut : 0;
 
-    if (tail_size > 0) {
-        copy.resize(copy.size() - tail_size);
-        colors.resize(copy.size() - tail_size);
-    }
-    screenx += simuloop->add_string(copy.c_str(), colors.data(), screenx, screeny, DF_MONOSPACE_LEFT, 0);
+    len = len - head_cut - tail_cut;
+
+    screenx += simuloop->add_string(str+head_cut, colorstr+head_cut, len,
+                                    screenx, screeny, DF_MONOSPACE_LEFT, 0);
 }
 
-typedef std::pair<std::string, unsigned> to_be_continued_t;
-static std::list<to_be_continued_t> previously;
+static std::string jcont_string;
+static std::string jcont_attrs;
 
+/* TODO: move justification entirely into simuloop::add_string() */
 void graphicst::addst(const string &str_orig, justification just, int space)
 {
     /* just don't bother if it's y-clipped. */
@@ -71,44 +68,10 @@ void graphicst::addst(const string &str_orig, justification just, int space)
     if (str_orig.size() == 0)
         return;
 
-    unsigned attr = ((screenbright << 6) | ((screenb & 7) << 3) | (screenf & 7)) & 0xFFu;
+    unsigned attr = ((screenbright << 6) | ((screenb & 7) << 3) | (screenf & 7)) & 0x7Fu;
 
-    /* Poor little msvc 2010 can't emplace stuff. Oh, the sorrow. */
-    to_be_continued_t tmp(str_orig, attr);
-    previously.push_back(tmp);
-
-    if (just == justify_cont) {
-        if (space)
-            addst_logr->warn("nonzero space on justify_cont: \"%s\", space=%d", str_orig.c_str(), space);
-        return; /* more to follow, and without touching screenx. hopefully. */
-    }
-
-    /* TODO: optimize for non-justify_cont case. But profile first. */
-
-    std::string copy;
-    std::string colors;
-
-    for (auto i = previously.begin(); i != previously.end(); ++i) {
-        copy.append(i->first);
-        colors.append(i->first.size(), i->second);
-    }
-    previously.clear();
-
-    /* this head clipping will have funny effect with ttf on -
-       it'd cut less that would have been if amount was calculated ttf-warily
-       a rare corner case, hopefully. */
-    int head_cut = clipx[0] - screenx;
-    if (head_cut > 0) {
-        copy.erase(0, head_cut);
-        colors.erase(0, head_cut);
-    }
-
-    int tail_size = screenx + copy.length() - clipx[1];
-
-    if (tail_size > 0) {
-        if ((space == 0) || (space > copy.length() - tail_size))
-            space = copy.length() - tail_size;
-    }
+    jcont_string.append(str_orig);
+    jcont_attrs.append(str_orig.size(), attr);
 
     uint32_t align;
     switch (just) {
@@ -121,13 +84,20 @@ void graphicst::addst(const string &str_orig, justification just, int space)
     case justify_right:
         align = DF_TEXTALIGN_RIGHT;
         break;
-    case justify_cont: // can't be here.
+    case justify_cont:
+        if (space)
+            addst_logr->warn("nonzero space on justify_cont: \"%s\", space=%d", str_orig.c_str(), space);
+        return; /* more to follow, and without touching screenx. hopefully. */
     case not_truetype:
     default:
         align = DF_MONOSPACE_LEFT;
         break;
     }
-    screenx += simuloop->add_string(copy.c_str(), colors.data(), screenx, screeny, align, space);
+
+    screenx += simuloop->add_string(jcont_string.c_str(), jcont_attrs.data(),
+                                    jcont_string.size(), screenx, screeny, align, space);
+    jcont_string.clear();
+    jcont_attrs.clear();
 }
 
 void graphicst::erasescreen_clip()

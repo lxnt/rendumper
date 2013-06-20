@@ -93,10 +93,7 @@ df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
     buf->ptr = NULL;
     buf->tail_sizeof = tail_sizeof;
     buf->w = w, buf->h = h;
-    buf->text = (uint8_t *)malloc(4096);   // a page for text should be enough for most cases
-    buf->allocated_text = 4096; // and not cause much reallocs
-    buf->used_text = 0;
-    buf->cell_w = buf->cell_h = 0; // disables attempts at ttf by default because of ttf_floor
+    buf->text = NULL;
     return buf;
 }
 
@@ -109,6 +106,7 @@ df_buffer_t *allocate_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
     return buf;
 }
 
+/* does not memset the tail */
 void memset_buffer_t(df_buffer_t *buf, uint8_t b) {
     memset(buf->screen, b, buf->used_sz - buf->w*buf->h*buf->tail_sizeof);
 }
@@ -262,59 +260,3 @@ unsigned bputnc(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, cons
     return i;
 }
 
-void add_text_buffer_t(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t len,
-            uint32_t align, uint32_t wpix, uint32_t wgrid, uint16_t *str, const char *attrs) {
-
-    uint32_t strspace = pot_align(len + 1, 3);
-    uint32_t needed_space = sizeof(df_buffer_t) + 2 * strspace;
-
-    if (buffer->allocated_text - buffer->used_text < needed_space) {
-        buffer->text = (uint8_t *) realloc(buffer->text,  2 * buffer->allocated_text);
-        buffer->allocated_text  = 2 * buffer->allocated_text;
-    }
-    df_string_t *target = (df_string_t *) (buffer->text + buffer->used_text);
-
-    char *strdest = ((char *) target) + sizeof(df_string_t);
-    char *attrdest = strdest + strspace;
-
-    memset(strdest + len, 0, strspace - len);
-    memcpy(strdest, str, len);
-    memcpy(attrdest, attrs, len);
-
-    buffer->used_text += needed_space;
-
-    target->size = needed_space;
-    target->grid_x = x;
-    target->grid_y = y;
-    target->len = len;
-    target->align = align;
-    target->width_pixels = wpix;
-    target->width_grid = wgrid;
-}
-
-const char *iter_text_buffer_t(df_buffer_t *buffer, df_string_t **state, uint8_t **attrs) {
-    if (buffer->used_text == 0) {
-        *state = NULL;
-        *attrs = NULL;
-        return NULL;
-    }
-
-    if (*state == NULL)
-        *state = (df_string_t *)buffer->text;
-
-    uint32_t offset = (((uint8_t *)*state) - ((uint8_t *)buffer->text)) + (*state)->size;
-
-    if (offset > buffer->used_text) {
-        *state = NULL;
-        return NULL;
-    }
-
-    *state = (df_string_t *) (((uint8_t *) buffer->text) + offset);
-    *attrs = ((uint8_t *) *state) + (*state)->len + sizeof(df_string_t);
-
-    return  ((char *) (*state)) + sizeof(df_string_t);
-}
-
-void reset_text_buffer_t(df_buffer_t *buffer) {
-    buffer->used_text = 0;
-}

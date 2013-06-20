@@ -7,6 +7,7 @@
 #include "emafilter.h"
 #include "df_buffer.h"
 #include "shrink.h"
+#include "df_text.h"
 
 #define DFMODULE_BUILD
 #include "isimuloop.h"
@@ -33,7 +34,7 @@ struct implementation : public isimuloop {
     uint32_t get_actual_sfps();
     uint32_t get_actual_rfps();
 
-    int add_string(const char *str, const char *attrs, int x, int y, int just, int space);
+    int add_string(const char *str, const char *attrs, int len, int x, int y, int just, int space);
 
     void add_input_event(df_input_event_t *);
 
@@ -74,6 +75,9 @@ struct implementation : public isimuloop {
     ilogger *logr_fps;
     ilogger *logr_bufs;
     ilogger *logr_string;
+    ilogger *textlogr;
+
+    irenderer *renderer;
 
     implementation() :
                       started(false),
@@ -91,7 +95,8 @@ struct implementation : public isimuloop {
                       renderbuf(NULL),
                       logr_fps(NULL),
                       logr_bufs(NULL),
-                      logr_string(NULL)
+                      logr_string(NULL),
+                      renderer(NULL)
                        { }
 };
 
@@ -176,11 +181,11 @@ uint32_t implementation::get_actual_rfps() { float pms = render_things_period_ms
     also need to get rid of render message. it is not needed.
 */
 void implementation::simulation_thread() {
-    irenderer *renderer = _getrenderer();
+    renderer = _getrenderer();
     ilogger *logr = platform->getlogr("cc.simuloop");
     ilogger *logr_timing = platform->getlogr("cc.simuloop.timing");
     logr_bufs = platform->getlogr("cc.simuloop.bufs");
-    logr_string = platform->getlogr("cc.simuloop.addst");
+    logr_string = platform->getlogr("cc.simuloop.str");
 
     incoming_q = mqueue->open("simuloop", 1<<10);
 
@@ -281,9 +286,10 @@ void implementation::simulation_thread() {
         if (force_renderth or due_renderth) {
             due_renderth = false;
             if ((renderbuf = renderer->get_buffer()) != NULL) {
-                force_renderth = false;
-
                 logr_bufs->trace("simuloop(): rendering into buf %p", renderbuf);
+                force_renderth = false;
+                if (renderbuf->text == NULL)
+                    renderbuf->text = new df_text_t;
                 assimilate_buffer_cb(renderbuf);
                 uint32_t rt_start_ms = platform->GetTickCount();
                 render_things_cb();
@@ -331,42 +337,89 @@ void implementation::simulation_thread() {
     }
 }
 
-
-#define TTF_SOMEHOW_DISABLED 42
-
-int implementation::add_string(const char *str, const char *attrs, int x, int y, int textalign, int space) {
+int implementation::add_string(const char *str, const char *attrs, int len, int x, int y, int textalign, int space) {
     if (!renderbuf) {
         logr_string->error("add_string w/o assimilated buffer");
         return 1;
     }
-    if (!space)
-        space = renderbuf->w - x;
 
-    if (space < 1)
-        logr_string->fatal("add_string: ended up with space=%d", space);
+    const char *foo[] = { "left", "right", "center", "mono" };
+    logr_string->trace("\"%s\" xy=%d,%d align=%s space=%d", str, x, y, foo[textalign], space);
 
     /* now space is always >1 and is in fact the space where the string must fit. */
-    /* there is a bug in the original - it ttf-shrinks when the opposite is requested. */
-    if (!TTF_SOMEHOW_DISABLED && (textalign != DF_MONOSPACE_LEFT)) {
-        unsigned grid_w = TTF_SOMEHOW_DISABLED;
-        shrink::unicode shrinker(str, attrs, strlen(str));
+    if (renderer->ttf_active() && (textalign != DF_MONOSPACE_LEFT)) {
+        shrink::unicode shrinker(str, attrs, len);
+        int grid_w;
+        uint32_t w, h, ox, oy;
 
-        /* here : let's rock. */
-        //strshrink_prop(copy, colors, space, renderbuf->cell_w, renderbuf->cell_h);
+        grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
+#if 0
+        while (grid_w > space) {
+            shrinker.shrink(shrinker.size() - 1);
+            grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
+        }
+#endif
 
-        //return bputnc(renderbuf, x, y, grid_w, SPECIAL_TTF_CHAR, SPECIAL_TTF_ATTR); // or maybe just don't do it.
-        return grid_w;
+        logr_string->trace("grid_w = %d", grid_w);
+        /* for now do alignment in terms of grid cells. pixels and the tab hack will go next */
+        int grid_offset = 0;
+        switch(textalign) {
+        case DF_TEXTALIGN_CENTER:
+            grid_offset = (len - grid_w)/2;
+            break;
+        case DF_TEXTALIGN_RIGHT:
+            grid_offset = len - grid_w;
+            break;
+        default:
+            break;
+        }
+
+        df_text_t *buftext = (df_text_t *) renderbuf->text;
+
+        buftext->add_string(x + grid_offset, y, shrinker.chars(), shrinker.attrs(), shrinker.size(), w, h, ox, oy);
+        logr_string->trace("gw=%d go=%d xy=%d,%d len %d returning %d", grid_w, grid_offset,
+            x+grid_offset, y, shrinker.size(), grid_w + grid_offset);
+        return grid_w + grid_offset;
+        //return shrinker.size();
     } else {
-        unsigned grid_w = strlen(str);
+        if ((space == 0) || (space >= len))
+            return bputs_attrs(renderbuf, x, y, len, str, attrs);
 
-        if ((unsigned)space >= grid_w)
-            return bputs_attrs(renderbuf, x, y, grid_w, str, attrs);
-
-        shrink::codepage shrinker(str, attrs, strlen(str));
+        shrink::codepage shrinker(str, attrs, len);
         shrinker.shrink(space);
         return bputs_attrs(renderbuf, x, y, shrinker.size(), shrinker.chars(), shrinker.attrs());
     }
 }
+
+#if 0
+int implementation::add_stringlist() {
+
+/* TODO: get rid of the following */
+typedef std::pair<std::string, unsigned> to_be_continued_t;
+static std::list<to_be_continued_t> previously;
+    /* replicate the tab-hack */
+    {
+        if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
+            str[1] = '\t'; // EVIL HACK
+
+        to_be_continued_t tmp_tab;
+        tmp_tab.second = 0x80u; // since MSB is not used otherwise.
+        char *p = str_orig.c_str();
+        char *q = p;
+        while ((p = strchr(p, '\t'))) {
+            std::string tmp_str(q, q-p);
+            p++;
+            q = p;
+            to_be_continued_t tmp(tmp_str, attr);
+            previously.push_back(tmp);
+            previously.push_back(tmp_tab);
+        }
+        std::string tmp_str(q);
+        to_be_continued_t tmp(tmp_str, attr);
+        previously.push_back(tmp);
+    }
+}
+#endif
 
 void implementation::release() { }
 

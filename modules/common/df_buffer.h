@@ -38,16 +38,4 @@ unsigned bputs(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, const
 /* same as above, but with varying attrs */
 unsigned bputs_attrs(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t size, const char *str, const char *attrs);
 
-/* push a string (for the ttf backend) */
-void add_text_buffer_t(df_buffer_t *buffer, uint32_t x, uint32_t y, uint32_t len,
-            uint32_t align, uint32_t wpix, uint32_t wgrid, const char *str, const char *attrs);
-
-/* iterate over strings - set *state to NULL. After each call *state points to the current df_string_t,
-   *attrs points to its attrs, pointer to character data (guaranteed to be zero-terminated) is returned.
-   Return of NULL means the end. */
-const char *iter_text_buffer_t(df_buffer_t *buffer, df_string_t **state, uint8_t **attrs);
-
-/* pretend there's no strings */
-void reset_text_buffer_t(df_buffer_t *buffer);
-
 #endif

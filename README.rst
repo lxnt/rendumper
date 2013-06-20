@@ -7,10 +7,7 @@ Todo list
 Missing features - priority:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- TTF support - convert addst/addcoloredst/whatever else that can be to just submitting
-  strings, positions and attributes along with the df_buffer_t and let the renderer
-  sort'em out. Have to write something to the screen and advance pointers there though.
-- Do something like replacing std::forward_list with utlist.h so that it doesn't spam .so/.dll namespace.
+- Clean up TTF-related interfaces; approach pixel-perfect justification; do the tab hack.
 - Decide what to do with 2D world map drawing and export
   (currently it's SDL_SaveBMP buried in the binary).
   Well, got to have a glimpse on what API is used to draw this. Otherwise it's just
@@ -39,9 +36,10 @@ In no particular order:
 - ncurses mouse input
 - sdl2gl2 GL_POINT positioning suffers rounding errors: eats pixels.
   visible with DF_LOG=sdl.reshape=trace.
+- Do something like replacing std::forward_list with utlist.h so that it doesn't spam .so/.dll namespace.
 
-Stuff I'd like to GSoC off:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Stuff I put a SEP field around:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - pure SDL2 renderer ala PRINT_MODE:2D
 - pure SDL2 sound module
@@ -49,30 +47,6 @@ Stuff I'd like to GSoC off:
 - Offscreen ncurses renderer complete with finding the appropriate file
   format and viewer
 - i686-apple-darwin10 build
-
-Starting up, paths and stuff
-----------------------------
-
-Quickstart
-^^^^^^^^^^
-
-Build modules and the libgraphics.so, install into some prefix;
-link all .so-s into DF's libs/ like this::
-
-    lrwxrwxrwx 1 lxnt lxnt       37 Dec 31 16:38 common_code.so -> /tmp/prefix/lib/dfmodules/common_code.so
-    -rwxr-xr-x 1 lxnt lxnt 15104448 Jun  4  2012 Dwarf_Fortress
-    -rw-r--r-- 1 lxnt lxnt   466491 Jun  4  2012 libgcc_s.so.1.orig
-    lrwxrwxrwx 1 lxnt lxnt       27 Dec 31 16:38 libgraphics.so -> /tmp/prefix/lib/libgraphics.so
-    -rwxr-xr-x 1 lxnt lxnt  1451966 Jun  4  2012 libgraphics.so.orig
-    lrwxrwxrwx 1 lxnt lxnt       29 Dec 31 16:39 libSDL-1.2.so.0 -> /tmp/prefix/lib/libSDL2-2.0.so.0
-    -rwxr-xr-x 1 lxnt lxnt  4852343 Jun  4  2012 libstdc++.so.6.orig
-    lrwxrwxrwx 1 lxnt lxnt       39 Dec 31 16:38 platform_sdl2.so -> /tmp/prefix/lib/dfmodules/platform_sdl2.so
-    lrwxrwxrwx 1 lxnt lxnt       42 Dec 31 16:38 renderer_sdl2gl2.so -> /tmp/prefix/lib/dfmodules/renderer_sdl2gl2.so
-
-Notice renamed libgcc_s.so.1 and libstdc++.so.6.
-
-Launch as usual.
-
 
 Mode of operation is:
 ^^^^^^^^^^^^^^^^^^^^^
@@ -145,26 +119,66 @@ Notes
    only for FPS display, might be possible to get rid of it.
 
 
-Building this:
---------------
+Building and running this:
+--------------------------
 
 i686-linux-gnu build
 ^^^^^^^^^^^^^^^^^^^^
 
-For both native and crosscompile from x86-64 host.
+Due to C++ ABI hell and autotools' excessive arcanism, the recommended build
+method is the native one.
 
-Use init-prefix.sh::
+Consider using a virtual machine (KVM or whatever) with a minimal Ubuntu 12.04 install.
 
-    mkdir /tmp/prefix ../build ; cd ../build ; ../rendumper/init-prefix.sh ../build /tmp/prefix
+Make sure you have GCC 4.5 installed, and /usr/bin/gcc and /usr/bin/g++ symlinks pointing to it.
 
-Then::
+Install the following packages:
 
-    mkdir rd-build; cd rd-build
+- git
+- realpath
+- libglew1.6-dev
+- libfreetype6-dev,
+- zlib1g-dev
+- uthash-dev
+- libgl1-mesa-dev
+- cmake-curses-gui
+- wget
 
-    ccmake -DCMAKE_TOOLCHAIN_FILE=../../rendumper/gcc-4.5.cmake -DCMAKE_INSTALL_PREFIX=/tmp/prefix ../../rendumper
+I might have forgotten some.
 
-    make && make install
+Pull the source::
 
+    git clone git://github.com/lxnt/rendumper.git
+
+To fetch and build source dependencies, use the init-prefix.sh script::
+
+    ./rendumper/init-prefix.sh deps/ build/ prefix/
+
+This will download and/or pull needed source code into deps directory,
+build them under the build directory and install into the prefix directory.
+
+An attempt to build the modular backend itself will also be made.
+
+After that symlink or copy the libgraphics library and the modules into the Dwarf Fortress
+libs directory so that it looks like::
+
+
+    lrwxrwxrwx 1 lxnt lxnt       37 Dec 31 16:38 common_code.so -> /tmp/prefix/lib/dfmodules/common_code.so
+    -rwxr-xr-x 1 lxnt lxnt 15104448 Jun  4  2012 Dwarf_Fortress
+    -rw-r--r-- 1 lxnt lxnt   466491 Jun  4  2012 libgcc_s.so.1.orig
+    lrwxrwxrwx 1 lxnt lxnt       27 Dec 31 16:38 libgraphics.so -> /tmp/prefix/lib/libgraphics.so
+    -rwxr-xr-x 1 lxnt lxnt  1451966 Jun  4  2012 libgraphics.so.orig
+    lrwxrwxrwx 1 lxnt lxnt       29 Dec 31 16:39 libSDL-1.2.so.0 -> /tmp/prefix/lib/libSDL2-2.0.so.0
+    -rwxr-xr-x 1 lxnt lxnt  4852343 Jun  4  2012 libstdc++.so.6.orig
+    lrwxrwxrwx 1 lxnt lxnt       39 Dec 31 16:38 platform_sdl2.so -> /tmp/prefix/lib/dfmodules/platform_sdl2.so
+    lrwxrwxrwx 1 lxnt lxnt       42 Dec 31 16:38 renderer_sdl2gl3.so -> /tmp/prefix/lib/dfmodules/renderer_sdl2gl3.so
+
+Notice renamed libgcc_s.so.1 and libstdc++.so.6.
+
+Launch as usual.
+
+Note that TTF support will kick in only when the number in init.txt's TRUETYPE token matches the current tileset tile
+height and there is no zoom in/out.
 
 i686-w64-mingw32 build
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -232,36 +246,14 @@ TTF support design
 
 Lockless caching text shaper/renderer - see https://github.com/lxnt/zhban
 
-``addcoloredst()`` and ``addst()`` become wrappers around simulthread part of it,
-and handle clipping by adjusting space or discarding strings altogether.
+``addst()`` becomes a simple wrapper around simuloop::add_string().
 
 String mutilation code is in modules/common/shrink.h
 
-Chopped strings get added to the current df_buffer_t.
+Chopped strings get added to a df_text_t container which is itself attached to the current df_buffer_t.
 
 On buffer submission the renderer uses the other half of the zhban to draw the text.
 
 Justification is not stored because justification seems to be done only inside the
 difference between grid_width*Pszx and pixel_width, so is irrelevant here.
 
-Length in grid units gets computed wrt current Pszxy.
-
-"Current Pszxy" is the one at the time of the buffer being added to the free_q
-in the renderer. If it changes before buffer is accepted to be drawn, the frame
-just gets dropped, just like with the grid size change.
-
-Resize strategy:
-^^^^^^^^^^^^^^^^
-
-Whatever. Let's make it work first.
-
-Thus, font height is fixed at Pszy, that is grid cell height in pixels.
-
-Any change triggers cache flushes and texalbum reupload.
-
-Sizes below ``ttf_floor`` (like, 8px or something) disable ttf entirely.
-
-Much room for thought, though.
-
-For example, a ``ttf_ceil`` might make sense, since 32x32 tiles might make sense,
-but 32pt font - much less likely.

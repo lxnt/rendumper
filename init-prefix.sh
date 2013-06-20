@@ -97,15 +97,15 @@ mkdir -p sdl2 harfbuzz zhban sdl2pnglite rdx
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
 export LDFLAGS
 
-#( cd $BUILD/sdl2 && $DEPSOURCE/SDL2-2.0.0/configure --prefix=$PREFIX && make -j4 install ) || exit
+( cd $BUILD/sdl2 && $DEPSOURCE/SDL2-2.0.0/configure --prefix=$PREFIX && make -j4 install ) || exit
 
-#( cd $BUILD/sdl2pnglite && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Release $DEPSOURCE/SDL_pnglite && make -j2 install ) || exit
+( cd $BUILD/sdl2pnglite && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Release $DEPSOURCE/SDL_pnglite && make -j2 install ) || exit
 
-#( cd $BUILD/harfbuzz && $DEPSOURCE/harfbuzz-0.9.18/configure --prefix=$PREFIX --without-glib --without-cairo && make -j4 install ) || exit
+( cd $BUILD/harfbuzz && $DEPSOURCE/harfbuzz-0.9.18/configure --prefix=$PREFIX --without-glib --without-cairo && make -j4 install ) || exit
 
-#( cd $BUILD/zhban && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Debug $DEPSOURCE/zhban && make -j2 install ) || exit
+( cd $BUILD/zhban && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_BUILD_TYPE=Debug $DEPSOURCE/zhban && make -j2 install ) || exit
 
-# cp /usr/lib/i386-linux-gnu/libGLEW.so.1.6 /usr/lib/i386-linux-gnu/libGLEW.so.1.6.0 $PREFIX/lib/ # they dropped it from 12.10 or smth
+cp /usr/lib/i386-linux-gnu/libGLEW.so.1.6 /usr/lib/i386-linux-gnu/libGLEW.so.1.6.0 $PREFIX/lib/ # they dropped it from 12.10 or smth
 
 ( cd $BUILD/rdx && cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
     -DCMAKE_BUILD_TYPE=Debug \

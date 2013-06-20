@@ -25,6 +25,14 @@ struct irenderer : public imessagesender {
     virtual df_buffer_t *get_offscreen_buffer(unsigned, unsigned) = 0;
     virtual void export_offscreen_buffer(df_buffer_t *, const char *) = 0;
 
+    /* has to be called when the renderer thread isn't running. */
+    virtual void ttf_set_size(int) = 0;
+    /* basically, if current Pszy == ttf_lineheight selected above */
+    virtual int ttf_active() = 0;
+    /* how many grid cells will the given string touch, and return data via pointers */
+    virtual int ttf_gridwidth(const uint16_t *, const uint32_t,
+                            uint32_t *, uint32_t *, uint32_t *, uint32_t *) = 0;
+
     /* starts the renderer thread. */
     virtual void start() = 0;
     virtual void join() = 0;

@@ -81,29 +81,7 @@ struct df_buffer_t {
     unsigned char *fx;         // dim, snow, rain
 
     uint8_t *tail;
-
-    uint32_t allocated_text;
-    uint32_t used_text;
-    uint8_t *text;   // df_string_t-s and their payload live here.
-    uint32_t cell_w, cell_h;  // Pszxy at the time of being free_q-ed
-};
-
-#define DF_TEXTALIGN_LEFT     0
-#define DF_TEXTALIGN_RIGHT    1
-#define DF_TEXTALIGN_CENTER   2
-#define DF_MONOSPACE_LEFT     3
-#define DF_TEXTALIGN_JUSTIFY -100500  // doesn't exist.
-
-struct df_string_t {
-    uint32_t size;  // pot_align(sizeof(*this) + strlen(s) + 1, 3), always zero-padded.
-    uint32_t grid_x;
-    uint32_t grid_y;
-    uint32_t len;
-    uint32_t align;
-    uint32_t width_pixels;
-    uint32_t width_grid;
-    uint32_t gorgeous_padding;
-    /* string follows the struct, at least 1 (zero) byte, zero-padded to 64 bits overall. */
+    void    *text;             // opaque ptr to a df_text_t
 };
 
 struct itc_message_t;

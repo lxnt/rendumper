@@ -3,6 +3,13 @@
 
 #include "itypes.h"
 
+/* The align parameter of isimuloop::add_string(). */
+#define DF_TEXTALIGN_LEFT     0
+#define DF_TEXTALIGN_RIGHT    1
+#define DF_TEXTALIGN_CENTER   2
+#define DF_MONOSPACE_LEFT     3       // bypass ttf
+#define DF_TEXTALIGN_JUSTIFY -100500  // doesn't exist.
+
 /* interface used to control the simulation loop */
 typedef char (*mainloop_foo_t)();
 typedef void (*render_things_foo_t)();
@@ -29,7 +36,7 @@ struct isimuloop : public imessagesender {
     virtual uint32_t get_actual_rfps() = 0;
 
     /* entry point for the ttf support - see itypes.h for the align values */
-    virtual int add_string(const char *str, const char *attrs, int x, int y, int align, int space) = 0;
+    virtual int add_string(const char *str, const char *attrs, int len, int x, int y, int align, int space) = 0;
 
     /* input event sink */
     virtual void add_input_event(df_input_event_t *) = 0;

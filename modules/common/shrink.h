@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstdint>
 
-extern const unsigned *codepage437;
+extern const unsigned codepage437[256];
 
 namespace shrink {
 

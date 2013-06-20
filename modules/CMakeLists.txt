@@ -118,7 +118,6 @@ set(GL_COMMON
     common/la_muerte_el_gl.cpp
     common/df_buffer.cpp
     common/shaders.cpp
-    common/cp437.cpp
 )
 
 option(SOUND_OPENAL "build sound-openal module" OFF)
@@ -235,6 +234,7 @@ endif(UNIX)
 # common code and stubs collection
 set(COMMON_SRC
     common/common_code_deps.cpp
+    common/cp437.cpp
     common/simuloop.cpp
     common/sound-stub.cpp
     common/textures-stub.cpp

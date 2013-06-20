@@ -1,5 +1,5 @@
 #include <cstdlib>
-#include <map>
+#include <vector>
 #include <ios>
 #include <fstream>
 
@@ -16,6 +16,7 @@
 #include "df_buffer.h"
 #include "ansi_colors.h"
 #include "utf8decode.h"
+#include "df_text.h"
 
 #define DFMODULE_BUILD
 #include "irenderer.h"
@@ -643,7 +644,7 @@ void blit_shader_t::get_uniform_locs() {
     u_mode      = glGetUniformLocation(program, "mode");
     u_color     = glGetUniformLocation(program, "color");
     u_srcrect   = glGetUniformLocation(program, "srcrect");
-    u_srcsize   = glGetUniformLocation(program, "rcsize");
+    u_srcsize   = glGetUniformLocation(program, "srcsize");
 
     GL_DEAD_YET();
 }
@@ -770,6 +771,468 @@ void blitter_t::_blit( blit_shader_t::blitmode_t blitmode,
 
 //} blitter_t
 
+//{ ttf_renderer_t
+/* attr streamzorzorz
+
+*/
+struct ttf_shader_t : public shader_t {
+    int u_text_sampler;
+    int u_attr_sampler;
+    int u_vp_size;
+    int u_text_size;
+    int u_colors;
+
+    void bind_attribute_locs() {
+        glBindAttribLocation(program, 0, "position");
+        glBindAttribLocation(program, 1, "stuff_in");
+        GL_DEAD_YET();
+    }
+    void get_uniform_locs() {
+        u_text_sampler    = glGetUniformLocation(program, "text_tex");
+        u_attr_sampler    = glGetUniformLocation(program, "attr_tex");
+        u_vp_size         = glGetUniformLocation(program, "vp_size");
+        u_text_size       = glGetUniformLocation(program, "text_size");
+        u_colors          = glGetUniformLocation(program, "colors");
+        if (u_colors == -1)
+            u_colors = glGetUniformLocation(program, "colors[0]");
+        GL_DEAD_YET();
+    }
+    void set_at_frame(int tu_text, int tu_attr, int vp_w, int vp_h, int tex_w, int tex_h, ansi_colors_t ccolors) {
+        GLfloat fcolors[16*4];
+        int cmap[] = DF_TO_ANSI;
+        for (int i = 0; i <16 ; i++) {
+            fcolors[4*i + 0] = (float) (ccolors[cmap[i]][0]) / 255.0;
+            fcolors[4*i + 1] = (float) (ccolors[cmap[i]][1]) / 255.0;
+            fcolors[4*i + 2] = (float) (ccolors[cmap[i]][2]) / 255.0;
+            fcolors[4*i + 3] = 1.0f;
+        }
+
+        glUseProgram(program);
+        glUniform1i(u_text_sampler, tu_text);
+        glUniform1i(u_attr_sampler, tu_attr);
+        glUniform4fv(u_colors, 16, fcolors);
+        glUniform2f(u_vp_size, vp_w, vp_h);
+        glUniform2f(u_text_size, tex_w, tex_h);
+
+        GL_DEAD_YET();
+    }
+};
+
+struct ttf_renderer_t {
+    const int tu_attr;
+    const int tu_text;
+
+    ilogger *logr, *renderlogr, *sizerlogr;
+    void initialize(const char *, int);
+    void finalize();
+    int active(int);
+    int gridwidth(const uint16_t *, const uint32_t, const uint32_t, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
+    void render(df_text_t *, int, int, int, int);
+
+    zhban_t *zhban;
+    int lineheight;
+    int font_data_len;
+    void *font_data;            // can be freeed only after zhban_drop()
+
+    GLuint attr_tex, attr_bo, text_tex, text_bo;
+    GLuint vao_name, vao_bo, idx_bo;
+    int count_max, wrote;
+
+    ttf_shader_t shader;
+
+    ttf_renderer_t():
+        tu_attr(4), tu_text(5),
+        logr(NULL), renderlogr(NULL), sizerlogr(NULL),
+        zhban(NULL), lineheight(0),
+        font_data_len(0), font_data(NULL),
+        attr_tex(0), attr_bo(0),
+        text_tex(0), text_bo(0),
+        vao_name(0), vao_bo(0),
+        idx_bo(0), count_max(2048),
+        wrote(0),
+        shader()
+    { }
+};
+int ttf_renderer_t::active(int lh) {
+    return zhban != 0 && lh == lineheight;
+}
+void ttf_renderer_t::initialize(const char* fname, int lh) {
+    logr = platform->getlogr("ttf");
+    logr->info("initialize(%s, %d)", fname, lh);
+    renderlogr = platform->getlogr("ttf.render");
+    sizerlogr = platform->getlogr("ttf.sizer");
+    if (lh == 0)
+        return; // handle [TRUETYPE:OFF]
+
+    if (zhban)
+        logr->fatal("resetting ttf_lineheight from %d to %d", lineheight, lh);
+
+    FILE *fp;
+    if (!(fp = fopen(fname, "rb"))) {
+        logr->error("can't open '%s': %s", fname, strerror(errno));
+        return;
+    }
+    fseek(fp, 0, SEEK_END);
+    font_data_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    font_data = malloc(font_data_len);
+    if (font_data == NULL) {
+        logr->error("no memory for %s (%d bytes)", fname, font_data_len);
+        return;
+    }
+    if (1 != fread(font_data, font_data_len, 1, fp)) {
+        logr->error("read failed '%s': %s", fname, strerror(errno));
+        fclose(fp);
+        return;
+    }
+    fclose(fp);
+
+    zhban = zhban_open(font_data, font_data_len, lh, 1<<20, 1<<20);
+    if (zhban == NULL) {
+        logr->error("zhban_open() failed.");
+        free(font_data);
+        return;
+    }
+    lineheight = lh;
+
+    glGenBuffers(1, &text_bo);
+    glGenBuffers(1, &attr_bo);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, attr_bo); // best practices
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);       // clowns upon them
+
+    glGenBuffers(1, &vao_bo);
+    glGenBuffers(1, &idx_bo);
+
+    glGenTextures(1, &text_tex);
+    glGenTextures(1, &attr_tex);
+
+    glBindTexture(GL_TEXTURE_2D, text_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, attr_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenVertexArrays(1, &vao_name);
+
+    glBindVertexArray(vao_name);
+    glBindBuffer(GL_ARRAY_BUFFER, vao_bo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, idx_bo);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 4, GL_INT, GL_FALSE, 32, 0);
+    glVertexAttribIPointer(1, 2, GL_INT, 32, ((char*)NULL)+16);
+
+    /* generate and upload a static index buffer */
+    int idx_bo_size = count_max * 5 * sizeof(uint32_t);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_bo_size, NULL, GL_STATIC_DRAW);
+    uint32_t *idxptr = (uint32_t *)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+
+    if (!idxptr)
+        logr->fatal("glMapBuffer(idx_bo, size=%d): returned NULL.", idx_bo_size);
+
+    for (int i = 0; i < count_max ; i++) {
+        idxptr[5*i + 0] = 4*i + 0;
+        idxptr[5*i + 1] = 4*i + 1;
+        idxptr[5*i + 2] = 4*i + 2;
+        idxptr[5*i + 3] = 4*i + 3;
+        idxptr[5*i + 4] = 0xFFFFFFFFu;
+    }
+    glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+    GL_DEAD_YET();
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    GL_DEAD_YET();
+
+    shader.initialize("ttf130");
+}
+
+void ttf_renderer_t::finalize() {
+    if (zhban) {
+        zhban_drop(zhban);
+        free(font_data);
+        zhban = NULL;
+        font_data = NULL;
+        lineheight = 0;
+    }
+}
+
+uint8_t naughty_buffer[4096];
+static char *utf16to8(const uint16_t *chars, const uint32_t len) {
+    uint8_t *ptr = naughty_buffer;
+    uint32_t i = 0;
+    while ((len > i) && ((ptr - naughty_buffer) < 4093)) {
+        uint16_t c = chars[i++];
+        if (c <= 0x7f) {
+            *ptr++ = c;
+            continue;
+        }
+        if (c <= 0x7ff) {
+            *ptr++ = (c >> 6) | 0xc0;
+            *ptr++ = (c & 0x3f) | 0x80;
+            continue;
+        }
+        *ptr++ = (c >> 12) | 0xe0;
+        *ptr++ = ((c >> 6) & 0x3f) | 0x80;
+        *ptr++ = (c & 0x3f) | 0x80;
+    }
+    *ptr = 0;
+    return (char *)naughty_buffer;
+}
+
+int ttf_renderer_t::gridwidth(const uint16_t *chars, const uint32_t len, const uint32_t pszx,
+                                uint32_t *w, uint32_t *h, uint32_t *ox, uint32_t *oy) {
+    zhban_rect_t zrect;
+    if (zhban_size(zhban, chars, 2*len, &zrect)) {
+        sizerlogr->error("zhban_size() failed");
+        return len;
+    }
+    *w = zrect.w; *h = zrect.h;
+    *ox = zrect.origin_x; *oy = zrect.origin_y;
+    int rv = (zrect.w % pszx) ? zrect.w/pszx + 1 : zrect.w/pszx;
+
+    if (sizerlogr->enabled(LL_TRACE))
+        sizerlogr->trace("pszx=%d len=%d w=%d rv=%d bytes: \"%s\"",
+                            pszx, len, zrect.w, rv, utf16to8(chars, len));
+
+    return rv;
+    //return q * pszx < rt.w ? q + 1 : q;
+}
+
+static inline uint32_t pot_align(uint32_t value, uint32_t pot) {
+    return (value + (1<<pot) - 1) & ~((1<<pot) -1);
+}
+
+void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vph) {
+    int count;
+    if ((count = text->size()) == 0)
+        return;
+    if (count > count_max)
+        renderlogr->fatal("recompile to allow %d text strings at once (current limit %d)", count, count_max);
+
+    renderlogr->trace("render([%d], %d, %d, %d, %d)", text->size(), pszx, pszy, vpw, vph);
+    ansi_colors_t ccolors = ANSI_COLORS_VGA;
+    int i;
+
+    //{ upload attrs
+    int attr_bo_size = text->attrs_used;
+    int attr_tex_w = 512;
+    int attr_tex_h = attr_bo_size / attr_tex_w + 1;
+    attr_bo_size = attr_tex_w * attr_tex_h;
+
+    /* the following should be a GL_TEXTURE_BUFFER, but it's 3.1+. */
+    /* thus it stays a texture. */
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, attr_bo); // staying strictly 3.0 :(
+#if 0
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, NULL, GL_STREAM_DRAW);
+    uint8_t *attrptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+#else
+    uint8_t *attrptr = (uint8_t *)malloc(attr_bo_size);
+#endif
+    if (!attrptr)
+        renderlogr->fatal("glMapBuffer(attr_bo_size=%d): returned NULL.", attr_bo_size);
+    memcpy(attrptr, text->attrs, text->attrs_used);
+    /* release the attr texture bo */
+#if 0
+    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+#else
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, attrptr, GL_STREAM_DRAW);
+#endif
+
+    /* "upload" attr-texture */
+    renderlogr->trace("attr_bo_size=%d attr_tex_w=%d attr_tex_h=%d", attr_bo_size, attr_tex_w, attr_tex_h);
+    glActiveTexture(GL_TEXTURE0 + tu_attr);
+    glBindTexture(GL_TEXTURE_2D, attr_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, attr_tex_w, attr_tex_h, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    GL_DEAD_YET();
+
+    //}
+    //{ Make an album texture of rendered text snippets.
+    /*
+       Since it's an one-off thing, we merge the album index
+       into the vertex attributes, just repeating it for
+       all vertices of a quad.
+
+       Thus, the VAO backing buffer is filled up here too. */
+
+    int vao_bo_size = count * 4 * 8 * sizeof(int32_t);
+
+        //{ map vao bo
+    glBindVertexArray(vao_name);
+    glBindBuffer(GL_ARRAY_BUFFER, vao_bo);
+#if 0
+    glBufferData(GL_ARRAY_BUFFER, vao_bo_size, NULL, GL_STREAM_DRAW);
+    int32_t *vao = (int32_t *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+#else
+    int32_t *vao = (int32_t *)malloc(vao_bo_size);
+    int32_t *bdo = vao;
+#endif
+
+    if (!vao)
+        renderlogr->fatal("glMapBuffer(ttf-vao, size=%d): returned NULL.",vao_bo_size);
+        //}
+        //{ generate VAO data and texalbum metadata
+    std::vector<int> tex_offsets;
+    int tex_w = 512, tex_h = 0;
+    int texcur_x = 0,texcur_y = 0;     // current posn.
+    int row_h = text->zrects[0].h + 1; // first row height: texture + clustermap
+    int left, right, top, bottom, gx, gy; // VAO stuff - quad.
+    int tex_t, tex_r, tex_l, tex_b;       // VAO stuff - texcoords.
+    int zr_w, zr_h;
+    for (i = 0; i < count; i++) {
+        zr_w = text->zrects[i].w;
+        zr_h = text->zrects[i].h;
+        if ((tex_w - texcur_x < zr_w) || ( zr_h > row_h))// advance down
+            texcur_x = 0, texcur_y += row_h, row_h = zr_h + 1;
+
+        tex_offsets.push_back(texcur_x);
+        tex_offsets.push_back(texcur_y);
+
+        tex_l = texcur_x;        tex_t = texcur_y;
+        tex_r = texcur_x + zr_w; tex_b = texcur_y + zr_h;
+
+        texcur_x += zr_w;
+
+        gx = text->grid_coords[2*i];
+        gy = text->grid_coords[2*i+1];
+        left   = gx * pszx; right = left + zr_w;
+        bottom = gy * pszy; top = bottom + zr_h;
+
+        renderlogr->trace("[%d] grid %d,%d l=%d r=%d b=%d t=%d", i, gx, gy, left, right, bottom, top);
+        int fg_attr_offset = text->attr_offsets[i];
+        int clustermap_row = texcur_y + zr_h + 1;
+
+        vao[ 0] = left;  vao[ 1] = bottom;  // vertex
+        vao[ 2] = tex_l; vao[ 3] = tex_b;   // texcoord
+        vao[ 4] = fg_attr_offset;
+        vao[ 5] = clustermap_row;
+        vao[ 6] = 0;
+        vao[ 7] = 0;
+        vao += 8;
+
+        vao[ 0] = right;  vao[ 1] = bottom;
+        vao[ 2] = tex_r;  vao[ 3] = tex_b;
+        vao[ 4] = fg_attr_offset;
+        vao[ 5] = clustermap_row;
+        vao[ 6] = 0;
+        vao[ 7] = 0;
+        vao += 8;
+
+        vao[ 0] = left;   vao[ 1] = top;
+        vao[ 2] = tex_l;  vao[ 3] = tex_t;
+        vao[ 4] = fg_attr_offset;
+        vao[ 5] = clustermap_row;
+        vao[ 6] = 0;
+        vao[ 7] = 0;
+        vao += 8;
+
+        vao[ 0] = right;  vao[ 1] = top;
+        vao[ 2] = tex_r;  vao[ 3] = tex_t;
+        vao[ 4] = fg_attr_offset;
+        vao[ 5] = clustermap_row;
+        vao[ 6] = 0;
+        vao[ 7] = 0;
+        vao += 8;
+    }
+        //}
+        //{ unmap vao bo
+#if 0
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+#else
+    glBufferData(GL_ARRAY_BUFFER, vao_bo_size, bdo, GL_STREAM_DRAW);
+#endif
+        //}
+
+    tex_h = texcur_y + row_h;
+    int tex_bo_size = tex_w * tex_h * 4;  // tex_w*4-aligned, which is 4096
+    renderlogr->trace("text_tex %dx%d bo %d bytes", tex_w, tex_h, tex_bo_size);
+
+        //{ map text texture bo
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, text_bo);
+#if 0
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, NULL, GL_STREAM_DRAW);
+    uint8_t *texptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
+#else
+    uint8_t *texptr = (uint8_t *)malloc(tex_bo_size);
+#endif
+    if (!texptr)
+        renderlogr->fatal("glMapBuffer(tex_bo_size=%d): returned NULL.", tex_bo_size);
+        //}
+        //{ render text and copy results into the buffer.
+    for (i = 0; i < count; i++) {
+
+        zhban_rect_t *zr = &text->zrects[i];
+
+        if (renderlogr->enabled(LL_TRACE)) {
+            char *u8 = utf16to8(text->strings + text->string_offsets[i]/2,
+                                text->string_lengths[i]);
+            renderlogr->trace("[%d] initial zr sz %dx%d ori %d,%d bytes: \"%s\"",
+                    i, zr->w, zr->h, zr->origin_x, zr->origin_y, u8);
+        }
+
+        zhban_render(zhban, text->strings + text->string_offsets[i]/2,
+                            text->string_lengths[i]*2, zr);
+
+        texcur_x = tex_offsets[2*i];
+        texcur_y = tex_offsets[2*i + 1];
+        renderlogr->trace("[%d] tex blit %dx%d to %d,%d", i, zr->w, zr->h, texcur_x, texcur_y);
+        uint8_t *dest_origin = texptr + 4 * (texcur_x + texcur_y * tex_w);
+        for (uint32_t j = 0; j < zr->h+1; j++)
+            memcpy(dest_origin + j * tex_w * 4, zr->data + j * zr->w, zr->w*4);
+    }
+        //}
+        //{ unmap text texture bo, set up the texture
+#if 0
+    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+#else
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, texptr, GL_STREAM_DRAW);
+#endif
+
+    /* "upload" the text-texture */
+    glActiveTexture(GL_TEXTURE0 + tu_text);
+    glBindTexture(GL_TEXTURE_2D, text_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, tex_w, tex_h, 0, GL_RG_INTEGER , GL_UNSIGNED_SHORT, 0);
+    GL_DEAD_YET();
+    /* dump it. */
+    if (!wrote) { FILE *fp = fopen("tex.dump", "w");
+        fwrite(texptr, tex_bo_size, 1, fp);
+        fclose(fp);
+        wrote=1;
+    }
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    GL_DEAD_YET();
+        //}
+
+    //}
+    /* GL-render */
+    shader.set_at_frame(tu_text, tu_attr, vpw, vph, tex_w, tex_h, ccolors);
+    glEnableClientState(GL_PRIMITIVE_RESTART_NV);
+    GL_DEAD_YET();
+    glPrimitiveRestartIndexNV(0xFFFFFFFFu);
+    GL_DEAD_YET();
+    glDrawElements(GL_TRIANGLE_STRIP, count*5, GL_UNSIGNED_INT, 0);
+    GL_DEAD_YET();
+    glDisableClientState(GL_PRIMITIVE_RESTART_NV);
+    GL_DEAD_YET();
+
+    /* clean up GL state */
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    GL_DEAD_YET();
+
+    text->reset();
+}
+
+//}
+
 /*  OpenGL 3.0 renderer, rewrite of renderer_sdl2gl2. */
 
 struct implementation : public irenderer {
@@ -794,6 +1257,10 @@ struct implementation : public irenderer {
     void export_offscreen_buffer(df_buffer_t *buf, const char *name);
 
     void acknowledge(const itc_message_t&) {}
+
+    void ttf_set_size(int);
+    int ttf_active();
+    int ttf_gridwidth(const uint16_t *, const unsigned, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
 
     void start();
     void join();
@@ -840,6 +1307,9 @@ struct implementation : public irenderer {
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
     ilogger *logr, *nputlogr, *rshlogr;
     void export_buffer(df_buffer_t *buf, const char *name);
+
+    ttf_renderer_t ttf;
+    int ttf_lineheight;
 };
 
 void implementation::export_buffer(df_buffer_t *buf, const char *name) {
@@ -982,11 +1452,14 @@ void implementation::initialize() {
         {SDL_GL_DEPTH_SIZE, "SDL_GL_DEPTH_SIZE", 0},
         {SDL_GL_STENCIL_SIZE, "SDL_GL_STENCIL_SIZE", 0},
         {SDL_GL_DOUBLEBUFFER, "SDL_GL_DOUBLEBUFFER", 1},
+#if 1
         {SDL_GL_CONTEXT_MAJOR_VERSION, "SDL_GL_CONTEXT_MAJOR_VERSION", 3},
         {SDL_GL_CONTEXT_MINOR_VERSION, "SDL_GL_CONTEXT_MINOR_VERSION", 0}
-#if 0
-        {SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", cmask},
-        {SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", cflags}
+#else
+        {SDL_GL_CONTEXT_MAJOR_VERSION, "SDL_GL_CONTEXT_MAJOR_VERSION", 3},
+        {SDL_GL_CONTEXT_MINOR_VERSION, "SDL_GL_CONTEXT_MINOR_VERSION", 1},
+        {SDL_GL_CONTEXT_PROFILE_MASK, "SDL_GL_CONTEXT_PROFILE_MASK", SDL_GL_CONTEXT_PROFILE_CORE},
+        {SDL_GL_CONTEXT_FLAGS, "SDL_GL_CONTEXT_FLAGS", 0}
 #endif
     };
 
@@ -996,7 +1469,7 @@ void implementation::initialize() {
                 attr_req[i].name, attr_req[i].value, SDL_GetError());
     }
 
-    gl_window = SDL_CreateWindow("~some title~",
+    gl_window = SDL_CreateWindow("Dwarf Fortress / sdl2gl3",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         640, 300, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
 
@@ -1016,17 +1489,23 @@ void implementation::initialize() {
         glclogr->info("%s requested %d got %d",
             attr_req[i].name, attr_req[i].value, value);
     }
+    glclogr->info("GL version %s", glGetString(GL_VERSION));
+    glclogr->info("GL renderer %s", glGetString(GL_RENDERER));
+    glclogr->info("GLSL version %s",glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     GLenum err = glewInit();
     if (GLEW_OK != err)
         glclogr->fatal("glewInit(): %s", glewGetErrorString(err));
 
-    if (!glMapBufferRange)
+    if (!glMapBufferRange) {
         glclogr->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
+    }
 
     if (!glFenceSync)
         glclogr->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 
+    if (!glPrimitiveRestartIndexNV)
+        glclogr->fatal("NV_primitive_restart extension or OpenGL 3.1+ is required.");
 #if 0
     /* this is not present in glew 1.6. and it ain't that fatal anyway */
     if (!GLEW_ARB_map_buffer_alignment)
@@ -1056,6 +1535,7 @@ void implementation::initialize() {
     grid_streamer.initialize();
     grid_shader.initialize("grid130");
     //blitter.initialize();
+    ttf.initialize("data/art/font.ttf", ttf_lineheight);
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
     album = NULL;
@@ -1067,6 +1547,7 @@ void implementation::finalize() {
     glDeleteTextures(1, &findextex);
     grid_shader.finalize();
     grid_streamer.finalize();
+    ttf.finalize();
 }
 
 void implementation::upload_album() {
@@ -1125,8 +1606,9 @@ void implementation::upload_album() {
     delete []data;
 
     GL_DEAD_YET();
-    logr->info("upload_album(): font %dx%d tui 0 tname %d findex %dx%d, %d tui 1 tname %d",
-                        font_w, font_h, fonttex, findex_w, findex_h, findextex, album->count);
+    logr->info("upload_album(): primary cel %dx%d font %dx%d findex %dx%d",
+                        album->index[1].rect.w, album->index[1].rect.h,
+                        font_w, font_h, findex_w, findex_h, album->count);
 
     ansi_colors_t ccolors = ANSI_COLORS_VGA;
 
@@ -1370,9 +1852,6 @@ void implementation::renderer_thread(void) {
         int rv;
         df_buffer_t *tbuf;
         while ((tbuf = grid_streamer.get_a_buffer()) != NULL) {
-            /* better get rid of those float<->int conversions at each snort */
-            tbuf->cell_w = Parx > Pary ? Psz : Psz * Parx;
-            tbuf->cell_h = Parx < Pary ? Psz : Psz * Pary;
             if ((rv = mqueue->copy(free_buf_q, (void *)&tbuf, sizeof(void *), -1)))
                 logr->fatal("%s: %d from mqueue->copy()", __func__, rv);
             else
@@ -1436,6 +1915,12 @@ void implementation::renderer_thread(void) {
                 //blitter.fill(&dst, &dstsz, 255,0,255,255);
             }
 #endif
+
+            if (buf->text && ttf_active())
+                ttf.render((df_text_t *)(buf->text),
+                           (int)(Psz*Parx), (int)(Psz*Pary),
+                            viewport_w, viewport_h);
+
             SDL_GL_SwapWindow(gl_window);
             logr->trace("swap");
         }
@@ -1565,7 +2050,12 @@ void implementation::zoom_reset() { cmd_zoom_reset = true;  }
 void implementation::toggle_fullscreen() { logr->trace("toggle_fullscreen(): stub"); }
 void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("override_grid_size(): stub"); }
 void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
-void implementation::reset_textures() { cmd_tex_reset = true;  }
+void implementation::reset_textures() { cmd_tex_reset = true; }
+void implementation::ttf_set_size(int h) { ttf_lineheight = h; }
+int implementation::ttf_active() { return ttf.active(Psz*Pary); }
+int implementation::ttf_gridwidth(const uint16_t *c, const unsigned cc, uint32_t *w,  uint32_t *h, uint32_t *ox,  uint32_t *oy) {
+    return ttf.gridwidth(c, cc, Parx*Psz, w, h, ox, oy);
+}
 int implementation::mouse_state(int *x, int *y) {
     /* race-prone. convert to uint32_t mouse_gxy if it causes problems. */
     *x = mouse_xg;
@@ -1582,6 +2072,8 @@ implementation::implementation() {
 
     if ((free_buf_q = mqueue->open("free_buffers", 1<<10)) < 0)
         logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
+
+    ttf_lineheight = 0;
 }
 
 /* Below is code copied from renderer_ncurses.

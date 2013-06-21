@@ -84,6 +84,8 @@ void enablerst::zoom_display(zoom_commands command) {
 }
 void enablerst::set_fps(int fps) { getsimuloop()->set_target_sfps(fps); }
 void enablerst::set_gfps(int gfps) { getsimuloop()->set_target_rfps(gfps); }
+void enablerst::reset_textures(void) { getrenderer()->reset_textures(); }
+bool enablerst::uses_opengl(void) { DFM_STUB(enablerst::uses_opengl); return false; }
 /* was: renderer::swap_arrays()/renderer::gps_allocate()/renderer::resize().
     must be in libgraphics.so since it depends on the gps object */
 static void assimilate_buffer(df_buffer_t *buf) {

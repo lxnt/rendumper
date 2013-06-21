@@ -1030,7 +1030,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     /* the following should be a GL_TEXTURE_BUFFER, but it's 3.1+. */
     /* thus it stays a texture. */
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, attr_bo); // staying strictly 3.0 :(
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, NULL, GL_STREAM_DRAW);
     uint8_t *attrptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 #else
@@ -1040,10 +1040,12 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         renderlogr->fatal("glMapBuffer(attr_bo_size=%d): returned NULL.", attr_bo_size);
     memcpy(attrptr, text->attrs, text->attrs_used);
     /* release the attr texture bo */
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #else
     glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, attrptr, GL_STREAM_DRAW);
+    free(attrptr);
+    attrptr = NULL;
 #endif
 
     /* "upload" attr-texture */
@@ -1068,7 +1070,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         //{ map vao bo
     glBindVertexArray(vao_name);
     glBindBuffer(GL_ARRAY_BUFFER, vao_bo);
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glBufferData(GL_ARRAY_BUFFER, vao_bo_size, NULL, GL_STREAM_DRAW);
     int32_t *vao = (int32_t *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 #else
@@ -1144,10 +1146,12 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     }
         //}
         //{ unmap vao bo
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glUnmapBuffer(GL_ARRAY_BUFFER);
 #else
     glBufferData(GL_ARRAY_BUFFER, vao_bo_size, bdo, GL_STREAM_DRAW);
+    free(bdo);
+    bdo = NULL;
 #endif
         //}
 
@@ -1157,7 +1161,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
         //{ map text texture bo
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, text_bo);
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, NULL, GL_STREAM_DRAW);
     uint8_t *texptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
 #else
@@ -1190,10 +1194,12 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     }
         //}
         //{ unmap text texture bo, set up the texture
-#if 0
+#if !defined(TTFR_MALLOC_BUFS)
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #else
     glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, texptr, GL_STREAM_DRAW);
+    free(texptr);
+    texptr = NULL;
 #endif
 
     /* "upload" the text-texture */

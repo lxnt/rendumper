@@ -140,7 +140,7 @@ void implementation::start() {
         return;
     }
     started = true;
-    platform->thread_create(thread_stub, "simulation", (void *)this);
+    thread_id = platform->thread_create(thread_stub, "simulation", (void *)this);
 }
 
 void implementation::join() {

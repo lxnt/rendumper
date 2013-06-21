@@ -175,6 +175,20 @@ struct iplatform {
 
     /* Use this to free the return value. ignores NULLs*/
     virtual void gfree(const char * const *) = 0;
+
+    /* Pushes everything from init.txt.
+        filename - to distinguish between init.txt/colors.txt etc
+        name, value:
+            [NAME:VALUE]
+        where value gobbles up any additional colons.
+    */
+    virtual void set_setting(const char* filename, const char *name, const char *value) = 0;
+
+    /* returns read-only utf-8 zero-terminated buffer with the value from the above.
+        name is "filename-sans-suffix" + "." + "name" from the above.
+        e. g. colors.txt/[GREEN_R:0] ends up as name="colors.green_r", value="0"
+    */
+    virtual const char* get_setting(const char *name) = 0;
 };
 
 

@@ -15,6 +15,7 @@
 #include "df_glob.h"
 #include "df_buffer.h"
 #include "logging.h"
+#include "settings.h"
 
 #define DFMODULE_BUILD
 #include "iplatform.h"
@@ -209,6 +210,13 @@ struct implementation : public iplatform {
         return df_glob(pattern, exclude, include_dirs, include_files);
     }
     void gfree(const char * const * rv) { df_gfree(rv); }
+
+    void set_setting(const char* filename, const char *name, const char *value) {
+        cc_set_setting(filename, name, value);
+    }
+    const char* get_setting(const char *name) {
+        return cc_get_setting(name);
+    }
 };
 
 

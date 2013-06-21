@@ -24,7 +24,7 @@ else(MSVC)
     include_directories(${CMAKE_INSTALL_PREFIX}/include)
 
     if (UNIX)
-        if(NOT BUILD_LIBGRAPHICS)
+        if(NOT BUILD_LIBGRAPHICS AND ARCH64)
             option(BUILD_32BIT "Compile 32bit binaries" ON)
         else()
             set(BUILD_32BIT TRUE)

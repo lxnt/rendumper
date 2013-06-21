@@ -155,15 +155,15 @@ string encode_utf8(int unicode) {
   }
   else if (unicode <= 0x07ff) { // 2-byte utf-8
     s.resize(2, 0);
-    s[0] = 0xc0;
+    s[0] = (char)0xc0;
   }
   else if (unicode <= 0xffff) { // 3-byte utf-8
    s.resize(3, 0);
-    s[0] = 0xe0;
+    s[0] = (char)0xe0;
   }
   else { // 4-byte utf-8
     s.resize(4, 0);
-    s[0] = 0xf0;
+    s[0] = (char)0xf0;
   }
 
   // Build up the string, right to left

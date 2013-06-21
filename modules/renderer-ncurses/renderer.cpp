@@ -10,9 +10,15 @@
 #define DFMODULE_BUILD
 #include "irenderer.h"
 
-extern const unsigned *codepage437;
+extern const unsigned codepage437[437];
+
+iplatform *platform = NULL;
+getplatform_t _getplatform = NULL;
 
 namespace {
+
+imqueue   *mqueue   = NULL;
+isimuloop *simuloop = NULL;
 
 struct implementation : public irenderer {
     void release(void);
@@ -46,9 +52,6 @@ struct implementation : public irenderer {
     void simuloop_quit() { not_done = false; }
     bool started;
 
-    iplatform *platform;
-    imqueue *mqueue;
-    isimuloop *simuloop;
     ilogger *logr;
 
     imqd_t incoming_q;
@@ -67,10 +70,7 @@ implementation::implementation() {
     started = false;
     not_done = true;
     dropped_frames = 0;
-    platform = getplatform();
     logr = platform->getlogr("ncurses");
-    simuloop = getsimuloop();
-    mqueue = getmqueue();
     incoming_q = mqueue->open("renderer", 1<<10);
 
     /* don't care what init.txt says */
@@ -407,10 +407,37 @@ void implementation::renderer_thread(void) {
 
 void implementation::release(void) { }
 
+/* module glue */
+
 static implementation *impl = NULL;
+
+getmqueue_t   _getmqueue = NULL;
+getsimuloop_t _getsimuloop = NULL;
+
+extern "C" DFM_EXPORT void DFM_APIEP dependencies(
+                            getplatform_t   **pl,
+                            getmqueue_t     **mq,
+                            getrenderer_t   **rr,
+                            gettextures_t   **tx,
+                            getsimuloop_t   **sl,
+                            getmusicsound_t **ms,
+                            getkeyboard_t   **kb) {
+    *pl = &_getplatform;
+    *mq = &_getmqueue;
+    *rr = NULL;
+    *tx = NULL;
+    *sl = &_getsimuloop;
+    *ms = NULL;
+    *kb = NULL;
+}
+
 extern "C" DFM_EXPORT irenderer * DFM_APIEP getrenderer(void) {
-    if (!impl)
+    if (!impl) {
+        platform = _getplatform();
+        mqueue   = _getmqueue();
+        simuloop = _getsimuloop();
         impl = new implementation();
+    }
     return impl;
 }
 } /* ns */

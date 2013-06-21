@@ -1,15 +1,11 @@
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions(-DDEBUG=8)
-endif()
-
 if(NOT MSVC)
     add_definitions(-Wno-sign-compare)
 endif()
 
 if(MSVC)
-set(LIBS z)
+    set(LIBS z)
 else()
-set(LIBS m z)
+    set(LIBS m z)
 endif()
 
 if(FG_DUMPER)
@@ -73,7 +69,6 @@ if(UNIX)
     set(CMAKE_INSTALL_RPATH "\$ORIGIN")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 endif()
-
 
 if(BUILD_FORTRESS)
     # pretend to build Dwarf_Fortess.exe

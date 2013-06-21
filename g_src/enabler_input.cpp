@@ -702,14 +702,15 @@ set<InterfaceKey> enabler_inputst::get_input(Time now) {
     // Delete the event from the timeline and iterate
     timeline.erase(ev++);
   }
-#ifdef DEBUG
-  if (input.size() && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
-    cout << "Returning input:\n";
-    set<InterfaceKey>::iterator it;
-    for (it = input.begin(); it != input.end(); ++it)
-        cout << "    " << GetKeyDisplay(*it) << ": " << GetBindingDisplay(*it) << endl;
-  }
-#endif
+    if (nputlogr->enabled(LL_TRACE))
+        if (input.size() && !init.display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
+            nputlogr->trace("Returning input:");
+            set<InterfaceKey>::iterator it;
+            for (it = input.begin(); it != input.end(); ++it)
+                nputlogr->trace("    %s: %s", GetKeyDisplay(*it).c_str(),
+                                            GetBindingDisplay(*it).c_str());
+        }
+
   // It could be argued that the "record event" step of recording
   // belongs in add_input, not here.  I don't hold with this
   // argument. The whole point is to record events as the user seems
@@ -1018,9 +1019,7 @@ void enabler_inputst::prefix_toggle() {
 
 void enabler_inputst::prefix_add_digit(char digit) {
   prefix_command.push_back(digit);
-#ifdef DEBUG
-  cout << "Built prefix to " << prefix_command << endl;
-#endif
+  nputlogr->trace("prefix_add_digit(%d): Built prefix to '%s'", (int)digit, prefix_command.c_str());
   if (atoi(prefix_command.c_str()) > 99)
     prefix_command = "99";  // Let's not go overboard here.
 }

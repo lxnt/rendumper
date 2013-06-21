@@ -1497,10 +1497,6 @@ void implementation::initialize() {
     if (GLEW_OK != err)
         glclogr->fatal("glewInit(): %s", glewGetErrorString(err));
 
-    if (!glMapBufferRange) {
-        glclogr->fatal("ARB_map_buffer_range extension or OpenGL 3.0+ is required.");
-    }
-
     if (!glFenceSync)
         glclogr->fatal("ARB_sync extension or OpenGL 3.2+ is required.");
 

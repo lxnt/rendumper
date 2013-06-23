@@ -12,28 +12,24 @@
    TODO: rewrite this in stdlib-free C++ or plain old C */
 
 struct df_text_t {
-    std::vector<zhban_rect_t> zrects;
-    std::vector<uint32_t> attr_offsets;
-    std::vector<uint32_t> grid_coords;
-    std::vector<uint32_t> string_lengths;
-    std::vector<uint32_t> string_offsets;
-    std::vector<uint32_t> clustermap_offsets;
+    std::vector<zhban_rect_t> zrects;           // shaping results
+    std::vector<uint32_t> attr_offsets;         // per-string offsets into *attrs buffer
+    std::vector<uint32_t> grid_coords;          // destination grid coords
+    std::vector<uint32_t> string_lengths;       // string lengths
+    std::vector<uint32_t> string_offsets;       // per-string offsets into *strings buffer
 
-    uint16_t *strings;
-    uint32_t strings_used;
-    uint32_t strings_allocated;
-    uint8_t *attrs;
+    uint16_t *strings;                          // buffer with all the strings
+    uint32_t strings_used;                      // used string buffer space
+    uint32_t strings_allocated;                 // allocated string buffer space
+    uint8_t *attrs;                             // buffer with all strings' per-char attributes
     uint32_t attrs_used;
     uint32_t attrs_allocated;
-    uint32_t clustermap_size;
 
     df_text_t() :
         zrects(), attr_offsets(), grid_coords(),
         string_lengths(), string_offsets(),
-        clustermap_offsets(),
         strings(NULL), strings_used(0), strings_allocated(0),
-        attrs(NULL), attrs_used(0), attrs_allocated(0),
-        clustermap_size(0)
+        attrs(NULL), attrs_used(0), attrs_allocated(0)
         { }
 
     void reset() {
@@ -42,8 +38,6 @@ struct df_text_t {
         grid_coords.clear();
         string_lengths.clear();
         string_offsets.clear();
-        clustermap_offsets.clear();
-        clustermap_size = 0;
         attrs_used = 0;
         strings_used = 0;
     }
@@ -78,9 +72,6 @@ struct df_text_t {
         zrect.origin_x = ox;
         zrect.origin_y = oy;
         zrects.push_back(zrect);
-
-        clustermap_offsets.push_back(w);
-        clustermap_size += w*4;
     }
 
     int size() { return string_offsets.size(); }

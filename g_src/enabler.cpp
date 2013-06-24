@@ -88,6 +88,8 @@ void enablerst::reset_textures(void) { getrenderer()->reset_textures(); }
 bool enablerst::uses_opengl(void) { DFM_STUB(enablerst::uses_opengl); return false; }
 /* was: renderer::swap_arrays()/renderer::gps_allocate()/renderer::resize().
     must be in libgraphics.so since it depends on the gps object */
+static bool export_effects = false;
+unsigned char *gps_screenfxpos = NULL;
 static void assimilate_buffer(df_buffer_t *buf) {
     gps.screen = buf->screen;
     gps.screentexpos = buf->texpos;
@@ -95,6 +97,7 @@ static void assimilate_buffer(df_buffer_t *buf) {
     gps.screentexpos_grayscale = buf->grayscale;
     gps.screentexpos_cf = buf->cf;
     gps.screentexpos_cbr = buf->cbr;
+    gps_screenfxpos = export_effects ? buf->fx : NULL;
 
     /* maybe force_full_display_count will overflow. ;) */
     gps.resize(buf->w, buf->h);
@@ -138,6 +141,9 @@ int main (int argc, char* argv[]) {
     if (!lock_and_load(argc > 1 ? argv[1] : "sdl2gl3", NULL))
         return 1;
 
+    // FIXME: crude hack for effects export
+    export_effects = argc < 2;
+
     platform = getplatform();
     mainlogr = platform->getlogr("df");
     stubs_logr = platform->getlogr("df.stubs");
@@ -159,7 +165,7 @@ int main (int argc, char* argv[]) {
             mainlogr->warn("Initializing sound failed, no sound will be played");
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
-
+    mainlogr->warn("export_effects: %s", export_effects ? "Y": "N");
     // Load keyboard map
     keybinding_init();
     enabler.load_keybindings("data/init/interface.txt");

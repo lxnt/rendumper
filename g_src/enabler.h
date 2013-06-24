@@ -78,6 +78,9 @@ using std::queue;
 extern ilogger *stubs_logr;
 #define DFM_STUB(foo) stubs_logr->error("Stub '%s' called", #foo)
 
+/* ala gps.screentexpos, but for the dim/rain/snow. can't add it to graphicst alas. */
+extern unsigned char *gps_screenfxpos;
+
 #define GAME_TITLE_STRING "Dwarf Fortress"
 
 char get_slot_and_addbit_uchar(unsigned char &addbit,long &slot,long checkflag,long slotnum);

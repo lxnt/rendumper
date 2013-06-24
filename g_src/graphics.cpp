@@ -163,6 +163,11 @@ void graphicst::dim_colors(long x, long y, char dim)
         && x <= clipx[1]
         && y >= clipy[0]
         && y <= clipy[1]) {
+        if (gps_screenfxpos) {
+            unsigned char t = gps_screenfxpos[x*dimy + y];
+            gps_screenfxpos[x*dimy + y] = (t & 0xf8) | (dim & 7);
+            return;
+        }
 
         size_t base = 4*(x*dimy + y);
 
@@ -273,6 +278,12 @@ void graphicst::rain_color_square(long x, long y)
         && x <= clipx[1]
         && y >= clipy[0]
         && y <= clipy[1] ) {
+        if (gps_screenfxpos) {
+            unsigned char t = gps_screenfxpos[x*dimy + y];
+            gps_screenfxpos[x*dimy + y] = t | 8;
+            return;
+        }
+
         size_t base = 4*(x*dimy + y);
         unsigned char& fg = screen[base + 1];
         unsigned char& bg = screen[base + 2];
@@ -290,6 +301,11 @@ void graphicst::snow_color_square(long x, long y)
         && x <= clipx[1]
         && y >= clipy[0]
         && y <= clipy[1] ) {
+        if (gps_screenfxpos) {
+            unsigned char t = gps_screenfxpos[x*dimy + y];
+            gps_screenfxpos[x*dimy + y] = t | 16;
+            return;
+        }
         size_t base = 4*(x*dimy + y);
         unsigned char& fg = screen[base + 1];
         unsigned char& bg = screen[base + 2];

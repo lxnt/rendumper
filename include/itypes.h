@@ -78,7 +78,8 @@ struct df_buffer_t {
     unsigned char *grayscale;
     unsigned char *cf;
     unsigned char *cbr;
-    unsigned char *fx;         // dim, snow, rain
+    unsigned char *fx;         // dim, snow, rain:
+    // (has_snow<<5)|(has_rain<<4)|(dim & 7), where dim is 0 - 4
 
     uint8_t *tail;
     void    *text;             // opaque ptr to a df_text_t

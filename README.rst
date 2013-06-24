@@ -21,7 +21,8 @@ In no particular order:
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t
 - offload  dim/rain/snow effects to the renderer, implement in shaders,
-  reimplement original in the ncurses renderer.
+  reimplement original in the ncurses renderer. = does not work because
+  relevant graphicst methods are not getting called.
 - compile with the same flags as SDL is: -mmx -3dnow -sse
 - make a knob for max-optimization builds.
 - implement SoundSense soundpack support in the sound module.

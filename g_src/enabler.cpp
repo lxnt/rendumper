@@ -160,8 +160,6 @@ int main (int argc, char* argv[]) {
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
 
-    renderer->ttf_set_size(init.font.ttf_limit);
-
     // Load keyboard map
     keybinding_init();
     enabler.load_keybindings("data/init/interface.txt");

@@ -1,8 +1,6 @@
 #if !defined(ANSICOLORS_H)
 #define ANSICOLORS_H
 
-typedef int ansi_colors_t[16][3];
-
 /*
     ANSI/?GA palette color sequence is:
 
@@ -18,7 +16,14 @@ typedef int ansi_colors_t[16][3];
 
 */
 
-#define DF_TO_ANSI { \
+/*
+    ANSI black red  green brown blue magenta cyan  lgray dgray lred  lgreen yellow lblue lmagenta cyan   white
+     DF  black blue green cyan  red  magenta brown lgray dgray lblue lgreen lcyan  lred  lmagenta yellow white
+     M     *    x     *     x    x      *      x     *     *     x      *      x     x      *        x     *
+*/
+
+/* index mapping */
+#define ANSI_TO_DF { \
     0,  4,  2,  6, 1,  5,  3,  7, \
     8, 12, 10, 14, 9, 13, 11, 15  }
 

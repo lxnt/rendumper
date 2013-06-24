@@ -14,7 +14,6 @@
 #include "itextures.h"
 #include "la_muerte_el_gl.h"
 #include "df_buffer.h"
-#include "ansi_colors.h"
 #include "utf8decode.h"
 #include "df_text.h"
 
@@ -528,8 +527,7 @@ struct grid_shader_t : public shader_t {
 
     void set_at_frame(float);
     void set_at_resize(float, float, int, unsigned, unsigned);
-    void set_at_font(int, int, ansi_colors_t);
-
+    void set_at_font(int, int, const ansi_colors_t *);
 };
 
 void grid_shader_t::bind_attribute_locs() {
@@ -588,14 +586,13 @@ void grid_shader_t::set_at_resize(float parx, float pary, int psz,
 }
 
 void grid_shader_t::set_at_font(int tu_font, int tu_findex,
-                                         ansi_colors_t ccolors) {
+                                    const ansi_colors_t *ccolors) {
 
     GLfloat fcolors[16*4];
-    int cmap[] = DF_TO_ANSI;
     for (int i = 0; i <16 ; i++) {
-        fcolors[4*i + 0] = (float) (ccolors[cmap[i]][0]) / 255.0;
-        fcolors[4*i + 1] = (float) (ccolors[cmap[i]][1]) / 255.0;
-        fcolors[4*i + 2] = (float) (ccolors[cmap[i]][2]) / 255.0;
+        fcolors[4*i + 0] = (float) ((*ccolors)[i][0]) / 255.0;
+        fcolors[4*i + 1] = (float) ((*ccolors)[i][1]) / 255.0;
+        fcolors[4*i + 2] = (float) ((*ccolors)[i][2]) / 255.0;
         fcolors[4*i + 3] = 1.0f;
     }
 
@@ -772,9 +769,6 @@ void blitter_t::_blit( blit_shader_t::blitmode_t blitmode,
 //} blitter_t
 
 //{ ttf_renderer_t
-/* attr streamzorzorz
-
-*/
 struct ttf_shader_t : public shader_t {
     int u_text_sampler;
     int u_attr_sampler;
@@ -797,20 +791,23 @@ struct ttf_shader_t : public shader_t {
             u_colors = glGetUniformLocation(program, "colors[0]");
         GL_DEAD_YET();
     }
-    void set_at_frame(int tu_text, int tu_attr, int vp_w, int vp_h, int tex_w, int tex_h, ansi_colors_t ccolors) {
+    void set_at_init(const ansi_colors_t *ccolors) {
         GLfloat fcolors[16*4];
-        int cmap[] = DF_TO_ANSI;
         for (int i = 0; i <16 ; i++) {
-            fcolors[4*i + 0] = (float) (ccolors[cmap[i]][0]) / 255.0;
-            fcolors[4*i + 1] = (float) (ccolors[cmap[i]][1]) / 255.0;
-            fcolors[4*i + 2] = (float) (ccolors[cmap[i]][2]) / 255.0;
+            fcolors[4*i + 0] = (float) ((*ccolors)[i][0]) / 255.0;
+            fcolors[4*i + 1] = (float) ((*ccolors)[i][1]) / 255.0;
+            fcolors[4*i + 2] = (float) ((*ccolors)[i][2]) / 255.0;
             fcolors[4*i + 3] = 1.0f;
         }
+        glUseProgram(program);
+        glUniform4fv(u_colors, 16, fcolors);
+        GL_DEAD_YET();
+    }
+    void set_at_frame(int tu_text, int tu_attr, int vp_w, int vp_h, int tex_w, int tex_h) {
 
         glUseProgram(program);
         glUniform1i(u_text_sampler, tu_text);
         glUniform1i(u_attr_sampler, tu_attr);
-        glUniform4fv(u_colors, 16, fcolors);
         glUniform2f(u_vp_size, vp_w, vp_h);
         glUniform2f(u_text_size, tex_w, tex_h);
 
@@ -821,9 +818,10 @@ struct ttf_shader_t : public shader_t {
 struct ttf_renderer_t {
     const int tu_attr;
     const int tu_text;
+    const ansi_colors_t *ccolors;
 
     ilogger *logr, *renderlogr, *sizerlogr;
-    void initialize(const char *, int);
+    void initialize(const char *, int, const ansi_colors_t *);
     void finalize();
     int active(int);
     int gridwidth(const uint16_t *, const uint32_t, const uint32_t, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
@@ -842,6 +840,7 @@ struct ttf_renderer_t {
 
     ttf_renderer_t():
         tu_attr(4), tu_text(5),
+        ccolors(NULL),
         logr(NULL), renderlogr(NULL), sizerlogr(NULL),
         zhban(NULL), lineheight(0),
         font_data_len(0), font_data(NULL),
@@ -856,7 +855,7 @@ struct ttf_renderer_t {
 int ttf_renderer_t::active(int lh) {
     return zhban != 0 && lh == lineheight;
 }
-void ttf_renderer_t::initialize(const char* fname, int lh) {
+void ttf_renderer_t::initialize(const char* fname, int lh, const ansi_colors_t *colors) {
     logr = platform->getlogr("ttf");
     logr->info("initialize(%s, %d)", fname, lh);
     renderlogr = platform->getlogr("ttf.render");
@@ -952,6 +951,7 @@ void ttf_renderer_t::initialize(const char* fname, int lh) {
     GL_DEAD_YET();
 
     shader.initialize("ttf130");
+    shader.set_at_init(colors);
 }
 
 void ttf_renderer_t::finalize() {
@@ -1018,7 +1018,6 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         renderlogr->fatal("recompile to allow %d text strings at once (current limit %d)", count, count_max);
 
     renderlogr->trace("render([%d], %d, %d, %d, %d)", text->size(), pszx, pszy, vpw, vph);
-    ansi_colors_t ccolors = ANSI_COLORS_VGA;
     int i;
 
     //{ upload attrs
@@ -1219,7 +1218,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
     //}
     /* GL-render */
-    shader.set_at_frame(tu_text, tu_attr, vpw, vph, tex_w, tex_h, ccolors);
+    shader.set_at_frame(tu_text, tu_attr, vpw, vph, tex_w, tex_h);
     glEnableClientState(GL_PRIMITIVE_RESTART_NV);
     GL_DEAD_YET();
     glPrimitiveRestartIndexNV(0xFFFFFFFFu);
@@ -1264,7 +1263,6 @@ struct implementation : public irenderer {
 
     void acknowledge(const itc_message_t&) {}
 
-    void ttf_set_size(int);
     int ttf_active();
     int ttf_gridwidth(const uint16_t *, const unsigned, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
 
@@ -1313,9 +1311,9 @@ struct implementation : public irenderer {
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
     ilogger *logr, *nputlogr, *rshlogr;
     void export_buffer(df_buffer_t *buf, const char *name);
+    const ansi_colors_t *colors;
 
     ttf_renderer_t ttf;
-    int ttf_lineheight;
 };
 
 void implementation::export_buffer(df_buffer_t *buf, const char *name) {
@@ -1534,10 +1532,21 @@ void implementation::initialize() {
 
     GL_DEAD_YET();
 
+    /* since rendering thread is started after init.begin() has been called
+       and thus init.txt/colors.txt have been already run, slurp the setting here. */
+    colors = platform->get_colors();
+
     grid_streamer.initialize();
     grid_shader.initialize("grid130");
     //blitter.initialize();
-    ttf.initialize("data/art/font.ttf", ttf_lineheight);
+    {
+        const char *fontfile = platform->get_setting("init.TRUETYPE_FONT", "data/art/font.ttf");
+        const char *truetype = platform->get_setting("init.TRUETYPE", "NO");
+        int lineheight = 0;
+        if (0 != strcmp(truetype, "NO"))
+            lineheight = atoi(truetype);
+        ttf.initialize(fontfile, lineheight, colors);
+    }
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
     album = NULL;
@@ -1612,9 +1621,7 @@ void implementation::upload_album() {
                         album->index[1].rect.w, album->index[1].rect.h,
                         font_w, font_h, findex_w, findex_h, album->count);
 
-    ansi_colors_t ccolors = ANSI_COLORS_VGA;
-
-    grid_shader.set_at_font(0, 1, ccolors);
+    grid_shader.set_at_font(0, 1, colors);
 }
 
 DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
@@ -2053,7 +2060,6 @@ void implementation::toggle_fullscreen() { logr->trace("toggle_fullscreen(): stu
 void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("override_grid_size(): stub"); }
 void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
 void implementation::reset_textures() { cmd_tex_reset = true; }
-void implementation::ttf_set_size(int h) { ttf_lineheight = h; }
 int implementation::ttf_active() { return ttf.active(Psz*Pary); }
 int implementation::ttf_gridwidth(const uint16_t *c, const unsigned cc, uint32_t *w,  uint32_t *h, uint32_t *ox,  uint32_t *oy) {
     return ttf.gridwidth(c, cc, Parx*Psz, w, h, ox, oy);
@@ -2074,8 +2080,6 @@ implementation::implementation() {
 
     if ((free_buf_q = mqueue->open("free_buffers", 1<<10)) < 0)
         logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
-
-    ttf_lineheight = 0;
 }
 
 /* Below is code copied from renderer_ncurses.

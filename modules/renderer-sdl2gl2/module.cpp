@@ -13,7 +13,6 @@
 #include "itextures.h"
 #include "la_muerte_el_gl.h"
 #include "df_buffer.h"
-#include "ansi_colors.h"
 #include "utf8decode.h"
 
 #define DFMODULE_BUILD
@@ -539,7 +538,7 @@ struct grid_shader_t : public shader_t {
 
     void set_at_frame(float);
     void set_at_resize(float, float, int, unsigned, unsigned);
-    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, ansi_colors_t);
+    void set_at_font(int, int, unsigned, unsigned, unsigned, unsigned, const ansi_colors_t *);
 
 };
 
@@ -605,14 +604,13 @@ void grid_shader_t::set_at_resize(float parx, float pary, int psz,
 void grid_shader_t::set_at_font(int tu_font, int tu_findex,
                          unsigned font_w, unsigned font_h,
                          unsigned findex_w, unsigned findex_h,
-                                         ansi_colors_t ccolors) {
+                                   const ansi_colors_t *ccolors) {
 
     GLfloat fcolors[16*4];
-    int cmap[] = DF_TO_ANSI;
     for (int i = 0; i <16 ; i++) {
-        fcolors[4*i + 0] = (float) (ccolors[cmap[i]][0]) / 255.0;
-        fcolors[4*i + 1] = (float) (ccolors[cmap[i]][1]) / 255.0;
-        fcolors[4*i + 2] = (float) (ccolors[cmap[i]][2]) / 255.0;
+        fcolors[4*i + 0] = (float) ((*ccolors)[i][0]) / 255.0;
+        fcolors[4*i + 1] = (float) ((*ccolors)[i][1]) / 255.0;
+        fcolors[4*i + 2] = (float) ((*ccolors)[i][2]) / 255.0;
         fcolors[4*i + 3] = 1.0f;
     }
 
@@ -814,7 +812,6 @@ struct implementation : public irenderer {
 
     void acknowledge(const itc_message_t&) {}
 
-    void ttf_set_size(int);
     int ttf_active();
     int ttf_gridwidth(const uint16_t*, uint32_t, uint32_t*, uint32_t*, uint32_t*, uint32_t*);
 
@@ -863,6 +860,7 @@ struct implementation : public irenderer {
     bool cmd_zoom_in, cmd_zoom_out, cmd_zoom_reset, cmd_tex_reset;
     ilogger *logr, *nputlogr, *rshlogr;
     void export_buffer(df_buffer_t *buf, const char *name);
+    const ansi_colors_t *colors;
 };
 
 void implementation::export_buffer(df_buffer_t *buf, const char *name) {
@@ -984,6 +982,8 @@ void implementation::initialize() {
 
     GL_DEAD_YET();
 
+    colors = platform->get_colors();
+
     grid_streamer.initialize();
     grid_shader.initialize("grid120");
     blitter.initialize();
@@ -1057,9 +1057,7 @@ void implementation::upload_album() {
     logr->info("upload_album(): font %dx%d tui 0 tname %d findex %dx%d, %d tui 1 tname %d",
                         font_w, font_h, fonttex, findex_w, findex_h, findextex, album->count);
 
-    ansi_colors_t ccolors = ANSI_COLORS_VGA;
-
-    grid_shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, ccolors);
+    grid_shader.set_at_font(0, 1, font_w, font_h, findex_w, findex_h, colors);
 }
 
 DFKeySym translate_sdl2_sym(SDL_Keycode sym) { return (DFKeySym) sym; }
@@ -1490,7 +1488,6 @@ void implementation::toggle_fullscreen() { logr->trace("toggle_fullscreen(): stu
 void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("override_grid_size(): stub"); }
 void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
 void implementation::reset_textures() { cmd_tex_reset = true;  }
-void implementation::ttf_set_size(int) { };
 int implementation::ttf_active() { return 0; }
 int implementation::ttf_gridwidth(const uint16_t*, uint32_t a, uint32_t*, uint32_t*, uint32_t*, uint32_t*) {
     return logr->error("renderer_sdl2gl2::ttf_width not implemented.\n"), a;

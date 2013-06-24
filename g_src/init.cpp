@@ -12,7 +12,7 @@ init_displayst::init_displayst()
 	partial_print_count=0;
 }
 
-/* skip the lines that have no tokens. Comments, that is. */
+/* Skip the lines that have no tokens. Comments, that is. */
 static bool is_comment(const std::string& str) {
     int ip = 0;
     while ((ip < str.size()) && isspace(str[ip]))
@@ -40,18 +40,16 @@ void initst::begin()
 
 		while(std::getline(fseed,str))
 			{
-			if(str.length()>1)
+			if ((str.length()>1) && !is_comment(str))
 				{
 				string token;
 				string token2;
-                                if (is_comment(str))
-                                    continue;
 				grab_token_string_pos(token,str,1);
 				if(str.length()>=token.length()+2)
 					{
 					grab_token_string_pos(token2,str,token.length()+2);
 					}
-                                getplatform()->set_setting("init", token.c_str(), str.c_str());
+                                getplatform()->set_setting("init", token.c_str(), token2.c_str());
 
                                 if(!token.compare("TRUETYPE")) {
                                   const char *str = token2.c_str();
@@ -423,7 +421,7 @@ void initst::begin()
 					grab_token_string_pos(token2,str,token.length()+2);
 					}
 
-                                getplatform()->set_setting("colors", token.c_str(), str.c_str());
+                                getplatform()->set_setting("colors", token.c_str(), token2.c_str());
 
 
 				if(!token.compare("BLACK_R"))

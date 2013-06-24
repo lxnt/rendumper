@@ -52,6 +52,7 @@ if(BUILD_LIBGRAPHICS OR BUILD_FORTRESS)
         include_directories(${CMAKE_INSTALL_PREFIX}/include)
         link_directories(${CMAKE_INSTALL_PREFIX}/lib)
     endif()
+    include_directories(lwapi)
     add_subdirectory(g_src)
 endif()
 
@@ -93,10 +94,9 @@ if(BUILD_LIBGRAPHICS)
         )
 
         add_custom_target(generate_code)
-        add_library(lwapi ${lwapi_dir}/globals.cc )
+        add_library(lwapi ${lwapi_dir}/globals.cc)
         add_dependencies(lwapi generate_code)
 
-        include_directories(${rendumper_SOURCE_DIR}/lwapi)
     endif()
 endif()
 

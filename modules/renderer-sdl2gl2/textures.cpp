@@ -297,6 +297,7 @@ void implementation::grayscale_texture(long pos) {
 
 void implementation::load_multi_pdim(const char *filename, long *tex_pos,
       long dimx, long dimy, bool convert_magenta, long *disp_x, long *disp_y) {
+    logr->trace("load_multi_pdim(%s, %ld, %ld, %d)", filename, dimx, dimy, (int)convert_magenta);
     if (rc_font_set)
         reset();
 
@@ -312,6 +313,7 @@ void implementation::load_multi_pdim(const char *filename, long *tex_pos,
 }
 
 long implementation::load(const char *filename, bool convert_magenta) {
+    logr->trace("load(%s), %d", filename, (int)convert_magenta);
     if (rc_font_set)
         reset();
 
@@ -355,7 +357,7 @@ void implementation::reset() {
     logr->trace("reset()");
 }
 
-void implementation::delete_texture(long) { }
+void implementation::delete_texture(long i) { logr->warn("delete_texture(%ld)", i);}
 
 void implementation::release() { }
 

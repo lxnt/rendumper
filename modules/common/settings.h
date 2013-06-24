@@ -1,12 +1,11 @@
 #if !defined (SETTINGS_H)
 #define SETTINGS_H
+#include "iplatform.h"
 
-inline void cc_set_setting(const char* filename, const char *name, const char *value) {
-    getplatform()->getlogr("df.settings")->info("cc_set_setting(%s.%s = %s)", filename, name, value);
-}
-inline const char *cc_get_setting(const char *name) {
-    getplatform()->getlogr("df.settings")->info("cc_get_setting(%s)", name);
-    return NULL;
-}
+/* this to be used only in platform implementations */
+
+const char *cc_get_setting(const char *name, const char *fallback);
+void cc_set_setting(const char* filename, const char *name, const char *value);
+const ansi_colors_t *cc_get_colors();
 
 #endif

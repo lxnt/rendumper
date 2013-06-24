@@ -1251,7 +1251,7 @@ struct implementation : public irenderer {
     void release_grid_size();
     int mouse_state(int *mx, int *my);
     void reset_textures();
-    void upload_album();
+    void upload_textures();
 
     void set_gridsize(unsigned w, unsigned h) { grid_w = w, grid_h = h; }
     uint32_t get_gridsize(void) { return (grid_w << 16) | (grid_h & 0xFFFF); }
@@ -1280,9 +1280,6 @@ struct implementation : public irenderer {
 
     blitter_t blitter;
 
-    df_texalbum_t *album;
-    unsigned font_w, font_h, findex_w, findex_h;
-
     implementation();
 
     unsigned grid_w, grid_h;
@@ -1301,7 +1298,8 @@ struct implementation : public irenderer {
     void reshape(int w, int h, int psz);
 
     float Parx, Pary;               // cel aspect ratio
-    int Psz_native, Psz;            // larger dimension of cel 0
+    long Pszx, Pszy;                // font native cel dimensions
+    int Psz, Psz_native;            // larger dimension of cel 0 at zoom and native.
     int viewport_x, viewport_y;     // viewport tracking
     int viewport_w, viewport_h;     // for mouse coordinate transformation
     int mouse_xw, mouse_yw;         // mouse window coordinates
@@ -1312,6 +1310,7 @@ struct implementation : public irenderer {
     ilogger *logr, *nputlogr, *rshlogr;
     void export_buffer(df_buffer_t *buf, const char *name);
     const ansi_colors_t *colors;
+    df_texalbum_t *album;           // private to upload_textures() method.
 
     ttf_renderer_t ttf;
 };
@@ -1338,21 +1337,8 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
     */
     /* first take would be just a single pass, error out if GL can't handle the size */
     /* and the size is calculated from the first celpage */
-    int cw = album->index[0].rect.w;
-    int ch = album->index[0].rect.h;
-    float parx, pary;
-    int psz;
-    if (cw > ch) {
-        parx = 1.0;
-        pary = (float)ch/(float)cw;
-        psz = cw;
-    } else {
-        parx = (float)cw/(float)ch;
-        pary = 1.0;
-        psz = ch;
-    }
-    int vp_w = buf->w * cw;
-    int vp_h = buf->h * ch;
+    int vp_w = buf->w * Pszx;
+    int vp_h = buf->h * Pszy;
 
     GLuint fb_name, rb_name, va_name, bo_name;
     glGenFramebuffers(1, &fb_name);
@@ -1392,7 +1378,7 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
     glBufferData(GL_ARRAY_BUFFER, buf->required_sz, buf->ptr, GL_STREAM_DRAW);
     GL_DEAD_YET();
 
-    grid_shader.set_at_resize(parx, pary, psz, buf->w, buf->h);
+    grid_shader.set_at_resize(Parx, Pary, Psz_native, buf->w, buf->h);
     grid_shader.set_at_frame(1.0);
     GL_DEAD_YET();
 
@@ -1473,9 +1459,32 @@ void implementation::initialize() {
                 attr_req[i].name, attr_req[i].value, SDL_GetError());
     }
 
+    int window_w, window_h;
+    {
+        const char *init_font = platform->get_setting("init.FONT", "curses_640x300.png");
+        std::string fontpath = init_font;
+        if (!strchr(init_font, '/') && !strchr(init_font, '\\')) {
+            fontpath = "data/art/";
+            fontpath.append(init_font);
+        }
+        logr->info("loading '%s'", fontpath.c_str());
+
+        /* drop whatever crap has been loaded before that */
+        textures->reset();
+        /* Note the below sets Pszx and Pszy. This is done once, here. */
+        long unused[256];
+        textures->load_multi_pdim(fontpath.c_str(), unused, 16, 16, true, &Pszx, &Pszy);
+
+        int init_w = atoi(platform->get_setting("init.WINDOWEDX", "80"));
+        int init_h = atoi(platform->get_setting("init.WINDOWEDY", "25"));
+        window_w = init_w < MAX_GRID_X ? init_w * Pszx : init_w;
+        window_h = init_h < MAX_GRID_Y ? init_h * Pszy : init_h;
+        logr->info("window %dx%d init %dx%d", window_w, window_h, init_w, init_h);
+    }
+
     gl_window = SDL_CreateWindow("Dwarf Fortress / sdl2gl3",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        640, 300, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE); // there's some weird SDL_WINDOW_SHOWN flag
+        window_w, window_h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!gl_window)
         logr->fatal("SDL_CreateWindow(...): %s", SDL_GetError());
@@ -1549,8 +1558,20 @@ void implementation::initialize() {
     }
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
-    album = NULL;
     cmd_tex_reset = true;
+
+    /* calculate base font cel aspect ratios */
+    if (Pszx > Pszy) {
+        Parx = 1.0;
+        Pary = (float)Pszy/(float)Pszx;
+        Psz = Psz_native = Pszx;
+    } else {
+        Parx = (float)Pszx/(float)Pszy;
+        Pary = 1.0;
+        Psz = Psz_native = Pszy;
+    }
+    upload_textures();
+    reshape(-1, -1, Psz_native);
 }
 
 void implementation::finalize() {
@@ -1561,7 +1582,15 @@ void implementation::finalize() {
     ttf.finalize();
 }
 
-void implementation::upload_album() {
+void implementation::upload_textures() {
+    if (album)
+        textures->release_album(album);
+    album = textures->get_album();
+    if (!album)
+        logr->fatal("upload_textures(): no album from itextures");
+
+    unsigned font_w, font_h, findex_w, findex_h;
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, fonttex);
     font_w = album->album->w;
@@ -1617,7 +1646,7 @@ void implementation::upload_album() {
     delete []data;
 
     GL_DEAD_YET();
-    logr->info("upload_album(): primary cel %dx%d font %dx%d findex %dx%d",
+    logr->info("upload_textures(): primary cel %dx%d font %dx%d findex %dx%d",
                         album->index[1].rect.w, album->index[1].rect.h,
                         font_w, font_h, findex_w, findex_h, album->count);
 
@@ -1840,22 +1869,8 @@ void implementation::renderer_thread(void) {
         }
         if (cmd_tex_reset) {
             cmd_tex_reset = false;
-            if (album)
-                textures->release_album(album);
-            album = textures->get_album();
-            int cw = album->index[0].rect.w;
-            int ch = album->index[0].rect.h;
-            if (cw > ch) {
-                Parx = 1.0;
-                Pary = (float)ch/(float)cw;
-                Psz = Psz_native = cw;
-            } else {
-                Parx = (float)cw/(float)ch;
-                Pary = 1.0;
-                Psz = Psz_native = ch;
-            }
-            reshape(-1, -1, Psz);
-            upload_album();
+            logr->warn("got cmd_tex_reset");
+            upload_textures();
         }
 
         int rv;
@@ -1949,11 +1964,6 @@ see fgt.gl.rednerer.reshape()
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     rshlogr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
         new_window_w, new_window_h, new_psz, Parx, Pary);
-
-    if (!album || !album->count) { // can't draw anything without textures anyway
-        logr->trace("reshape(): no textures.");
-        return;
-    }
 
     if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
         if (new_psz > 0)

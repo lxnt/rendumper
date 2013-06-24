@@ -620,40 +620,4 @@ void initst::begin()
 			}
 		}
 	fseed2.close();
-        
-        //FULL SCREEN QUERY, UNLESS IT'S ALREADY SET IN INIT
-
-        if (!display.flag.has_flag(INIT_DISPLAY_FLAG_TEXT)) {
-          if(enabler.command_line.empty())
-            {
-              if(display.windowed==INIT_DISPLAY_WINDOW_TRUE)
-                {
-                  enabler.fullscreen = false;
-                }
-              else if(display.windowed==INIT_DISPLAY_WINDOW_FALSE)
-                {
-                  enabler.fullscreen = true;
-                }
-              else
-                {
-                  if (MessageBox (NULL, "Run in Fullscreen Mode?  You can set your preferences in data\\init\\init.txt.\rUnless you've changed your bindings, you can press F11 to toggle this setting any time.", "Start FullScreen?", MB_YESNO | MB_ICONQUESTION) == IDNO) {
-                    enabler.fullscreen = false; // If Not, Run In Windowed Mode
-                  } else {
-                    enabler.fullscreen = true;
-                  }
-                }
-            }
-          else enabler.fullscreen = false;
-        }
-
-	enabler.textures.load_multi_pdim(small_font,font.small_font_texpos,16,16,true,&font.small_font_dispx,&font.small_font_dispy);
-	enabler.textures.load_multi_pdim(large_font,font.large_font_texpos,16,16,true,&font.large_font_dispx,&font.large_font_dispy);
-
-        // compute the desired window size, if set to auto
-        if (display.desired_windowed_width < MAX_GRID_X && display.desired_windowed_height < MAX_GRID_Y) {
-          int dimx = MAX(display.desired_windowed_width,80);
-          int dimy = MAX(display.desired_windowed_height,25);
-          display.desired_windowed_width = font.small_font_dispx * dimx;
-          display.desired_windowed_height = font.small_font_dispy * dimy;
-        }
 }

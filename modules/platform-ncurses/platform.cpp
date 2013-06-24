@@ -215,7 +215,13 @@ struct implementation : public iplatform {
         cc_set_setting(filename, name, value);
     }
     const char* get_setting(const char *name) {
-        return cc_get_setting(name);
+        return cc_get_setting(name, NULL);
+    }
+    const char* get_setting(const char *name, const char *fallback) {
+        return cc_get_setting(name, fallback);
+    }
+    const ansi_colors_t *get_colors(void) {
+        return cc_get_colors();
     }
 };
 

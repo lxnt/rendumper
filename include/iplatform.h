@@ -108,6 +108,8 @@ struct ilogger {
     virtual NORETURN void fatal(const char *, ...) = 0 PRINTFLIKE;
 };
 
+typedef int ansi_colors_t[16][3];
+
 struct iplatform {
     virtual void release() = 0;
 
@@ -189,6 +191,8 @@ struct iplatform {
         e. g. colors.txt/[GREEN_R:0] ends up as name="colors.green_r", value="0"
     */
     virtual const char* get_setting(const char *name) = 0;
+    virtual const char* get_setting(const char *name, const char *fallback) = 0;
+    virtual const ansi_colors_t *get_colors(void) = 0;
 };
 
 

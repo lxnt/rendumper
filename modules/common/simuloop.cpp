@@ -353,12 +353,11 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
         uint32_t w, h, ox, oy;
 
         grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
-#if 0
-        while (grid_w > space) {
-            shrinker.shrink(shrinker.size() - 1);
-            grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
-        }
-#endif
+        if (space > 0)
+            while (grid_w > space) {
+                shrinker.shrink(shrinker.size() - 1);
+                grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
+            }
 
         logr_string->trace("grid_w = %d", grid_w);
         /* for now do alignment in terms of grid cells. pixels and the tab hack will go next */

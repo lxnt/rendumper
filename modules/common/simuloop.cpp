@@ -28,6 +28,9 @@ struct implementation : public isimuloop {
     void join();
     void render();
 
+    void set_max_sfps();
+    void set_nominal_sfps();
+
     void set_target_sfps(uint32_t);
     void set_target_rfps(uint32_t);
 
@@ -151,13 +154,18 @@ void implementation::join() {
     platform->thread_join(thread_id, NULL);
 }
 
+void implementation::set_max_sfps() {
+    pedal_to_the_metal = true;
+}
+
+void implementation::set_nominal_sfps() {
+    pedal_to_the_metal = false;
+}
+
 void implementation::set_target_sfps(uint32_t fps) {
-    if (!fps) {
-        pedal_to_the_metal = true;
-    } else {
-        pedal_to_the_metal = false;
-        target_mainloop_ms = 1000/fps;
-    }
+    if (!fps)
+        logr_fps->fatal("set_target_sfps(0)");
+    target_mainloop_ms = 1000/fps;
     logr_fps->info("set_target_sfps(%d): target_mainloop_ms=%d", fps, target_mainloop_ms);
 }
 

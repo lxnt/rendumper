@@ -90,6 +90,7 @@ bool enablerst::uses_opengl(void) { DFM_STUB(enablerst::uses_opengl); return fal
     must be in libgraphics.so since it depends on the gps object */
 static bool export_effects = false;
 unsigned char *gps_screenfxpos = NULL;
+static unsigned long tflag;
 static void assimilate_buffer(df_buffer_t *buf) {
     gps.screen = buf->screen;
     gps.screentexpos = buf->texpos;
@@ -101,6 +102,21 @@ static void assimilate_buffer(df_buffer_t *buf) {
 
     /* maybe force_full_display_count will overflow. ;) */
     gps.resize(buf->w, buf->h);
+
+    // flag &= ~ENABLERFLAG_RENDER; // triggers rendering: not needed.
+    /* convert level to edge. */
+    if (tflag != enabler.flag) {
+        if ((enabler.flag & ENABLERFLAG_MAXFPS)
+        && !(tflag & ENABLERFLAG_MAXFPS)) {
+            mainlogr->trace("ENABLERFLAG_MAXFPS set");
+            simuloop->set_max_sfps();
+        } else if (!(enabler.flag & ENABLERFLAG_MAXFPS)
+                 && (tflag & ENABLERFLAG_MAXFPS)) {
+            mainlogr->trace("ENABLERFLAG_MAXFPS cleared");
+            simuloop->set_nominal_sfps();
+        }
+        tflag = enabler.flag;
+    }
 }
 
 static void add_input_event(df_input_event_t *event) {

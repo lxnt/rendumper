@@ -28,7 +28,9 @@ struct isimuloop : public imessagesender {
     virtual void join() = 0;
     virtual void render() = 0;
 
-    /* FPS values are passed around as their inverse, in milliseconds. */
+    virtual void set_max_sfps() = 0;
+    virtual void set_nominal_sfps() = 0;
+
     virtual void set_target_sfps(uint32_t) = 0; // mainloop() calls
     virtual void set_target_rfps(uint32_t) = 0; // render_things() calls, buffer submission.
 

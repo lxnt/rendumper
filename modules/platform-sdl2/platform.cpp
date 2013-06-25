@@ -154,6 +154,7 @@ extern "C" DFM_EXPORT iplatform * DFM_APIEP getplatform(void) {
             impl.fatal("Unable to initialize SDL:  %s", SDL_GetError());
         _logging_mutex = SDL_CreateMutex();
         platform = &impl;
+        core_init_done = true;
     }
 
     return &impl;

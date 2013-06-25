@@ -164,17 +164,18 @@ void implementation::set_nominal_sfps() {
 
 void implementation::set_target_sfps(uint32_t fps) {
     if (!fps)
-        logr_fps->fatal("set_target_sfps(0)");
-    target_mainloop_ms = 1000/fps;
+        target_mainloop_ms = 0;
+    else
+        target_mainloop_ms = 1000/fps;
     logr_fps->info("set_target_sfps(%d): target_mainloop_ms=%d", fps, target_mainloop_ms);
 }
 
 void implementation::set_target_rfps(uint32_t fps) {
-    if (fps)
-        target_renderth_ms = 1000/fps;
+    if (!fps)
+        target_renderth_ms = 0;
     else
-        target_renderth_ms = 1;
-    logr_fps->info("set_target_sfps(%d): target_mainloop_ms=%d", fps, target_renderth_ms);
+        target_renderth_ms = 1000/fps;
+    logr_fps->info("set_target_sfps(%d): target_renderth_ms=%d", fps, target_renderth_ms);
 }
 
 uint32_t implementation::get_actual_sfps() { float pms = mainloop_period_ms.get(); return pms > 1.0 ? 1000/pms : 999; }

@@ -201,7 +201,7 @@ void implementation::simulation_thread() {
     renderbuf = NULL;
     df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
     assimilate_buffer_cb(backup_buf);
-    logr->trace("backup_buf is %p", backup_buf);
+    logr_bufs->trace("backup_buf is %p", backup_buf);
 
     uint32_t last_renderth_at = 0;
     uint32_t last_mainloop_at = 0;
@@ -304,8 +304,7 @@ void implementation::simulation_thread() {
                 uint32_t rt_end_ms = platform->GetTickCount();
                 renderer->submit_buffer(renderbuf);
                 renderbuf = NULL;
-                assimilate_buffer_cb(backup_buf); // so that gps pointers stay valid: is this really needed?
-
+                assimilate_buffer_cb(NULL);
                 renders ++;
                 render_things_period_ms.update(rt_end_ms - last_renderth_at);
                 render_things_time_ms.update(rt_end_ms - rt_start_ms);

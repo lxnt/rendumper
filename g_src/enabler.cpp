@@ -92,6 +92,24 @@ static bool export_effects = false;
 unsigned char *gps_screenfxpos = NULL;
 static unsigned long tflag;
 static void assimilate_buffer(df_buffer_t *buf) {
+    if (!buf) {
+        /*  This is used to remove any pointers to the buffer,
+            since it is about to be unmapped and we'd like
+            to catch invalid accesses early.
+            The alternative would be to keep a backup buffer
+            assimilated; that would require it to be kept
+            up-to-data wrt resizes, which we do not want to do.
+        */
+        gps.screen = NULL;
+        gps.screentexpos = NULL;
+        gps.screentexpos_addcolor = NULL;
+        gps.screentexpos_grayscale = NULL;
+        gps.screentexpos_cf = NULL;
+        gps.screentexpos_cbr = NULL;
+        gps_screenfxpos = NULL;
+        gps.screen_limit = NULL;
+        return;
+    }
     gps.screen = buf->screen;
     gps.screentexpos = buf->texpos;
     gps.screentexpos_addcolor = buf->addcolor;

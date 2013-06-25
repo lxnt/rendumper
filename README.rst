@@ -1,6 +1,21 @@
 This is DF modular backend
 **************************
 
+You can go straight to `Binary releases`_
+
+Project goal
+------------
+
+Fully customizable graphics for the Dwarf Fortress.
+
+To that end, first split out all platform-dependent code from the main executable into plugins.
+
+This leaves a mostly clean interface between the game and the graphics code.
+
+Improve it a bit, and the game doesn't know or care about graphics, while at the same time
+plugins allow modding the hfs out of all of them.
+
+
 Todo list
 ---------
 
@@ -26,7 +41,6 @@ In no particular order:
 - sdl2gl* renderers - move common code to common/
 - maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
-- ncurses mouse input
 - sdl2gl2 GL_POINT positioning suffers rounding errors: eats pixels.
   visible with DF_LOG=sdl.reshape=trace.
 - Do something like replacing std::forward_list with utlist.h so that it doesn't spam .so/.dll namespace.
@@ -48,44 +62,10 @@ Stuff I put a SEP field around:
 - Offscreen ncurses renderer complete with finding the appropriate file
   format and viewer
 - i686-apple-darwin10 build
+- ncurses mouse input
 
-Mode of operation is:
-^^^^^^^^^^^^^^^^^^^^^
-
-Program binary (df, etc), calls ``glue.cpp::lock_and_load()``.
-It expects renderer name and module path.
-
-Default module path is set up at configure time, and by even more default is
-``<install-prefix>/lib/dfmodules``
-
-Module path of ``libs/`` is hardcoded into the libgraphics.so.
-
-Default shader source path shall be ``data/shaders`` for libgraphics.so, and ``something else``
-for the tests. Shaders are embedded anyway, so this is highly optional. They get searched for there before
-using embedded versions though.
-
-Renderer name shall be accepted from the command line or from an environment variable ``DF_PRINTMODE``.
-Platform name is inferred from the renderer name in the loader.
-This is because platform implementation must be loaded before init.txt
-or any other configuration can be read; and each renderer requires strictly certain platform.
-
-Logging configuration is the DF_LOG environment variable.
-
-Format is loggername=level,logger2=level[,....]
-
-Beware: setting root=trace will dump texalbum and dump vertex buffers as they are drawn,
-plus generate a dozen lines of timing trace per frame.
-Use with care, best on a tmpfs mount with output redirected.
-
-Simuloop, sound and renderer options.
-
-These are - fps caps, sound module name and enable/disable, renderer initial font,
-shaders path, preferred window size, (fullscreen ?), color map, whatever else.
-
-Configuration access is via iplatform interface, ``const char *getprop(const char *name)`` method (TBD).
-
-Notes
------
+Older notes
+^^^^^^^^^^^
 
 1. Mqueue timed wait will sleep for a multiple of timeout.
    See Timed Wait Semantics in man pthread_cond_wait
@@ -119,9 +99,136 @@ Notes
    row-major interleaved then. Btw, gps_locator seem to be used
    only for FPS display, might be possible to get rid of it.
 
+What's on inside
+----------------
 
-Building and running this:
---------------------------
+Modules and interfaces
+^^^^^^^^^^^^^^^^^^^^^^
+
+Interfaces are what I ended up when I split whatever functionality Dwarf
+Fortress needs into more-or-less complete blocks, whose dependencies could
+then be simple. These are:
+
+- iplatform - low-level initialization, filesystem interface (globs), logging, threads
+- imqueue - interthread message queue
+- itextures - texture manager, loads and packs tile/creature graphics into albums
+- isimuloop - implements the simulation thread, passing around commands and buffers,
+             and controlling both simulation and rendering frame rates.
+- irenderer - implements the renderer thread, which renders buffers, hands over buffers
+             to the simulation thread, converts and passes on user input.
+- imusicsound - intended to host the audio code, design incomplete.
+
+In the simplest case, the game consists of two threads - renderer and simulation,
+where renderer thread is usually the main one. When renderer module starts up, it
+initializes itself, whatever video output it likes to, and starts supplying
+df_buffer_t structures to the simuloop. Any user input is also supplied there,
+both going via a message queue. Message types are a part of overall interface,
+see include/itypes.h.
+
+The simuloop thread accepts those buffers and input, passing them via callbacks to the
+actual game code. Input is fed as it arrives, while calls to 'mainloop' - simulation callback,
+and 'render_things' - rendering callback are delayed so as to not exceed set framerate limits.
+
+The 'assimilate_buffer' callback is expected to set up the game code so that the following
+call to 'render_things' will fill it up with scene for the next frame. After that, another
+call to 'assimilate_buffer', with NULL for the buffer, detaches the buffer from the game code,
+and it is given back to the renderer.
+
+The code that implements the above is split into four types of shared objects/dynamic libraries/plugins.
+Those are:
+
+- plaform_P - contains iplatform and imqueue implementations for a given platform. "P" in the name stands
+  for the platform name. There are two plaforms currently supported - ncurses and SDL2, the latter on both
+  windows and linux (and wherever else SDL2 more-or-less works).
+- common_code - contains isimuloop implementation, which is currently platform-independent in the sense
+  that it doesn't depend on any particular iplatform implementation. Also contains stub implementations of
+  imusicsound and itextures for completeness when there are no platform-specific versions available.
+- renderer_PT - contains irenderer and itextures implementations. It depends on platform_P being available,
+  and is further distinguished from other renderer for the platform by suffix "T".
+- sound_PT or sound_T - is intended to contain imusicsound implementation, currently there is none.
+
+The game executable is linked with a static library libglue, which contains plugin loader and linker,
+and works on both windows and linux.
+
+After successful load of the plugin set, configuration data can be fed via iplatform's set_setting(),
+then simuloop is set up with callbacks, threads are started and game goes on.
+
+See modtests/life.cpp for a trivial example, or g_src/enabler.cpp for how it is done for the Dwarf Fortress itself.
+
+How it plugs into Dwarf Fortress
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Answer: easily.
+
+As you might know, the source code in g_src, is a part of the game.
+On windows it is compiled in into the main executable, on linux - into a separate library, libs/libgraphics.so.
+
+Code in the g_src directory in this project is a heavily patched version of it, where everything non-generic
+was replaced with calls to the interfaces described above, and the plugin loader was added.
+
+Thus, once the game gets recompiled for windows with the g_src code from here, it will rely on plugins for all
+the rendering, sound, etc.
+
+
+Logging
+^^^^^^^
+
+Stub documentation:
+
+grep the source for 'getlogr' to know what loggers are there.
+Set loglevels like this::
+
+    DF_LOG=sdl.input=trace,sdl.textures=info ./df
+
+platform_ncurses writes logs into 'dfm.log' file.
+
+Binary releases
+---------------
+
+Binary releases of this code for linux can be downloaded from http://sourceforge.net/projects/tolisnitem/
+
+Archive name format is YearMonthDay-Hour.7z, in UTC+0 timezone. They are uploaded not very regularly, so
+please consult git commit log at https://github.com/lxnt/rendumper/commits/interfaces if it crashes or
+misbehaves - this particular bug might have been fixed already.
+
+To install, make a copy of Dwarf Fortress directory, and then delete the following files::
+
+    libs/libgcc_1.so
+    libs/libstdc++.so.6
+
+Then unzip the archive into the Dwarf Fortress directory. You should end up with something like::
+
+    libs/common_code.so
+    libs/Dwarf_Fortress
+    libs/libGLEW.so.1.6
+    libs/libgraphics.so
+    libs/libharfbuzz.so.0
+    libs/libharfbuzz.so.0.918.0
+    libs/libSDL-1.2.so.0
+    libs/libSDL2-2.0.so.0
+    libs/libzhban.so
+    libs/platform_ncurses.so
+    libs/platform_sdl2.so
+    libs/renderer_ncurses.so
+    libs/renderer_sdl2gl2.so
+    libs/renderer_sdl2gl3.so
+
+Having done that, launch `df` as usual, this will load SDL2 OpenGL 3.0 renderer with TTF support.
+
+Other renderers avaliable are ncurses and sdl2gl2, they are selected by giving an argument::
+
+    ./df ncurses
+    ./df sdl2gl2
+
+Note however, that main development goes in sdl2gl3, and those two may lag behind in bugfixes.
+
+TTF support is activated if and only if graphics tileset tile height equals the [TRUETYPE] setting
+in data/init/init.txt. For example if you've got some 16x16 tileset installed, put [TRUETYPE:16] there.
+
+For the ease of testing, F12 key is hardcoded to nastily abort the program.
+
+Building this:
+--------------
 
 i686-linux-gnu build
 ^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +236,7 @@ i686-linux-gnu build
 Due to C++ ABI hell and autotools' excessive arcanism, the recommended build
 method is the native one.
 
-Consider using a virtual machine (KVM or whatever) with a minimal Ubuntu 12.04 install.
+Consider using a virtual machine (KVM or whatever) with a minimal 32-bit Ubuntu 12.04 install.
 
 Make sure you have GCC 4.5 installed, and /usr/bin/gcc and /usr/bin/g++ symlinks pointing to it.
 
@@ -140,7 +247,7 @@ Install the following packages:
 - libglew1.6-dev
 - libfreetype6-dev,
 - zlib1g-dev
-- uthash-dev
+- uthash-dev (1.9.8)
 - libgl1-mesa-dev
 - cmake-curses-gui
 - wget
@@ -174,12 +281,13 @@ libs directory so that it looks like::
     lrwxrwxrwx 1 lxnt lxnt       39 Dec 31 16:38 platform_sdl2.so -> /tmp/prefix/lib/dfmodules/platform_sdl2.so
     lrwxrwxrwx 1 lxnt lxnt       42 Dec 31 16:38 renderer_sdl2gl3.so -> /tmp/prefix/lib/dfmodules/renderer_sdl2gl3.so
 
-Notice renamed libgcc_s.so.1 and libstdc++.so.6.
+Notice renamed libgcc_s.so.1 and libstdc++.so.6. You may as well delete them.
 
 Launch as usual.
 
-Note that TTF support will kick in only when the number in init.txt's TRUETYPE token matches the current tileset tile
-height and there is no zoom in/out.
+Shaders' source gets embedded into the renderer binaries, but they will attempt to read it from data/shaders directory
+before using embedded one.
+
 
 i686-w64-mingw32 build
 ^^^^^^^^^^^^^^^^^^^^^^

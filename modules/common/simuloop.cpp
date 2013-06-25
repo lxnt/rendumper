@@ -274,7 +274,7 @@ void implementation::simulation_thread() {
             if (mainloop_cb()) {
                 renderer->simuloop_quit();
                 simulogger->info("simuloop quit.");
-                return;
+                break;
             }
             frames ++;
             uint32_t ml_end_ms = platform->GetTickCount();
@@ -343,6 +343,7 @@ void implementation::simulation_thread() {
         read_timeout_ms = next_renderth_in > next_mainloop_in ? next_mainloop_in : next_renderth_in;
         read_timeout_ms = read_timeout_ms < 0 ? 0 : read_timeout_ms;
     }
+    free_buffer_t(backup_buf);
 }
 
 int implementation::add_string(const char *str, const char *attrs, int len, int x, int y, int textalign, int space) {

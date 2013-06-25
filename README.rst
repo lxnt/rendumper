@@ -8,18 +8,13 @@ Missing features - priority:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Clean up TTF-related interfaces; approach pixel-perfect justification; do the tab hack.
-- Decide what to do with 2D world map drawing and export
-  (currently it's SDL_SaveBMP buried in the binary).
-  Well, got to have a glimpse on what API is used to draw this. Otherwise it's just
-  reimplementing rgba32 SDL_Surface, and this ain't no fun.
 
 In no particular order:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-- fix SDL mouse input: continuous drawing does not work for some reason
 - renderer/simuloop config api its use with initst and a file for tests.
 - decide if data races are really wanted. move everything to mqueues if not.
-- clean up itc_message_t
+- clean up itc_message_t - half done
 - offload  dim/rain/snow effects to the renderer, implement in shaders,
   reimplement original in the ncurses renderer. = does not work because
   relevant graphicst methods are not getting called.
@@ -28,9 +23,6 @@ In no particular order:
 - implement SoundSense soundpack support in the sound module.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
 - rewrite df-structures/codegen.py, it rotted; revive
-- "ld.so understands the string $ORIGIN (or equivalently ${ORIGIN}) in
-  an rpath specification (DT_RPATH or DT_RUNPATH) to mean the directory
-  containing the application executable."
 - sdl2gl* renderers - move common code to common/
 - maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
@@ -38,6 +30,14 @@ In no particular order:
 - sdl2gl2 GL_POINT positioning suffers rounding errors: eats pixels.
   visible with DF_LOG=sdl.reshape=trace.
 - Do something like replacing std::forward_list with utlist.h so that it doesn't spam .so/.dll namespace.
+  http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36022
+  Basically, libstdc++ stuff can't be hidden. This isn't fatal for gcc-built builds,
+  but still looks dirty.
+  Solution: get rid of as much as possible from libstdc++.
+- Actually release resources at exit
+- Decide what to do with 2D world map drawing and export (Legends mode).
+  Currently it's SDL_SaveBMP buried in the binary, and while it happens to work with
+  SDL2.0 binary substituted for SDL1.2, it's fragile and just plain wrong.
 
 Stuff I put a SEP field around:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

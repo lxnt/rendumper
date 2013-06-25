@@ -1927,6 +1927,9 @@ void implementation::renderer_thread(void) {
                     if (buf) {
                         logr->info("dropped frame (buf %d/%p)", grid_streamer.find(buf), buf);
                         dropped_frames ++;
+                        /* drop any text there so it doesn't build up */
+                        if (buf->text)
+                            ((df_text_t *)buf->text)->reset();
                         grid_streamer.remap_buf(buf);
                     }
                     buf = msg->d.buffer;

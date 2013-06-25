@@ -76,7 +76,7 @@ struct implementation : public isimuloop {
 
     df_buffer_t *renderbuf;
     ilogger *logr_fps;
-    ilogger *logr_bufs;
+    ilogger *logr_bufs, *logr_buf_skip;
     ilogger *logr_string;
     ilogger *textlogr;
 
@@ -98,6 +98,7 @@ struct implementation : public isimuloop {
                       renderbuf(NULL),
                       logr_fps(NULL),
                       logr_bufs(NULL),
+                      logr_buf_skip(NULL),
                       logr_string(NULL),
                       renderer(NULL)
                        { }
@@ -194,6 +195,7 @@ void implementation::simulation_thread() {
     ilogger *logr = platform->getlogr("cc.simuloop");
     ilogger *logr_timing = platform->getlogr("cc.simuloop.timing");
     logr_bufs = platform->getlogr("cc.simuloop.bufs");
+    logr_buf_skip = platform->getlogr("cc.simuloop.buf.skip");
     logr_string = platform->getlogr("cc.simuloop.str");
 
     incoming_q = mqueue->open("simuloop", 1<<10);
@@ -313,7 +315,7 @@ void implementation::simulation_thread() {
                      render_things_time_ms.get(), render_things_period_ms.get());
                 last_renderth_at = rt_end_ms;
             } else {
-                logr_bufs->trace("[%d] graphics frame skipped: no buffer from the renderer", events_done_at);
+                logr_buf_skip->trace("[%d] graphics frame skipped: no buffer from the renderer rb=%p", events_done_at, renderbuf);
                 last_renderth_at = events_done_at;
             }
         }

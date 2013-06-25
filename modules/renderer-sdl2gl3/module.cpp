@@ -820,7 +820,7 @@ struct ttf_renderer_t {
     const int tu_text;
     const ansi_colors_t *ccolors;
 
-    ilogger *logr, *renderlogr, *sizerlogr;
+    ilogger *logr, *renderlogr, *sizerlogr, *blitlogr;
     void initialize(const char *, int, const ansi_colors_t *);
     void finalize();
     int active(int);
@@ -842,7 +842,7 @@ struct ttf_renderer_t {
     ttf_renderer_t():
         tu_attr(4), tu_text(5),
         ccolors(NULL),
-        logr(NULL), renderlogr(NULL), sizerlogr(NULL),
+        logr(NULL), renderlogr(NULL), sizerlogr(NULL), blitlogr(NULL),
         zhban(NULL), lineheight(0),
         font_data_len(0), font_data(NULL),
         attr_tex(0), attr_bo(0),
@@ -860,6 +860,7 @@ void ttf_renderer_t::initialize(const char* fname, int lh, const ansi_colors_t *
     logr = platform->getlogr("ttf");
     logr->info("initialize(%s, %d)", fname, lh);
     renderlogr = platform->getlogr("ttf.render");
+    blitlogr = platform->getlogr("ttf.blit");
     sizerlogr = platform->getlogr("ttf.sizer");
     if (lh == 0)
         return; // handle [TRUETYPE:OFF]
@@ -1016,6 +1017,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     int count;
     if ((count = text->size()) == 0)
         return;
+    renderlogr->trace("ttf_renderer text=%p count=%d", (void*)text, count);
     if (count > count_max)
         renderlogr->fatal("recompile to allow %d text strings at once (current limit %d)", count, count_max);
 
@@ -1110,7 +1112,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         left   = gx * pszx + shift; right = left + zr_w + shift;
         bottom = gy * pszy; top = bottom + zr_h;
 
-        renderlogr->trace("[%d] grid %d,%d l=%d r=%d b=%d t=%d", i, gx, gy, left, right, bottom, top);
+        blitlogr->trace("[%d] grid %d,%d l=%d r=%d b=%d t=%d", i, gx, gy, left, right, bottom, top);
         int fg_attr_offset = text->attr_offsets[i];
         int clustermap_row = texcur_y + zr_h + 1;
 
@@ -1177,10 +1179,10 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
         zhban_rect_t *zr = &text->zrects[i];
 
-        if (renderlogr->enabled(LL_TRACE)) {
+        if (blitlogr->enabled(LL_TRACE)) {
             char *u8 = utf16to8(text->strings + text->string_offsets[i]/2,
                                 text->string_lengths[i]);
-            renderlogr->trace("[%d] initial zr sz %dx%d ori %d,%d bytes: \"%s\"",
+            blitlogr->trace("[%d] initial zr sz %dx%d ori %d,%d bytes: \"%s\"",
                     i, zr->w, zr->h, zr->origin_x, zr->origin_y, u8);
         }
 
@@ -1189,7 +1191,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
         texcur_x = tex_offsets[2*i];
         texcur_y = tex_offsets[2*i + 1];
-        renderlogr->trace("[%d] tex blit %dx%d to %d,%d", i, zr->w, zr->h, texcur_x, texcur_y);
+        blitlogr->trace("[%d] tex blit %dx%d to %d,%d", i, zr->w, zr->h, texcur_x, texcur_y);
         uint8_t *dest_origin = texptr + 4 * (texcur_x + texcur_y * tex_w);
         for (uint32_t j = 0; j < zr->h+1; j++)
             memcpy(dest_origin + j * tex_w * 4, zr->data + j * zr->w, zr->w*4);
@@ -1923,7 +1925,7 @@ void implementation::renderer_thread(void) {
                     break;
                 case itc_message_t::render_buffer:
                     if (buf) {
-                        logr->info("dropped frame (buf %d)", grid_streamer.find(buf));
+                        logr->info("dropped frame (buf %d/%p)", grid_streamer.find(buf), buf);
                         dropped_frames ++;
                         grid_streamer.remap_buf(buf);
                     }
@@ -1957,6 +1959,7 @@ void implementation::renderer_thread(void) {
 #endif
 
             if (buf->text && ttf_active())
+                logr->trace("ttf_render(buf=%p)", (void*)buf);
                 ttf.render((df_text_t *)(buf->text),
                            (int)(Psz*Parx), (int)(Psz*Pary),
                             viewport_w, viewport_h);

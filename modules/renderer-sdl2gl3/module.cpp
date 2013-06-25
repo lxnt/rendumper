@@ -2098,6 +2098,8 @@ implementation::implementation() {
     started = false;
     not_done = true;
     dropped_frames = 0;
+    album = NULL;
+    mouse_xg = mouse_yg = 0;
     if ((incoming_q = mqueue->open("renderer", 1<<10)) < 0)
         logr->fatal("%s: %d from mqueue->open(renderer)", __func__, incoming_q);
 

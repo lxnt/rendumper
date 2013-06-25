@@ -505,7 +505,7 @@ void enabler_inputst::add_input(df_input_event_t& e) {
     real.release = (e.type == df_input_event_t::DF_KEY_UP || e.type == df_input_event_t::DF_BUTTON_UP) ? true : false;
     real.match.mod = getModState();
     if (e.type == df_input_event_t::DF_BUTTON_UP || e.type == df_input_event_t::DF_BUTTON_DOWN) {
-        nputlogr->trace("%s button %d at %d,%d", real.release ? "released" : "pressed", e.button, e.button_grid_x, e.button_grid_y);
+        nputlogr->trace("%s button %d at %d,%d", real.release ? "released" : "pressed", e.button, e.grid_x, e.grid_y);
       real.match.type = type_button;
       real.match.button = e.button;
       synthetics.push_back(make_pair(real, serial));

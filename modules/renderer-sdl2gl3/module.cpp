@@ -1742,8 +1742,21 @@ void implementation::slurp_keys() {
         case SDL_MOUSEMOTION:
             mouse_xw = sdl_event.motion.x;
             mouse_yw = sdl_event.motion.y;
-            mouse_xg = (sdl_event.motion.x - viewport_x) / (Parx * Psz);
-            mouse_yg = (sdl_event.motion.y - viewport_y) / (Pary * Psz);
+            {
+                int _xg = (sdl_event.motion.x - viewport_x) / Pszx;
+                int _yg = (sdl_event.motion.y - viewport_y) / Pszy;
+                if ((_xg != mouse_xg) || (_yg != mouse_yg)) {
+                    df_event.type = df_input_event_t::DF_MOUSE_MOVE;
+                    mouse_xg = df_event.grid_x = _xg;
+                    mouse_yg = df_event.grid_y = _yg;
+                    nputlogr->trace("MOUSEMOTION: passing %d,%d -> %d,%d  (%d,%d)",
+                        mouse_xw, mouse_yw, _xg, _yg, mouse_xg, mouse_yg);
+                    break;
+                } else {
+                    nputlogr->trace("MOUSEMOTION: ignoring %d,%d -> %d,%d (%d,%d)",
+                        mouse_xw, mouse_yw, _xg, _yg, mouse_xg, mouse_yg);
+                }
+            }
             continue;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
@@ -1769,8 +1782,8 @@ void implementation::slurp_keys() {
 
             df_event.type = sdl_event.type == SDL_MOUSEBUTTONDOWN ?
                 df_input_event_t::DF_BUTTON_DOWN : df_input_event_t::DF_BUTTON_UP;
-            df_event.button_grid_x = mouse_xg;
-            df_event.button_grid_y = mouse_yg;
+            df_event.grid_x = mouse_xg;
+            df_event.grid_y = mouse_yg;
             break;
         case SDL_MOUSEWHEEL:
             nputlogr->trace("SDL_MOUSEWHEEL: x=%d y=%d", sdl_event.wheel.x, sdl_event.wheel.y);
@@ -1785,8 +1798,8 @@ void implementation::slurp_keys() {
             } else if (sdl_event.wheel.y == 0) {
                 continue;
             }
-            df_event.button_grid_x = mouse_xg;
-            df_event.button_grid_y = mouse_yg;
+            df_event.grid_x = mouse_xg;
+            df_event.grid_y = mouse_yg;
             break;
         case SDL_WINDOWEVENT:
             switch (sdl_event.window.event) {

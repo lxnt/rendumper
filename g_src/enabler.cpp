@@ -110,10 +110,11 @@ static void add_input_event(df_input_event_t *event) {
             does not honor the INIT_INPUT_FLAG_MOUSE_OFF
             does not do mouse hiding.
     */
-    if (event->type == df_input_event_t::DF_BUTTON_UP
-        || event->type == df_input_event_t::DF_BUTTON_DOWN) {
-        gps.mouse_x = event->button_grid_x;
-        gps.mouse_y = event->button_grid_y;
+    switch (event->type) {
+    case df_input_event_t::DF_BUTTON_UP:
+    case df_input_event_t::DF_BUTTON_DOWN:
+        gps.mouse_x = event->grid_x;
+        gps.mouse_y = event->grid_y;
         switch (event->button) {
         case df_input_event_t::DF_BUTTON_LEFT:
             enabler.mouse_lbut = event->type == df_input_event_t::DF_BUTTON_DOWN;
@@ -132,6 +133,14 @@ static void add_input_event(df_input_event_t *event) {
         default:
             break;
         }
+        break;
+    case df_input_event_t::DF_MOUSE_MOVE:
+        gps.mouse_x = event->grid_x;
+        gps.mouse_y = event->grid_y;
+        nputlogr->trace("DF_MOUSE_MOVE %d,%d", gps.mouse_x, gps.mouse_y);
+        return;
+    default:
+        break;
     }
     enabler.add_input(*event);
 }

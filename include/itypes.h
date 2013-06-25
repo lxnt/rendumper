@@ -341,11 +341,24 @@ enum DFKeySym : int32_t {
 
 struct df_input_event_t {
     uint32_t now;
-    enum ev_type : uint8_t { DF_TNONE = 0, DF_KEY_UP, DF_KEY_DOWN, DF_BUTTON_UP, DF_BUTTON_DOWN, DF_QUIT } type;
-    enum but_num : uint8_t { DF_BNONE = 0, DF_BUTTON_LEFT, DF_BUTTON_MIDDLE, DF_BUTTON_RIGHT, DF_WHEEL_UP, DF_WHEEL_DOWN } button;
+    enum ev_type : uint8_t {
+        DF_TNONE = 0,
+        DF_KEY_UP,
+        DF_KEY_DOWN,
+        DF_BUTTON_UP,
+        DF_BUTTON_DOWN,
+        DF_MOUSE_MOVE,
+        DF_QUIT } type;
+    enum but_num : uint8_t {
+        DF_BNONE = 0,
+        DF_BUTTON_LEFT,
+        DF_BUTTON_MIDDLE,
+        DF_BUTTON_RIGHT,
+        DF_WHEEL_UP,
+        DF_WHEEL_DOWN } button;
     uint16_t mod;
     DFKeySym sym;
-    int32_t button_grid_x, button_grid_y;
+    int32_t grid_x, grid_y;
     int32_t unicode;
     bool reports_release;
 };
@@ -366,29 +379,32 @@ struct df_input_event_t {
    Only when passing a compound data type or when acknowledgement
    is required is the use of mqueues acceptable.
 
+   Currently:
+       [N] = not implemented.
+       [Y] = implemented and maybe used.
 */
 struct itc_message_t {
     enum msg_t {
-	quit, 		// async_msg - to main (renderer) thread
-	complete,
-	set_fps,
-	set_gfps,
-	push_resize,
-	pop_resize,
-	reset_textures,
-	pause, 		// async_cmd - from main (renderer) thread
-	start,          //      unpause
-	render,         //      be obvious
-	inc,            // 	run extra simulation frames
-	zoom_in, 	// zoom_commands - to main (renderer) thread
-	zoom_out,
-	zoom_reset,
-	zoom_fullscreen,
-	zoom_resetgrid,
+	quit, 		  // [N]
+	complete,         // [N]
+	set_fps,          // [Y] to the simuloop - implemented, but not used.
+	set_gfps,         // [N]
+	push_resize,      // [N] to the renderer - stubbed out
+	pop_resize,       // [N] to the renderer - stubbed out
+	reset_textures,   // [N] to the renderer - replaced by non-thread-safe setter
+	pause, 		  // [N]
+	start,            // [N]    (unpause)
+	render,           // [Y] to the simuloop - implemented, not used.
+	inc,              // [N]
+	zoom_in, 	  // [N] to the renderer - replaced by non-thread-safe setter
+	zoom_out,         // [N] to the renderer - replaced by non-thread-safe setter
+	zoom_reset,       // [N] to the renderer - replaced by non-thread-safe setter
+	zoom_fullscreen,  // [N] stubbed out
+	zoom_resetgrid,   // [N] replaced by non-thread-safe setter
 
-        render_buffer,  // buffer submission to the renderer
-        offscreen_buffer, // offscreen rendering duty, tail contains the file name.
-        input_event   // renderthread->simuthread, ncurses input in d.inp
+        render_buffer,    // [Y] buffer submission to the renderer
+        offscreen_buffer, // [Y] offscreen rendering duty, tail contains the file name.
+        input_event       // [Y] renderthread->simuthread, ncurses input in d.inp
 
     } t;
     imessagesender *sender;

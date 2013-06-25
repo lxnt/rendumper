@@ -813,7 +813,8 @@ struct implementation : public irenderer {
     void acknowledge(const itc_message_t&) {}
 
     int ttf_active();
-    int ttf_gridwidth(const uint16_t*, uint32_t, uint32_t*, uint32_t*, uint32_t*, uint32_t*);
+    int ttf_gridwidth(const uint16_t*, uint32_t, uint32_t*, uint32_t*, uint32_t*,
+                                                            uint32_t*, uint32_t*);
 
     void start();
     void join();
@@ -1535,7 +1536,8 @@ void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("over
 void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
 void implementation::reset_textures() { cmd_tex_reset = true;  }
 int implementation::ttf_active() { return 0; }
-int implementation::ttf_gridwidth(const uint16_t*, uint32_t a, uint32_t*, uint32_t*, uint32_t*, uint32_t*) {
+int implementation::ttf_gridwidth(const uint16_t*, uint32_t a, uint32_t*, uint32_t*, uint32_t*,
+                                                                          uint32_t*, uint32_t*) {
     return logr->error("renderer_sdl2gl2::ttf_width not implemented.\n"), a;
 }
 int implementation::mouse_state(int *x, int *y) {

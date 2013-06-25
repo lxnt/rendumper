@@ -29,7 +29,7 @@ struct irenderer : public imessagesender {
     virtual int ttf_active() = 0;
     /* how many grid cells will the given string touch, and return data via pointers */
     virtual int ttf_gridwidth(const uint16_t *, const uint32_t,
-                            uint32_t *, uint32_t *, uint32_t *, uint32_t *) = 0;
+                            uint32_t *, uint32_t *, uint32_t *, uint32_t *, uint32_t *) = 0;
 
     /* starts the renderer thread. */
     virtual void start() = 0;

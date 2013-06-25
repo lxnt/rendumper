@@ -824,7 +824,8 @@ struct ttf_renderer_t {
     void initialize(const char *, int, const ansi_colors_t *);
     void finalize();
     int active(int);
-    int gridwidth(const uint16_t *, const uint32_t, const uint32_t, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
+    int gridwidth(const uint16_t *, const uint32_t, const uint32_t, uint32_t *, uint32_t *,
+                                                          uint32_t *, uint32_t *, uint32_t *);
     void render(df_text_t *, int, int, int, int);
 
     zhban_t *zhban;
@@ -988,7 +989,7 @@ static char *utf16to8(const uint16_t *chars, const uint32_t len) {
 }
 
 int ttf_renderer_t::gridwidth(const uint16_t *chars, const uint32_t len, const uint32_t pszx,
-                                uint32_t *w, uint32_t *h, uint32_t *ox, uint32_t *oy) {
+                       uint32_t *w, uint32_t *h, uint32_t *ox, uint32_t *oy, uint32_t *pixel_pad) {
     zhban_rect_t zrect;
     if (zhban_size(zhban, chars, 2*len, &zrect)) {
         sizerlogr->error("zhban_size() failed");
@@ -997,6 +998,7 @@ int ttf_renderer_t::gridwidth(const uint16_t *chars, const uint32_t len, const u
     *w = zrect.w; *h = zrect.h;
     *ox = zrect.origin_x; *oy = zrect.origin_y;
     int rv = (zrect.w % pszx) ? zrect.w/pszx + 1 : zrect.w/pszx;
+    *pixel_pad = pszx*rv - zrect.w;
 
     if (sizerlogr->enabled(LL_TRACE))
         sizerlogr->trace("pszx=%d len=%d w=%d rv=%d bytes: \"%s\"",
@@ -1087,7 +1089,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     int row_h = text->zrects[0].h + 1; // first row height: texture + clustermap
     int left, right, top, bottom, gx, gy; // VAO stuff - quad.
     int tex_t, tex_r, tex_l, tex_b;       // VAO stuff - texcoords.
-    int zr_w, zr_h;
+    int zr_w, zr_h, shift;
     for (i = 0; i < count; i++) {
         zr_w = text->zrects[i].w;
         zr_h = text->zrects[i].h;
@@ -1104,7 +1106,8 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
         gx = text->grid_coords[2*i];
         gy = text->grid_coords[2*i+1];
-        left   = gx * pszx; right = left + zr_w;
+        shift = text->pixel_offsets[i];
+        left   = gx * pszx + shift; right = left + zr_w + shift;
         bottom = gy * pszy; top = bottom + zr_h;
 
         renderlogr->trace("[%d] grid %d,%d l=%d r=%d b=%d t=%d", i, gx, gy, left, right, bottom, top);
@@ -1264,8 +1267,8 @@ struct implementation : public irenderer {
     void acknowledge(const itc_message_t&) {}
 
     int ttf_active();
-    int ttf_gridwidth(const uint16_t *, const unsigned, uint32_t *, uint32_t *, uint32_t *, uint32_t *);
-
+    int ttf_gridwidth(const uint16_t*, uint32_t, uint32_t*, uint32_t*, uint32_t*,
+                                                            uint32_t*, uint32_t*);
     void start();
     void join();
     void run_here();
@@ -2084,8 +2087,9 @@ void implementation::override_grid_size(unsigned, unsigned)  { logr->trace("over
 void implementation::release_grid_size() { logr->trace("release_grid_size(): stub"); }
 void implementation::reset_textures() { cmd_tex_reset = true; }
 int implementation::ttf_active() { return ttf.active(Psz*Pary); }
-int implementation::ttf_gridwidth(const uint16_t *c, const unsigned cc, uint32_t *w,  uint32_t *h, uint32_t *ox,  uint32_t *oy) {
-    return ttf.gridwidth(c, cc, Parx*Psz, w, h, ox, oy);
+int implementation::ttf_gridwidth(const uint16_t *c, const unsigned cc, uint32_t *w, uint32_t *h,
+                                                 uint32_t *ox,  uint32_t *oy, uint32_t *pixel_pad) {
+    return ttf.gridwidth(c, cc, Parx*Psz, w, h, ox, oy, pixel_pad);
 }
 int implementation::mouse_state(int *x, int *y) {
     /* race-prone. convert to uint32_t mouse_gxy if it causes problems. */

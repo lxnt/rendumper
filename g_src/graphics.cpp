@@ -56,8 +56,6 @@ void graphicst::addcoloredst(const char *str, const char *colorstr)
 
 static std::string jcont_string;
 static std::string jcont_attrs;
-
-/* TODO: move justification entirely into simuloop::add_string() */
 void graphicst::addst(const string &str_orig, justification just, int space)
 {
     /* just don't bother if it's y-clipped. */

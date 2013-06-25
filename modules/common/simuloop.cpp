@@ -354,17 +354,18 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
     const char *foo[] = { "left", "right", "center", "mono" };
     logr_string->trace("\"%s\" xy=%d,%d align=%s space=%d", str, x, y, foo[textalign], space);
 
-    /* now space is always >1 and is in fact the space where the string must fit. */
     if (renderer->ttf_active() && (textalign != DF_MONOSPACE_LEFT)) {
         shrink::unicode shrinker(str, attrs, len);
         int grid_w;
-        uint32_t w, h, ox, oy;
+        uint32_t w, h, ox, oy, pixel_pad, pixel_offset;
 
-        grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
+        grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(),
+                                                    &w, &h, &ox, &oy, &pixel_pad);
         if (space > 0)
             while (grid_w > space) {
                 shrinker.shrink(shrinker.size() - 1);
-                grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(), &w, &h, &ox, &oy);
+                grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(),
+                                                            &w, &h, &ox, &oy, &pixel_pad);
             }
 
         logr_string->trace("grid_w = %d", grid_w);
@@ -373,19 +374,24 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
         switch(textalign) {
         case DF_TEXTALIGN_CENTER:
             grid_offset = (len - grid_w)/2;
+            pixel_offset = pixel_pad/2;
             break;
         case DF_TEXTALIGN_RIGHT:
             grid_offset = len - grid_w;
+            pixel_offset = pixel_pad;
             break;
         default:
+            pixel_offset = 0;
             break;
         }
 
         df_text_t *buftext = (df_text_t *) renderbuf->text;
 
-        buftext->add_string(x + grid_offset, y, shrinker.chars(), shrinker.attrs(), shrinker.size(), w, h, ox, oy);
-        logr_string->trace("gw=%d go=%d xy=%d,%d len %d returning %d", grid_w, grid_offset,
-            x+grid_offset, y, shrinker.size(), grid_w + grid_offset);
+        buftext->add_string(x + grid_offset, y, shrinker.chars(), shrinker.attrs(),
+                                            shrinker.size(), w, h, ox, oy, pixel_offset);
+        logr_string->trace("gw=%d go=%d xy=%d,%d len=%d pixel_offset=%d returning %d",
+            grid_w, grid_offset, x+grid_offset, y, shrinker.size(), pixel_offset,
+                                                                    grid_w + grid_offset);
         return grid_w + grid_offset;
         //return shrinker.size();
     } else {

@@ -150,9 +150,6 @@ int main (int argc, char* argv[]) {
     if (!lock_and_load(argc > 1 ? argv[1] : "sdl2gl3", NULL))
         return 1;
 
-    // FIXME: crude hack for effects export
-    export_effects = argc < 2;
-
     platform = getplatform();
     mainlogr = platform->getlogr("df");
     stubs_logr = platform->getlogr("df.stubs");
@@ -184,7 +181,6 @@ int main (int argc, char* argv[]) {
         enabler.command_line += option;
         enabler.command_line += " ";
     }
-
     if (beginroutine()) { // TODO: think of moving to simuloop.
         simuloop->start();
 

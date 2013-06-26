@@ -27,16 +27,19 @@ struct implementation : public imusicsound {
     void stop_all(void);
     void stop_sound(int slot, bool is_song);
     void gamelog_event(const char *text);
-    
+
     implementation();
     int initialize();
-    
+
     Mix_Music *music_slots[1024];
+    Mix_Chunk *sound_slots[1024];
     int active_music_slot;
+    int active_sound_slot;
+    int channels_allocated;
+    int next_channel;
     int volume;
     int fadein_ms;
     int fadeout_ms;
-
 };
 
 int implementation::initialize() {
@@ -44,10 +47,11 @@ int implementation::initialize() {
     Uint16 format = MIX_DEFAULT_FORMAT;
     int channels = 2;
     int buffersize = 4096;
-  
+    channels_allocated = 4;
+    next_channel = 0;
     memset(music_slots, 0, sizeof(music_slots));
-    logr->info("sizeof(music_slots) = %d",sizeof(music_slots));
-    
+    memset(sound_slots, 0, sizeof(sound_slots));
+
     if(SDL_Init(SDL_INIT_AUDIO) < 0) {
         logr->error("SDL_INIT_AUDIO: %s", SDL_GetError());
         return 1;
@@ -62,12 +66,12 @@ int implementation::initialize() {
             (format&0xFF),
             (channels > 2) ? "surround" : (channels > 1) ? "stereo" : "mono",
             (format&0x1000) ? "BE" : "LE", buffersize );
-    }    
+    }
 
     volume = atoi(platform->get_setting("init.VOLUME", "255"));
-
+    volume = volume/2; // max is 128 in SDL2_mixer
     Mix_VolumeMusic(volume);
-
+    Mix_AllocateChannels(channels_allocated);
     return 0;
 }
 
@@ -90,10 +94,44 @@ void implementation::load_sound(const char *filename, int slot, bool is_song) {
         music_slots[slot] = Mix_LoadMUS(filename);
         if (music_slots[slot] == NULL)
             logr->error("Mix_LoadMUS(%s): %s", filename, Mix_GetError());
+    } else {
+        if (sound_slots[slot] != NULL) {
+            logr->warn("replacing sound in slot %d with %s", slot, filename);
+            Mix_FreeChunk(sound_slots[slot]);
+        }
+        sound_slots[slot] = Mix_LoadWAV(filename);
+        if (sound_slots[slot] == NULL)
+            logr->error("Mix_LoadWAV(%s): %s", filename, Mix_GetError());
+        Mix_VolumeChunk(sound_slots[slot], MIX_MAX_VOLUME);
     }
 }
 void implementation::play_sound(int slot, bool is_song) {
     logr->trace("stub_sound: play_sound(slot=%d, is_song=%s)", slot, is_song?"true":"false");
+    if (is_song) {
+        logr->error("play_sound(%d, %s): songs go to background, no?", slot, is_song?"true":"false");
+        return;
+    }
+    if (1 == Mix_Playing(next_channel)) {
+        if (channels_allocated == Mix_Playing(-1)) {
+            logr->trace("out of channels: %d active, stopping %d", Mix_Playing(-1), next_channel);
+            Mix_HaltChannel(next_channel);
+        } else {
+            /* find a free channel next in sequence */
+            do {
+                next_channel += 1;
+                if (next_channel == channels_allocated)
+                    next_channel = 0;
+            } while (1 == Mix_Playing(next_channel));
+        }
+    }
+    if (Mix_PlayChannel(next_channel, sound_slots[slot], 0) == -1)
+        logr->error("Mix_PlayChannel(%d, slot=%d %p, 0): %s", next_channel, slot,
+                                                sound_slots[slot], Mix_GetError());
+
+    next_channel += 1;
+    if (next_channel == channels_allocated)
+        next_channel = 0;
+    logr->trace("next_channel=%d channels_allocated=%d", next_channel, channels_allocated);
 }
 void implementation::start_background(int slot, bool is_song) {
     if (is_song) {
@@ -119,9 +157,16 @@ void implementation::stop_background(void) {
 }
 void implementation::stop_all(void) {
     logr->trace("stub_sound: stop_all()");
+    if (-1 == Mix_HaltChannel(-1))
+        logr->error("Mix_HaltChannel(-1): %s", Mix_GetError());
+
 }
 void implementation::stop_sound(int slot, bool is_song) {
     logr->trace("stub_sound: stop_sound(slot=%d, is_song=%s)", slot, is_song?"true":"false");
+    if (is_song) {
+        logr->error("play_sound(%d, %s): songs go to background, no?", slot, is_song?"true":"false");
+        return;
+    }
 }
 void implementation::gamelog_event(const char *text) {
     logr->trace("stub_sound: gamelog_event(%s)", text);

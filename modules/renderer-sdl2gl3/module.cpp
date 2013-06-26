@@ -888,7 +888,8 @@ void ttf_renderer_t::initialize(const char* fname, int lh, const ansi_colors_t *
     }
     fclose(fp);
 
-    zhban = zhban_open(font_data, font_data_len, lh, 1<<20, 1<<20);
+    int verbose = sizerlogr->enabled(LL_TRACE);
+    zhban = zhban_open(font_data, font_data_len, lh, 2*lh, 1<<20, 1<<20, verbose);
     if (zhban == NULL) {
         logr->error("zhban_open() failed.");
         free(font_data);
@@ -1193,7 +1194,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         texcur_y = tex_offsets[2*i + 1];
         blitlogr->trace("[%d] tex blit %dx%d to %d,%d", i, zr->w, zr->h, texcur_x, texcur_y);
         uint8_t *dest_origin = texptr + 4 * (texcur_x + texcur_y * tex_w);
-        for (uint32_t j = 0; j < zr->h+1; j++)
+        for (int j = 0; j < zr->h+1; j++)
             memcpy(dest_origin + j * tex_w * 4, zr->data + j * zr->w, zr->w*4);
     }
         //}

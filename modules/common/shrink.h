@@ -119,14 +119,14 @@ struct unicode {
         chardata.resize(str.size());
         unsigned char *data = (unsigned char *)(str.data());
         for (size_t i = 0; i < str.size(); i++)
-            chardata[i] = codepage437[data[i]];
+            chardata[i] = data[i] != '\t' ? codepage437[data[i]] : '\t';
     }
 
     unicode(const char* str, const char* attrs, const unsigned len): chardata(), attrdata(attrs, len) {
         chardata.resize(len);
         unsigned char *data = (unsigned char *)str;
         for (unsigned i = 0; i < len; i++)
-            chardata[i] = codepage437[data[i]];
+            chardata[i] = data[i] != '\t' ? codepage437[data[i]] : '\t';
     }
 
     void shrink(unsigned len) { the_shrink(chardata, attrdata, len); }

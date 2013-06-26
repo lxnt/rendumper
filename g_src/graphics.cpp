@@ -68,8 +68,17 @@ void graphicst::addst(const string &str_orig, justification just, int space)
 
     unsigned attr = ((screenbright << 6) | ((screenb & 7) << 3) | (screenf & 7)) & 0x7Fu;
 
-    jcont_string.append(str_orig);
-    jcont_attrs.append(str_orig.size(), attr);
+    /* the tab hack */
+    if (str_orig.find(": ") == 0) {
+        std::string str_copy = str_orig;
+        str_copy.replace(1, 1, 1, '\t');
+        jcont_string.append(str_copy);
+        addst_logr->trace("tab: '%s' %d chars; attr=0x%x", str_copy.c_str(), str_copy.size(), attr);
+    } else {
+        addst_logr->trace("'%s' %d chars; attr=0x%x", str_orig.c_str(), str_orig.size(), attr);
+        jcont_string.append(str_orig);
+    }
+    jcont_attrs.append(str_orig.size(), (char)attr);
 
     uint32_t align;
     switch (just) {

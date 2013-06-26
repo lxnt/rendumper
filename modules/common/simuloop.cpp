@@ -370,9 +370,7 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
                 grid_w = renderer->ttf_gridwidth(shrinker.chars(), shrinker.size(),
                                                             &w, &h, &ox, &oy, &pixel_pad);
             }
-
         logr_string->trace("grid_w = %d", grid_w);
-        /* for now do alignment in terms of grid cells. pixels and the tab hack will go next */
         int grid_offset = 0;
         switch(textalign) {
         case DF_TEXTALIGN_CENTER:
@@ -396,7 +394,6 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
             grid_w, grid_offset, x+grid_offset, y, shrinker.size(), pixel_offset,
                                                                     grid_w + grid_offset);
         return grid_w + grid_offset;
-        //return shrinker.size();
     } else {
         if ((space == 0) || (space >= len))
             return bputs_attrs(renderbuf, x, y, len, str, attrs);
@@ -406,36 +403,6 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
         return bputs_attrs(renderbuf, x, y, shrinker.size(), shrinker.chars(), shrinker.attrs());
     }
 }
-
-#if 0
-int implementation::add_stringlist() {
-
-/* TODO: get rid of the following */
-typedef std::pair<std::string, unsigned> to_be_continued_t;
-static std::list<to_be_continued_t> previously;
-    /* replicate the tab-hack */
-    {
-        if (str.size() > 2 && str[0] == ':' && str[1] == ' ')
-            str[1] = '\t'; // EVIL HACK
-
-        to_be_continued_t tmp_tab;
-        tmp_tab.second = 0x80u; // since MSB is not used otherwise.
-        char *p = str_orig.c_str();
-        char *q = p;
-        while ((p = strchr(p, '\t'))) {
-            std::string tmp_str(q, q-p);
-            p++;
-            q = p;
-            to_be_continued_t tmp(tmp_str, attr);
-            previously.push_back(tmp);
-            previously.push_back(tmp_tab);
-        }
-        std::string tmp_str(q);
-        to_be_continued_t tmp(tmp_str, attr);
-        previously.push_back(tmp);
-    }
-}
-#endif
 
 void implementation::release() { }
 

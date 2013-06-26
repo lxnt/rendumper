@@ -18,35 +18,39 @@ struct implementation : public imusicsound {
     void stop_background(void);
     void stop_all(void);
     void stop_sound(int slot, bool is_song);
+    void gamelog_event(const char *text);
 };
 
 void implementation::update() {
-    logr->trace("stub_sound: update()\n");
+    logr->trace("stub_sound: update()");
 }
 void implementation::set_master_volume(long newvol)  {
-    logr->trace("stub_sound: set_master_volume(%ld)\n", newvol);
+    logr->trace("stub_sound: set_master_volume(%ld)", newvol);
 }
 void implementation::load_sound(const char *filename, int slot, bool is_song) {
-    logr->trace("stub_sound: update(filename='%s', slot=%d, is_song=%s)\n",
+    logr->trace("stub_sound: load_sound(filename='%s', slot=%d, is_song=%s)",
         filename, slot, is_song?"true":"false");
 }
 void implementation::play_sound(int slot, bool is_song) {
-    logr->trace("stub_sound: play_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: play_sound(slot=%d, is_song=%s)", slot, is_song?"true":"false");
 }
 void implementation::start_background(int slot, bool is_song) {
-    logr->trace("stub_sound: start_background(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: start_background(slot=%d, is_song=%s)", slot, is_song?"true":"false");
 }
 void implementation::stop_background(void) {
-    logr->trace("stub_sound: stop_background()\n");
+    logr->trace("stub_sound: stop_background()");
 }
 void implementation::stop_all(void) {
-    logr->trace("stub_sound: stop_all()\n");
+    logr->trace("stub_sound: stop_all()");
 }
 void implementation::stop_sound(int slot, bool is_song) {
-    logr->trace("stub_sound: stop_sound(slot=%d, is_song=%s)\n", slot, is_song?"true":"false");
+    logr->trace("stub_sound: stop_sound(slot=%d, is_song=%s)", slot, is_song?"true":"false");
+}
+void implementation::gamelog_event(const char *text) {
+    logr->trace("stub_sound: gamelog_event(%s)", text);
 }
 void implementation::release(void) {
-    logr->trace("stub_sound: release()\n");
+    logr->trace("stub_sound: release()");
 }
 static implementation the_stub;
 

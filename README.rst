@@ -19,15 +19,21 @@ plugins allow modding the hfs out of all of them.
 Todo list
 ---------
 
+Issues:
+^^^^^^^
+
+- Movie playback (intro, etc) is broken in non-80x25 window size.
+
 Missing features - priority:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Clean up TTF-related interfaces; approach pixel-perfect justification; do the tab hack.
+- SoundSense soundpack support in the sound module.
 
 In no particular order:
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-- renderer/simuloop config api its use with initst and a file for tests.
+- have an internal locked buffer for the log, flush it once in a while, ala ucoev.
+- clean up TTF-related interfaces
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t - half done
 - offload  dim/rain/snow effects to the renderer, implement in shaders,
@@ -35,7 +41,6 @@ In no particular order:
   relevant graphicst methods are not getting called.
 - compile with the same flags as SDL is: -mmx -3dnow -sse
 - make a knob for max-optimization builds.
-- implement SoundSense soundpack support in the sound module.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
 - rewrite df-structures/codegen.py, it rotted; revive
 - sdl2gl* renderers - move common code to common/
@@ -57,7 +62,6 @@ Stuff I put a SEP field around:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - pure SDL2 renderer ala PRINT_MODE:2D
-- pure SDL2 sound module
 - OpenAL sound module
 - Offscreen ncurses renderer complete with finding the appropriate file
   format and viewer
@@ -116,7 +120,7 @@ then be simple. These are:
              and controlling both simulation and rendering frame rates.
 - irenderer - implements the renderer thread, which renders buffers, hands over buffers
              to the simulation thread, converts and passes on user input.
-- imusicsound - intended to host the audio code, design incomplete.
+- imusicsound - intended to host the audio code, work very in progress.
 
 In the simplest case, the game consists of two threads - renderer and simulation,
 where renderer thread is usually the main one. When renderer module starts up, it
@@ -169,7 +173,6 @@ was replaced with calls to the interfaces described above, and the plugin loader
 Thus, once the game gets recompiled for windows with the g_src code from here, it will rely on plugins for all
 the rendering, sound, etc.
 
-
 Logging
 ^^^^^^^
 
@@ -191,27 +194,40 @@ Archive name format is YearMonthDay-Hour.7z, in UTC+0 timezone. They are uploade
 please consult git commit log at https://github.com/lxnt/rendumper/commits/interfaces if it crashes or
 misbehaves - this particular bug might have been fixed already.
 
-To install, make a copy of Dwarf Fortress directory, and then delete the following files::
+To install, make a copy of Dwarf Fortress directory, then unzip the archive into the Dwarf Fortress directory.
 
-    libs/libgcc_1.so
-    libs/libstdc++.so.6
-
-Then unzip the archive into the Dwarf Fortress directory. You should end up with something like::
+You should end up with something like::
 
     libs/common_code.so
     libs/Dwarf_Fortress
     libs/libGLEW.so.1.6
     libs/libgraphics.so
     libs/libharfbuzz.so.0
-    libs/libharfbuzz.so.0.918.0
     libs/libSDL-1.2.so.0
     libs/libSDL2-2.0.so.0
+    libs/libSDL2_mixer-2.0.so.0
     libs/libzhban.so
     libs/platform_ncurses.so
     libs/platform_sdl2.so
     libs/renderer_ncurses.so
     libs/renderer_sdl2gl2.so
     libs/renderer_sdl2gl3.so
+    libs/sound_sdl2mixer.so
+
+You will need the following libraries installed system-wide for the sound to work (those are Ubuntu names)::
+
+    libvorbisfile3:i386
+    libflac8:i386
+
+If you have latest open-source OpenGL drivers installed (mesa), delete the following files::
+
+    libs/libgcc_1.so
+    libs/libstdc++.so.6
+
+as they will prevent the game from starting.
+
+If you have 64bit system, make sure you have appropriate i386 mesa packages installed.
+Basically, if vanilla Dwarf Fortress in some OpenGL PRINT_MODE runs ok, you're set.
 
 Having done that, launch `df` as usual, this will load SDL2 OpenGL 3.0 renderer with TTF support.
 
@@ -253,6 +269,17 @@ Install the following packages:
 - wget
 
 I might have forgotten some.
+
+The sound module additinally requires
+
+- libflac-dev
+- libvorbis-dev
+- libmodplug-dev
+
+The init-prefix script haven't been updated for the sound module yet.
+Latest smpeg (http://www.libsdl.org/projects/smpeg/release/smpeg2-2.0.0.tar.gz) and SDL2_mixer
+(http://www.libsdl.org/tmp/SDL_mixer/release/SDL2_mixer-2.0.0.tar.gz) have to be installed into
+the prefix.
 
 Pull the source::
 

@@ -190,7 +190,11 @@ ttf_details ttf_managerst::get_handle(const list<ttf_id> &text, justification ju
     unsigned int * const s = ((unsigned int*)screen + ourx*dimy + screeny);
 
 # so just stuff it with the cache key up to the limit.
-# 
+# this has interesting effect of putting the least significant byte
+# of the handle into ((char *)s)[0] - the character position of the screen.
+# see the graphics.h/gps_locator code to understand how it can have
+# funny effects
+#
     if (s < (unsigned int*)screen_limit)
         s[0] = (((unsigned int)GRAPHICSTYPE_TTF) << 24) | handle;
 

@@ -2116,6 +2116,8 @@ implementation::implementation() {
 
     if ((free_buf_q = mqueue->open("free_buffers", 1<<10)) < 0)
         logr->fatal("%s: %d from mqueue->open(free_buffers)", __func__, free_buf_q);
+
+    logr = platform->getlogr("sdl2gl3");
 }
 
 /* Below is code copied from renderer_ncurses.
@@ -2161,7 +2163,6 @@ static int thread_stub(void *data) {
 }
 
 void implementation::run_here() {
-    logr = platform->getlogr("sdl");
     if (started) {
         logr->error("second renderer start ignored\n");
         return;
@@ -2172,7 +2173,6 @@ void implementation::run_here() {
 }
 
 void implementation::start() {
-    logr = platform->getlogr("sdl");
     if (started) {
         logr->error("second renderer start ignored\n");
         return;

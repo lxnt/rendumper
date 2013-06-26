@@ -206,7 +206,7 @@ int main (int argc, char* argv[]) {
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
     }
-    mainlogr->warn("export_effects: %s", export_effects ? "Y": "N");
+    mainlogr->info("export_effects: %s", export_effects ? "Y": "N");
     // Load keyboard map
     keybinding_init();
     enabler.load_keybindings("data/init/interface.txt");

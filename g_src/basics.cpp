@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "imusicsound.h"
+
 #ifdef _WIN32
 
 # ifndef INTEGER_TYPES
@@ -25,6 +27,8 @@ typedef int32_t Ordinal;
 #include "basics.h"
 
 extern string errorlog_prefix;
+
+static imusicsound *musicsound = NULL;
 
 void errorlog_string(const string &str)
 {
@@ -55,6 +59,11 @@ void gamelog_string(const string &str)
 		fseed<<str.c_str()<<std::endl;
 		}
 	fseed.close();
+        if (musicsound == NULL)
+            if (getmusicsound)
+                musicsound = getmusicsound();
+        if (musicsound)
+            musicsound->gamelog_event(str.c_str());
 }
 
 void errorlog_string(const char *ptr)

@@ -9,8 +9,10 @@
 #define DFMOD_EP_KEYBOARD   32
 #define DFMOD_EP_MUSICSOUND 64
 
+/* returns mask of interfaces provided by the shared object, or 0 on error */
 int load_module(const char *soname);
 
+/* attempts to load all modules the given renderer (printmode suffix) requires */
 bool lock_and_load(const char *printmode, const char *modpath);
 
 #endif

@@ -130,7 +130,7 @@ static void dump_link_table() {
 /* returns a bitfield of which entry points were replaced.
    any error loading the so results in zero entry points replaced
    and thus return value of 0. */
-static int load_module(const char *soname) {
+int load_module(const char *soname) {
     ilogger *logr = NULL;
     if (getplatform)
         logr = getplatform()->getlogr("glue.load");

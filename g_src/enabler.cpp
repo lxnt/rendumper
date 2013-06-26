@@ -12,7 +12,7 @@
 
 using namespace std;
 
-static iplatform *platform = NULL;
+iplatform *platform = NULL;
 isimuloop *simuloop = NULL;
 ilogger *stubs_logr = NULL;
 ilogger *mainlogr = NULL;
@@ -199,12 +199,13 @@ int main (int argc, char* argv[]) {
 
     init.begin(); // Load init.txt settings
 
-    if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF))
-        if (!musicsound.initsound()) {
+    if (!init.media.flag.has_flag(INIT_MEDIA_FLAG_SOUND_OFF)) {
+        if (!load_module("sound_sdl2mixer") || !musicsound.initsound()) {
             report_error("Initializing sound failed, no sound will be played", "");
             mainlogr->warn("Initializing sound failed, no sound will be played");
             init.media.flag.add_flag(INIT_MEDIA_FLAG_SOUND_OFF);
         }
+    }
     mainlogr->warn("export_effects: %s", export_effects ? "Y": "N");
     // Load keyboard map
     keybinding_init();

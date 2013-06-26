@@ -334,11 +334,13 @@ ilogger *log_implementation::getlogr(const char *n) {
 }
 
 void log_implementation::vlog_message(int level, const std::string& name, const char *fmt, va_list ap) {
+    flockfile(dst);
     fprintf(dst, "%06lu %s [%s]: ", platform->GetTickCount() % 1000000, name.c_str(), ll_names(level));
     vfprintf(dst, fmt, ap);
     fputc('\n', dst);
     va_end(ap);
     if (level == LL_FATAL)
         fflush(dst);
+    funlockfile(dst);
 }
 

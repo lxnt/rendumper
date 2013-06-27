@@ -24,10 +24,18 @@ Issues:
 
 - Movie playback (intro, etc) is broken in non-80x25 window size.
 
-Missing features - priority:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Under construction:
+^^^^^^^^^^^^^^^^^^^
 
+- OpenAL sound module : in progress
 - SoundSense soundpack support in the sound module.
+  Depends on MP3 (and other) streaming decoders. XML parse offloaded to
+  a preprocessor.
+
+Next:
+^^^^^
+
+- third-party memory-hacking tool support - do the fgdumper for an example.
 
 In no particular order:
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,15 +44,13 @@ In no particular order:
 - clean up TTF-related interfaces
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t - half done
-- offload  dim/rain/snow effects to the renderer, implement in shaders,
-  reimplement original in the ncurses renderer. = does not work because
-  relevant graphicst methods are not getting called.
 - compile with the same flags as SDL is: -mmx -3dnow -sse
 - make a knob for max-optimization builds.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
-- rewrite df-structures/codegen.py, it rotted; revive
+- rewrite df-structures/codegen.py, it rotted; revive : it now works, but in
+  dire need of ground-up rewrite. 8x code size and ~133x file count reduction as
+  compared to the the stock codegen are still desirable.
 - sdl2gl* renderers - move common code to common/
-- maybe get rid of vbstreamer in sdl2gl2.
 - merge ui and compositor from fgtestbed. first finish and debug it though
 - sdl2gl2 GL_POINT positioning suffers rounding errors: eats pixels.
   visible with DF_LOG=sdl.reshape=trace.
@@ -57,12 +63,16 @@ In no particular order:
 - Decide what to do with 2D world map drawing and export (Legends mode).
   Currently it's SDL_SaveBMP buried in the binary, and while it happens to work with
   SDL2.0 binary substituted for SDL1.2, it's fragile and just plain wrong.
+- offload  dim/rain/snow effects to the renderer, implement in shaders,
+  reimplement original in the ncurses renderer. = does not work because
+  relevant graphicst methods are not getting called.
+- maybe get rid of vbstreamer in sdl2gl2.
+
 
 Stuff I put a SEP field around:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - pure SDL2 renderer ala PRINT_MODE:2D
-- OpenAL sound module
 - Offscreen ncurses renderer complete with finding the appropriate file
   format and viewer
 - i686-apple-darwin10 build
@@ -380,16 +390,59 @@ Volunteers?
 TTF support design
 ------------------
 
-Lockless caching text shaper/renderer - see https://github.com/lxnt/zhban
+Based on the lockless caching text shaper/renderer - see https://github.com/lxnt/zhban , which was written
+specifically for this project, to replace SDL_ttf giving better shaping support and cutting down
+on surface/texture format conversions - the final blit is expected to use GLSL, and cached bitmaps do not
+depend on attributes (colors of glyphs and background).
 
-``addst()`` becomes a simple wrapper around simuloop::add_string().
+``graphicst::addst()`` became a simpler wrapper around simuloop::add_string().
 
 String mutilation code is in modules/common/shrink.h
 
-Chopped strings get added to a df_text_t container which is itself attached to the current df_buffer_t.
+The tab hack - replacing ':\\x20 ...' with ':\\t ...' in justify_cont mode - is implemented in the libzhban,
+and the addst() just replaces and concatenates.
 
-On buffer submission the renderer uses the other half of the zhban to draw the text.
+The zhban aligns next glyph after a tab to a predefined multiple of em-width while shaping/sizing.
 
-Justification is not stored because justification seems to be done only inside the
-difference between grid_width*Pszx and pixel_width, so is irrelevant here.
+In all cases, there are two values returned from the renderer when sizing a sting - number of grid cells
+this string will touch, assuming it starts on a grid cell boundary, and number of pixels true string width
+is less than aforementioned span of grid cells. This number of pixels is used for justify_center and justify_right,
+so beware that result of combining them with tab-hack is undefined - tabs will break in some way.
+
+All strings that are to be rendered in TTF font get sized/shrinked accordingly and put into df_text_t
+structure which gets attached to the currently assimilated buffer.
+
+On buffer submission the renderer uses the other half of the zhban to draw the text at given grid coords
+with given pixel offset off the left grid cell boundary - kind of left margin.
+
+Audio
+-----
+
+sound-sdl2mixer
+^^^^^^^^^^^^^^^
+
+A bare-bones sound support, known for playing back sounds more-or-less correctly in the intro movie,
+and then playing background music. Requires libSDL2_mixer. Plays whatever format SDL2_mixer supports, which
+is enough for stock sounds. Basically, an example implentation of imusicsound interface.
+
+
+sound-openal
+^^^^^^^^^^^^
+
+Since SDL2_mixer isn't all that advanced, the original sound-openal module is being rewritten to be properly
+multithreaded - that is separating sound event scheduling, sound playback and sound file load and decoding or
+streaming into distinct threads, while utilizing OpenAL-soft for mixing and positioning stuff.
+
+Support for SoundSense soundpacks has been already written and only lacks streaming decoder and mixer support.
+
+Threading:
+
+- public interface is just stubs sending mqueue messages to the manager thread
+- manager thread does the lightweight work - scheduling, matching SoundSense patterns, requesting
+  stream-decode, etc.
+- loader thread has a task queue of files to decode. (?)
+- some (hidden?) mixing thread does the actual heavy lifting. This is hopefully hidden from us by the OpenAL.
+
+
+
 

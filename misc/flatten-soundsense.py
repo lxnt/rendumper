@@ -21,7 +21,7 @@ struct Header {                // 16 bytes
     int32_t sound_count;       // count of struct Sound-s
     int32_t soundfile_count;   // count total of struct SoundFile-s
     int32_t stringtab_size;    // string table size
-    int32_t channel_count;     // number of logical channels (music, trade, etc) used, 
+    int32_t channel_count;     // number of logical channels (music, trade, etc) used,
                                // including the 'non-channel' with id=0
 }
 
@@ -57,7 +57,7 @@ struct SoundFile {              // 32 bytes
     int32_t balanceAdjustment;  // adjusts stereo channel, can range for -127 (full left) to 127 (full right).
                                 // was: float from -1.0 to 1.0
     int32_t volumeAdjustment;   // This can be used to adjust the volume of the sample. The value can
-                                // range from -0 to 128 and the default is 64. 
+                                // range from -0 to 128 and the default is 64.
                                 // (dBs mapped to linear so that max +6 gives 128, and set as Mix_Chunk volume)
                                 // was: from -40 to +6 decibels and the default is 0.
     uint8_t padding[8];         // padding to hold extra data when loaded and align to 16 bytes
@@ -70,7 +70,7 @@ strings in the stringtab are zero-padded to 4 byte alignment.
 import os, os.path, sys, argparse, struct, math
 from lxml import etree
 from lxml.etree import XPath, XMLSyntaxError, Element, Comment
-
+Wall = False
 def pot_align(value, pot):
     return (value + (1<<pot) - 1) & ~((1<<pot) -1)
 
@@ -153,7 +153,7 @@ class Sound(object):
     def append(self, sound):
         self.weight_sum += sound.weight
         self.sounds.append(sound)
-        
+
     def __len__(self):
         return len(self.sounds)
 
@@ -175,9 +175,10 @@ class SoundFile(object):
         filename_offs = strtab.push(filename)
         sftab.push(struct.pack("<6i8x", filename_offs, len(filename), self.weight,
                     self.volumeAdjustment, self.randomBalance, self.balanceAdjustment))
-                                
+
 
 def walk_the_walk(packspath):
+    global Wall
     chandict = { None: 0 } # for numbering the channels
     sounds = []
     filerefs = {}
@@ -226,15 +227,19 @@ def walk_the_walk(packspath):
                         sfcount += 1
                     if len(soundobject) == 0:
                         if soundobject.channel_id == 0:
-                            #print("{}: warning: sound with no channel and no soundfiles".format(sourceref))
+                            if Wall:
+                                print("{}: warning: sound with no channel and no soundfiles".format(sourceref))
                             continue
                         elif soundobject.loop == 0:
                             print("{}: warning: sound for channel '{}' without loop and no soundfiles, ignoring.".format(sourceref, soundobject.channel))
                             continue
                         else:
-                            # this shows loopstops in the packs
-                            #print("{}:{} sound w/o sfiles: {}".format(fullname, sound.sourceline, sound.attrib))
-                            pass
+                            loop = sound.get('loop')
+                            if loop is None:
+                                print("{}:{} error: sound w/o sfiles, a channel, but no loop".format(fullname, sound.sourceline))
+                            elif loop != 'stop':
+                                print("{}:{} error: sound w/o sfiles, a channel, loop={}".format(fullname, sound.sourceline, sound.get("loop")))
+
                     sounds.append(soundobject)
     return sounds, sfcount, chandict
 
@@ -251,9 +256,9 @@ def dump_the_dump(dumpname, sounds, sfcount, chandict):
     del chandict[None]
     chans = ' '.join(chandict.keys())
     print("{} soundfiles\n{} sounds\n{} channels: {}\n{} bytes in strings\n{} string dupes killed\n{} bytes in structs\n{} total".format(
-                sfcount, 
-                len(sounds), 
-                chancount, chans, 
+                sfcount,
+                len(sounds),
+                chancount, chans,
                 len(strdump), strtab.dupes_killed,
                 len(dump) - 16 + len(sfdump),
                 len(strdump) + len(dump) + len(sfdump)))
@@ -265,10 +270,13 @@ def dump_the_dump(dumpname, sounds, sfcount, chandict):
     df.close()
 
 def main():
+    global Wall
     ap = argparse.ArgumentParser(description = 'a simpler code generator')
     ap.add_argument('src', metavar='srcdir', help='source (SoundSense packs) dir')
     ap.add_argument('dst', metavar='dstfile', default='soundsense.index', help='destination file', nargs='?')
+    ap.add_argument('-v', default=False, action='store_true', help='complain more')
     pa = ap.parse_args()
+    Wall = pa.v
     dump_the_dump(pa.dst, *walk_the_walk(pa.src))
 
 if __name__ == '__main__':

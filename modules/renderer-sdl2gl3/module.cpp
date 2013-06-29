@@ -161,7 +161,11 @@ void vbstreamer_t::initialize() {
         glEnableVertexAttribArray(cf_posn);
         glEnableVertexAttribArray(cbr_posn);
         glEnableVertexAttribArray(fx_posn);
-        bufs[i] = new_buffer_t(0, 0, tail_sizeof);
+#if !defined(MALLOC_GLBUFFERS)
+        bufs[i] = new_buffer_t(0, 0, tail_sizeof, pot);
+#else
+        bufs[i] = allocate_buffer_t(0, 0, tail_sizeof, pot);
+#endif
     }
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -254,8 +258,11 @@ void vbstreamer_t::draw(df_buffer_t *buf) {
         logr->info("draw(%p/%d): remapped: grid mismatch", buf, which);
         return;
     }
-
+#if !defined(MALLOC_GLBUFFERS)
     glUnmapBuffer(GL_ARRAY_BUFFER);
+#else
+    glBufferData(GL_ARRAY_BUFFER, buf->used_sz, buf->screen, GL_STREAM_DRAW);
+#endif
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     GL_DEAD_YET();
@@ -296,7 +303,9 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
             logr->trace("remap_buf(%p/%d): recycled fast", buf, which);
             return;
         }
+#if !defined(MALLOC_GLBUFFERS)
         glUnmapBuffer(GL_ARRAY_BUFFER);
+#endif
         buf->pstate = BS_RENDER_DONE;
         GL_DEAD_YET();
     }
@@ -305,21 +314,27 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         logr->fatal("remap_buf(%p/%d): state=%s after fixup", buf, which, buf_pstate_str[buf->pstate]);
 
     if (reset_vao) {
+#if !defined(MALLOC_GLBUFFERS)
         buf->ptr = NULL;
         buf->w = w, buf->h = h;
         buf->tail_sizeof = tail_sizeof;
         setup_buffer_t(buf, pot); // get required_sz
         glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
+#else
+        realloc_buffer_t(buf, w, h, tail_sizeof);
+#endif
     }
 
+#if !defined(MALLOC_GLBUFFERS)
     buf->ptr = (uint8_t *)glMapBufferRange(GL_ARRAY_BUFFER, 0, buf->required_sz,
 //        GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT ); <- invalid flags in Mesa. Why?
 //        GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
         GL_MAP_READ_BIT | GL_MAP_WRITE_BIT );
+#endif
 
     GL_DEAD_YET();
 
-    setup_buffer_t(buf, pot);
+    setup_buffer_t(buf);
 
     if (reset_vao) {
         glBindVertexArray(va_names[find(buf)]);
@@ -1034,7 +1049,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     /* the following should be a GL_TEXTURE_BUFFER, but it's 3.1+. */
     /* thus it stays a texture. */
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, attr_bo); // staying strictly 3.0 :(
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, NULL, GL_STREAM_DRAW);
     uint8_t *attrptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 #else
@@ -1044,7 +1059,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         renderlogr->fatal("glMapBuffer(attr_bo_size=%d): returned NULL.", attr_bo_size);
     memcpy(attrptr, text->attrs, text->attrs_used);
     /* release the attr texture bo */
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #else
     glBufferData(GL_PIXEL_UNPACK_BUFFER, attr_bo_size, attrptr, GL_STREAM_DRAW);
@@ -1074,7 +1089,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
         //{ map vao bo
     glBindVertexArray(vao_name);
     glBindBuffer(GL_ARRAY_BUFFER, vao_bo);
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glBufferData(GL_ARRAY_BUFFER, vao_bo_size, NULL, GL_STREAM_DRAW);
     int32_t *vao = (int32_t *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 #else
@@ -1151,7 +1166,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     }
         //}
         //{ unmap vao bo
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glUnmapBuffer(GL_ARRAY_BUFFER);
 #else
     glBufferData(GL_ARRAY_BUFFER, vao_bo_size, bdo, GL_STREAM_DRAW);
@@ -1166,7 +1181,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
         //{ map text texture bo
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, text_bo);
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, NULL, GL_STREAM_DRAW);
     uint8_t *texptr = (uint8_t *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_READ_WRITE);
 #else
@@ -1199,7 +1214,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     }
         //}
         //{ unmap text texture bo, set up the texture
-#if !defined(TTFR_MALLOC_BUFS)
+#if !defined(MALLOC_GLBUFFERS)
     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
 #else
     glBufferData(GL_PIXEL_UNPACK_BUFFER, tex_bo_size, texptr, GL_STREAM_DRAW);
@@ -2130,7 +2145,7 @@ implementation::implementation() {
 df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
     /* tail_sizeof of 1 provides us with w*h bytes where to store export name
        (see below) */
-    df_buffer_t *rv = allocate_buffer_t(w, h, 1);
+    df_buffer_t *rv = allocate_buffer_t(w, h, 1, 3);
     memset_buffer_t(rv, 0);
     return rv;
 }

@@ -66,23 +66,25 @@ typedef void (*dep_foo_t)(getplatform_t **, getmqueue_t **,
 */
 
 struct df_buffer_t {
-    uint32_t w, h;
-    uint32_t tail_sizeof;
-    uint32_t required_sz, used_sz;
-    uint8_t *ptr;
-    uint32_t pstate;           // renderer-private state
+    uint32_t pot;               // data pointer alignment, power-of-two
+    uint8_t *ptr;               // backing store pointer
+    uint32_t w, h;              // grid size
+    uint32_t tail_sizeof;       // tail data unit size
+    uint32_t required_sz;       // what has been or has to be allocated, given the pot and tail_sizeof.
+    uint32_t used_sz;           // useful data = from screen to end of the tail
+    uint32_t pstate;            // renderer-private state
+    void    *text;              // opaque pointer to be passed around, used for ttf df_text_t
 
-    unsigned char *screen;     // uchar[4] in fact.
+    /* data pointers, valid after a setup_buffer_t() */
+    unsigned char *screen;      // uchar[4] in fact.
     long *texpos;
     char *addcolor;
     unsigned char *grayscale;
     unsigned char *cf;
     unsigned char *cbr;
-    unsigned char *fx;         // dim, snow, rain:
+    unsigned char *fx;          // dim, snow, rain:
     // (has_snow<<5)|(has_rain<<4)|(dim & 7), where dim is 0 - 4
-
     uint8_t *tail;
-    void    *text;             // opaque ptr to a df_text_t
 };
 
 struct itc_message_t;

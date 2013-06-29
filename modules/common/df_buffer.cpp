@@ -25,31 +25,9 @@ static inline void *pot_align(void *ptr, uint32_t pot) {
 }
 
 
-/*  If we're streaming data to OpenGL, we should do glMapBuffer(), set up
-    the buffer pointers and give the buffer to the simuloop for filling up with data.
-    When buffer gets back to the renderer, it just does glBindBuffer, glUnmapBuffer,
-    glBindVertexArray, glDrawArrays and that's it. Same stuff as in fgt.gl.SurfBunchPBO,
-    but for vertices instead of textures.
-
-    Since buffer object winds up in VAO state, the renderer should have at least two VAOs
-    with corresponding glBuffers and df_buffer_t-s.
-
-    Now, how can we be sure nothing reads from there so we can use GL_WRITE for access?
-    No way, we just resort to GL_READ_WRITE. In any case we already save one memmove
-    and let GL implementation do the alignment and actual allocation.
-
-    A cursory glance reveals graphicst::dim_colors() which does reads. This might be
-    possible to shift to shader, writing only positions to 'dim' to the tail.
-
-*/
-
-/* if buf->ptr is null, writes required allocation size to buf->required_sz.
-   if buf->ptr is not null, sets up the pointers.
-   buf->w, buf->h and buf->tail_sizeof must be valid.
-*/
-
-void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
+static uint32_t setup_helper(df_buffer_t *buf, int size_only) {
     const uint32_t page_sz      = 4096;
+    const uint32_t pot          = buf->pot;
     const uint32_t screen_sz    = pot_align(buf->w*buf->h*4, pot);
     const uint32_t texpos_sz    = pot_align(buf->w*buf->h*sizeof(long), pot);
     const uint32_t addcolor_sz  = pot_align(buf->w*buf->h, pot);
@@ -60,50 +38,53 @@ void setup_buffer_t(df_buffer_t *buf, uint32_t pot) {
     const uint32_t tail_sz      = pot_align(buf->w*buf->h*buf->tail_sizeof, pot);
 
     buf->required_sz = screen_sz + texpos_sz + addcolor_sz
-            + grayscale_sz + cf_sz + cbr_sz + fx_sz + tail_sz + page_sz;
+                     + grayscale_sz + cf_sz + cbr_sz + fx_sz + tail_sz + page_sz;
 
-    if (!buf->ptr) { // nominal; set up just required_sz.
-        buf->screen = NULL;
-        buf->texpos = NULL;
-        buf->addcolor = NULL;
-        buf->cf = NULL;
-        buf->cbr = NULL;
-        buf->fx = NULL;
-        buf->tail = NULL;
-        buf->used_sz = 0;
-        return;
+    if (!size_only) {
+        buf->screen = (unsigned char *) pot_align(buf->ptr, pot);
+        buf->texpos = (long *) (buf->screen + screen_sz);
+        buf->addcolor = (char *) (buf->screen + screen_sz + texpos_sz);
+        buf->grayscale = buf->screen + screen_sz + texpos_sz + addcolor_sz;
+        buf->cf = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz;
+        buf->cbr = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz;
+        buf->fx = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz;
+        buf->tail = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz + fx_sz;
+
+        buf->used_sz = buf->tail - buf->screen + tail_sz;
     }
-
-    buf->screen = (unsigned char *) pot_align(buf->ptr, pot);
-    buf->texpos = (long *) (buf->screen + screen_sz);
-    buf->addcolor = (char *) (buf->screen + screen_sz + texpos_sz);
-    buf->grayscale = buf->screen + screen_sz + texpos_sz + addcolor_sz;
-    buf->cf = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz;
-    buf->cbr = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz;
-    buf->fx = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz;
-    buf->tail = buf->screen + screen_sz + texpos_sz + addcolor_sz + grayscale_sz + cf_sz + cbr_sz + fx_sz;
-
-    buf->used_sz = buf->tail - buf->screen + tail_sz;
+    return buf->required_sz;
 }
 
+void setup_buffer_t(df_buffer_t *buf) { setup_helper(buf, 0); }
+uint32_t size_buffer_t(df_buffer_t *buf) { return setup_helper(buf, 1); }
+
 /* a constructor */
-df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
+df_buffer_t *new_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof, uint32_t pot) {
     df_buffer_t *buf = (df_buffer_t *) malloc(sizeof(df_buffer_t));
+    buf->pot = pot;
     buf->pstate = 0;
     buf->ptr = NULL;
     buf->tail_sizeof = tail_sizeof;
     buf->w = w, buf->h = h;
     buf->text = NULL;
+    setup_helper(buf, 1);
     return buf;
 }
 
-/* whip up a malloc-backed 64bit-aligned buffer */
-df_buffer_t *allocate_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof) {
-    df_buffer_t *buf = new_buffer_t(w, h, tail_sizeof);
-    setup_buffer_t(buf, 3);
+/* whip up a malloc-backed buffer */
+df_buffer_t *allocate_buffer_t(uint32_t w, uint32_t h, uint32_t tail_sizeof, uint32_t pot) {
+    df_buffer_t *buf = new_buffer_t(w, h, tail_sizeof, pot);
     buf->ptr = (uint8_t *) malloc(buf->required_sz);
-    setup_buffer_t(buf, 3);
+    setup_buffer_t(buf);
     return buf;
+}
+void realloc_buffer_t(df_buffer_t *buf, uint32_t w, uint32_t h, uint32_t tail_sizeof) {
+    buf->w = w ; buf->h = h; buf->tail_sizeof = tail_sizeof;
+    uint32_t cursize = buf->required_sz;
+    uint32_t newsize = setup_helper(buf, 1);
+    if (newsize > cursize)
+        buf->ptr = (uint8_t *) realloc(buf->ptr, newsize);
+    setup_helper(buf, 0);
 }
 
 /* does not memset the tail */

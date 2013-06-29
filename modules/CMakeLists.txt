@@ -48,8 +48,9 @@ else(MSVC)
     include(FindPkgConfig)
 
     pkg_check_modules(PKG_SDL2 QUIET sdl2)
-    #pkg_check_modules(PKG_OPENAL QUIET openal)
-    #pkg_check_modules(PKG_SNDFILE QUIET sndfile)
+    pkg_check_modules(PKG_OPENAL QUIET openal)
+    pkg_check_modules(PKG_SNDFILE QUIET sndfile)
+    pkg_check_modules(PKG_PCRE QUIET libpcre)
     pkg_check_modules(PKG_GLEW QUIET glew)
     pkg_check_modules(PKG_SDL2MIXER QUIET SDL2_mixer)
 
@@ -108,7 +109,7 @@ set(PLATFORM_COMMON
     common/settings.cpp
 )
 
-set_source_files_properties(shaders.c PROPERTIES GENERATED TRUE)
+set_source_files_properties(common/shaders.cpp PROPERTIES GENERATED TRUE)
 file(GLOB SHADER_SOURCE shaders/*)
 add_custom_command(
     OUTPUT ${dfmodules_SOURCE_DIR}/common/shaders.cpp
@@ -117,7 +118,7 @@ add_custom_command(
     MAIN_DEPENDENCY grab-shaders.py
     DEPENDS ${SHADER_SOURCE}
 )
-add_custom_target(grab_shaders DEPENDS common/shaders.cpp)
+#unused: add_custom_target(grab_shaders DEPENDS common/shaders.cpp)
 
 set(GL_COMMON
     common/la_muerte_el_gl.cpp
@@ -130,7 +131,7 @@ if (SOUND_OPENAL)
     if(NOT OPENAL_DEPS)
         message(SEND_ERROR "OpenAL or sndfile not found.")
     endif()
-    add_library(sound_openal SHARED sound-openal/module.cpp)
+    add_library(sound_openal SHARED sound-openal/module.cpp sound-openal/soundsensor.cpp)
     set_property(SOURCE sound-openal/module.cpp APPEND PROPERTY COMPILE_FLAGS ${PKG_OPENAL_CFLAGS})
     set_property(SOURCE sound-openal/module.cpp APPEND PROPERTY COMPILE_FLAGS ${PKG_SNDFILE_CFLAGS})
     target_link_libraries(sound_openal ${PKG_OPENAL_LIBRARIES} ${PKG_SNDFILE_LIBRARIES})
@@ -187,9 +188,9 @@ if (RENDERER_SDL2GL2)
     endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
+    set_source_files_properties(renderer-sdl2gl2/module.cpp PROPERTIES COMPILE_DEFINITIONS DFM_SHADERS_PATH="data/shaders")
     add_library(renderer_sdl2gl2 SHARED renderer-sdl2gl2/module.cpp renderer-sdl2gl2/textures.cpp ${GL_COMMON})
     set_target_properties(renderer_sdl2gl2 PROPERTIES PREFIX "")
-    set_target_properties(renderer_sdl2gl2 PROPERTIES COMPILE_DEFINITIONS DFM_SHADERS_PATH="data/shaders")
     if (UNIX)
         target_link_libraries(renderer_sdl2gl2 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} SDL_pnglite z)
         install(TARGETS renderer_sdl2gl2 LIBRARY DESTINATION ${DFMOD_DESTDIR})
@@ -213,11 +214,16 @@ if (RENDERER_SDL2GL3)
     else()
         include_directories("${CMAKE_INSTALL_PREFIX}/include/GL")
     endif()
+    option(MALLOC_GLBUFFERS "use heap-backed GL buffers (makes gdb's life easier)" OFF)
+    if (MALLOC_GLBUFFERS)
+        # doesn't work somewhy: set_source_files_properties(renderer-sdl2gl3/module.cpp PROPERTY COMPILE_DEFINITIONS MALLOC_GLBUFFERS)
+        add_definitions(-DMALLOC_GLBUFFERS)
+    endif()
     link_directories(${PKG_SDL2_LIBRARY_DIRS})
+    set_source_files_properties(renderer-sdl2gl3/module.cpp PROPERTIES COMPILE_DEFINITIONS DFM_SHADERS_PATH="data/shaders")
     include_directories( ${PKG_SDL2_INCLUDE_DIRS} )
     add_library(renderer_sdl2gl3 SHARED renderer-sdl2gl3/module.cpp renderer-sdl2gl2/textures.cpp ${GL_COMMON})
     set_target_properties(renderer_sdl2gl3 PROPERTIES PREFIX "")
-    set_target_properties(renderer_sdl2gl3 PROPERTIES COMPILE_DEFINITIONS DFM_SHADERS_PATH="data/shaders")
     if (UNIX)
         target_link_libraries(renderer_sdl2gl3 ${PKG_SDL2_LIBRARIES} ${PKG_GLEW_LIBRARIES} zhban SDL_pnglite z)
         install(TARGETS renderer_sdl2gl3 LIBRARY DESTINATION ${DFMOD_DESTDIR})

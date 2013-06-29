@@ -202,7 +202,7 @@ void implementation::simulation_thread() {
 
     /* assimilate initial buffer so gps' ptrs stay valid all the time */
     renderbuf = NULL;
-    df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0);
+    df_buffer_t *backup_buf = allocate_buffer_t(80, 25, 0, 3);
     assimilate_buffer_cb(backup_buf);
     logr_bufs->trace("backup_buf is %p", backup_buf);
 

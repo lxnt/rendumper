@@ -164,7 +164,7 @@ void vbstreamer_t::initialize() {
         glEnableVertexAttribArray(cbr_posn);
         glEnableVertexAttribArray(fx_posn);
         glEnableVertexAttribArray(vertexid_posn);
-        bufs[i] = new_buffer_t(0, 0, tail_sizeof);
+        bufs[i] = new_buffer_t(0, 0, tail_sizeof, pot);
     }
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -315,7 +315,7 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         buf->ptr = NULL;
         buf->w = w, buf->h = h;
         buf->tail_sizeof = tail_sizeof;
-        setup_buffer_t(buf, pot); // get required_sz
+        setup_buffer_t(buf); // get required_sz
         glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
     }
 
@@ -326,7 +326,7 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
 
     GL_DEAD_YET();
 
-    setup_buffer_t(buf, pot);
+    setup_buffer_t(buf);
 
     /* set up vertex ids */
     memcpy(buf->tail, vtx_ids, w*h*2);
@@ -1570,7 +1570,7 @@ implementation::implementation() {
 //{  All those methods want to go into a parent class.
 
 df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
-    df_buffer_t *rv = allocate_buffer_t(w, h, 1);
+    df_buffer_t *rv = allocate_buffer_t(w, h, 1, 3);
     memset_buffer_t(rv, 0);
     return rv;
 }

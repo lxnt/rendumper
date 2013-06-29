@@ -101,7 +101,7 @@ void implementation::export_offscreen_buffer(df_buffer_t *buf, const char *name)
 }
 
 df_buffer_t *implementation::get_offscreen_buffer(unsigned w, unsigned h) {
-    return allocate_buffer_t(w, h);
+    return allocate_buffer_t(w, h, 0, 3);
 }
 
 /*  This is called from the simulation thread.
@@ -115,7 +115,7 @@ df_buffer_t *implementation::get_buffer(void) {
     uint32_t sizeval = this->get_gridsize();
     unsigned w = (sizeval >> 16) & 0xFFFF;
     unsigned h = sizeval & 0xFFFF;
-    return allocate_buffer_t(w, h);
+    return allocate_buffer_t(w, h, 0, 3);
 }
 
 /*  This is called from the simulation thread.

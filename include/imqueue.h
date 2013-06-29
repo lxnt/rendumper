@@ -19,6 +19,7 @@ enum mq_errors {
 };
 
 /* interface loosely modelled on POSIX mqueues */
+/* timeouts are in milliseconds */
 
 struct imqueue {
     virtual void release() = 0;

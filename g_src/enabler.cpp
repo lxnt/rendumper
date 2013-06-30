@@ -133,6 +133,8 @@ static void eject_buffer(df_buffer_t *buf) {
     gps_screenfxpos = NULL;
     gps.screen_limit = NULL;
 }
+
+void fg_dump(const char *filename);
 static void add_input_event(df_input_event_t *event) {
     /* TODO: move the mouse tracking into enabler_input
        ALSO: fix this sad excuse of an 'interface'
@@ -169,6 +171,14 @@ static void add_input_event(df_input_event_t *event) {
         gps.mouse_y = event->grid_y;
         nputlogr->trace("DF_MOUSE_MOVE %d,%d", gps.mouse_x, gps.mouse_y);
         return;
+#if defined(FG_DUMP)
+    case df_input_event_t::DF_KEY_DOWN:
+        if (event->sym == DFKS_PRINTSCREEN) {
+            fg_dump("fugr.dump");
+            return;
+        }
+        break;
+#endif
     default:
         break;
     }

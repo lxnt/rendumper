@@ -29,7 +29,6 @@ else(MSVC)
     set(CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELWITHDEBINFO})
     set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 
-
     if(UNIX)
         if(ARCH64)
             set(CMAKE_LIBRARY_PATH /usr/lib32 /usr/lib/i386-linux-gnu)

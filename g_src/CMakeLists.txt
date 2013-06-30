@@ -11,6 +11,7 @@ endif()
 if(FG_DUMPER)
     set(FGD_LIBS lwapi)
     set(FGD_SOURCE fugr_dump.cc)
+    set_source_files_properties( enabler.cpp PROPERTIES COMPILE_DEFINITIONS FG_DUMP)
 endif()
 
 set( SOURCE

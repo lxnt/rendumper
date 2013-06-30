@@ -135,6 +135,7 @@ static void eject_buffer(df_buffer_t *buf) {
 }
 
 void fg_dump(const char *filename);
+static bool seen_quit = false;
 static void add_input_event(df_input_event_t *event) {
     /* TODO: move the mouse tracking into enabler_input
        ALSO: fix this sad excuse of an 'interface'
@@ -179,6 +180,11 @@ static void add_input_event(df_input_event_t *event) {
         }
         break;
 #endif
+    case df_input_event_t::DF_QUIT:
+        if (not seen_quit)
+            seen_quit = true;
+        else
+            nputlogr->fatal("aborted by user");
     default:
         break;
     }

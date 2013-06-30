@@ -249,7 +249,15 @@ Note however, that main development goes in sdl2gl3, and those two may lag behin
 TTF support is activated if and only if graphics tileset tile height equals the [TRUETYPE] setting
 in data/init/init.txt. For example if you've got some 16x16 tileset installed, put [TRUETYPE:16] there.
 
-For the ease of testing, F12 key is hardcoded to nastily abort the program.
+Attention: hardcoded key bindings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For the ease of testing, anything that results in DF_QUIT input event, namely ``Ctrl-C`` in console, close of the window,
+anything that the game usually refuses to honor without saving will very nastily abort the program on the second attempt.
+Triggering that while saving the game, for example, will corrupt the save.
+
+For the integration of the fgtestbed renderer, ``PrintScreen`` is hardcoded to dump all of the map,
+filename is ``fugr.dump``.
 
 Building this:
 --------------

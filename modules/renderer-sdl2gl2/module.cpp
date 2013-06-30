@@ -1174,11 +1174,6 @@ void implementation::slurp_keys() {
             df_keydown.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
             df_keydown.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
             keydown_waiting = true;
-
-            /* kill switch for testing */
-            if (sdl_event.key.keysym.sym == SDLK_F12)
-                nputlogr->fatal("aborted by user"); // aw, this is going to hurt
-
             continue;
         case SDL_KEYUP:
             nputlogr->trace("SDL_KEYUP: %s: sym=%x mod=%hx uni=%x",

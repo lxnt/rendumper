@@ -180,6 +180,7 @@ class SoundFile(object):
 def walk_the_walk(packspath):
     global Wall
     chandict = { None: 0 } # for numbering the channels
+    filesizes = { }
     sounds = []
     filerefs = {}
     sfcount = 0
@@ -224,6 +225,10 @@ def walk_the_walk(packspath):
                             continue
                         soundfile.set("fileName", fn)
                         soundobject.append(SoundFile(soundfile))
+                        try:
+                            filesizes[soundobject.channel].append(os.path.getsize(fn))
+                        except KeyError:
+                            filesizes[soundobject.channel] = [os.path.getsize(fn)]
                         sfcount += 1
                     if len(soundobject) == 0:
                         if soundobject.channel_id == 0:
@@ -239,8 +244,27 @@ def walk_the_walk(packspath):
                                 print("{}:{} error: sound w/o sfiles, a channel, but no loop".format(fullname, sound.sourceline))
                             elif loop != 'stop':
                                 print("{}:{} error: sound w/o sfiles, a channel, loop={}".format(fullname, sound.sourceline, sound.get("loop")))
-
                     sounds.append(soundobject)
+
+    for chan in filesizes.keys():
+        l = len(filesizes[chan])
+        if l == 0:
+            print("channel {} empty.".format(chan))
+        print("file size percentiles for channel {}".format(chan))
+        filesizes[chan].sort()
+        for pct in [ 0.2, 0.4, 0.6, 0.8, 1.0 ]:
+            sub = filesizes[chan][:int(l*pct)]
+            pct_cnt = len(sub)
+            if len(sub):
+                pct_val = "{:d} bytes".format(sub[-1])
+            else:
+                pct_val = "n/a"
+            sum = 0
+            for s in sub:
+                sum += s
+            print("{:d}th: {}, {:d} files {:d} bytes total".format(
+                int(100*pct), pct_val, pct_cnt, sum))
+
     return sounds, sfcount, chandict
 
 def dump_the_dump(dumpname, sounds, sfcount, chandict):

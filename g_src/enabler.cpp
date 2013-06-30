@@ -92,24 +92,6 @@ static bool export_effects = false;
 unsigned char *gps_screenfxpos = NULL;
 static unsigned long tflag;
 static void assimilate_buffer(df_buffer_t *buf) {
-    if (!buf) {
-        /*  This is used to remove any pointers to the buffer,
-            since it is about to be unmapped and we'd like
-            to catch invalid accesses early.
-            The alternative would be to keep a backup buffer
-            assimilated; that would require it to be kept
-            up-to-data wrt resizes, which we do not want to do.
-        */
-        gps.screen = NULL;
-        gps.screentexpos = NULL;
-        gps.screentexpos_addcolor = NULL;
-        gps.screentexpos_grayscale = NULL;
-        gps.screentexpos_cf = NULL;
-        gps.screentexpos_cbr = NULL;
-        gps_screenfxpos = NULL;
-        gps.screen_limit = NULL;
-        return;
-    }
     gps.screen = buf->screen;
     gps.screentexpos = buf->texpos;
     gps.screentexpos_addcolor = buf->addcolor;
@@ -137,6 +119,20 @@ static void assimilate_buffer(df_buffer_t *buf) {
     }
 }
 
+/*  Remove any pointers to the buffer since it is about to be unmapped. */
+static void eject_buffer(df_buffer_t *buf) {
+    if (!buf || buf->screen != gps.screen)
+        mainlogr->fatal("eject_buffer(%p): wrong buffer.", buf);
+
+    gps.screen = NULL;
+    gps.screentexpos = NULL;
+    gps.screentexpos_addcolor = NULL;
+    gps.screentexpos_grayscale = NULL;
+    gps.screentexpos_cf = NULL;
+    gps.screentexpos_cbr = NULL;
+    gps_screenfxpos = NULL;
+    gps.screen_limit = NULL;
+}
 static void add_input_event(df_input_event_t *event) {
     /* TODO: move the mouse tracking into enabler_input
        ALSO: fix this sad excuse of an 'interface'
@@ -195,6 +191,7 @@ int main (int argc, char* argv[]) {
     simuloop->set_callbacks(mainloop,
                             render_things,
                             assimilate_buffer,
+                            eject_buffer,
                             add_input_event);
 
     init.begin(); // Load init.txt settings

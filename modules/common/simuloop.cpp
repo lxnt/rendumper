@@ -22,6 +22,7 @@ struct implementation : public isimuloop {
     void set_callbacks(mainloop_foo_t,
                        render_things_foo_t,
                        assimilate_buffer_foo_t,
+                       eject_buffer_foo_t,
                        add_input_event_foo_t);
 
     void start();
@@ -52,6 +53,7 @@ struct implementation : public isimuloop {
     mainloop_foo_t mainloop_cb;
     render_things_foo_t render_things_cb;
     assimilate_buffer_foo_t assimilate_buffer_cb;
+    eject_buffer_foo_t eject_buffer_cb;
     add_input_event_foo_t add_input_event_cb;
 
     bool started;
@@ -107,10 +109,12 @@ struct implementation : public isimuloop {
 void implementation::set_callbacks(mainloop_foo_t ml,
                    render_things_foo_t rt,
                    assimilate_buffer_foo_t ab,
+                    eject_buffer_foo_t eb,
                    add_input_event_foo_t ain) {
     mainloop_cb = ml;
     render_things_cb = rt;
     assimilate_buffer_cb = ab;
+    eject_buffer_cb = eb;
     add_input_event_cb = ain;
 }
 
@@ -305,9 +309,9 @@ void implementation::simulation_thread() {
                 uint32_t rt_start_ms = platform->GetTickCount();
                 render_things_cb();
                 uint32_t rt_end_ms = platform->GetTickCount();
+                eject_buffer_cb(renderbuf);
                 renderer->submit_buffer(renderbuf);
                 renderbuf = NULL;
-                assimilate_buffer_cb(NULL);
                 renders ++;
                 render_things_period_ms.update(rt_end_ms - last_renderth_at);
                 render_things_time_ms.update(rt_end_ms - rt_start_ms);

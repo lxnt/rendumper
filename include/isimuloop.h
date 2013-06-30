@@ -14,6 +14,7 @@
 typedef char (*mainloop_foo_t)();
 typedef void (*render_things_foo_t)();
 typedef void (*assimilate_buffer_foo_t)(df_buffer_t *);
+typedef void (*eject_buffer_foo_t)(df_buffer_t *);
 typedef void (*add_input_event_foo_t)(df_input_event_t *);
 
 struct isimuloop : public imessagesender {
@@ -22,6 +23,7 @@ struct isimuloop : public imessagesender {
     virtual void set_callbacks(mainloop_foo_t,
                        render_things_foo_t,
                        assimilate_buffer_foo_t,
+                       eject_buffer_foo_t,
                        add_input_event_foo_t) = 0;
 
     virtual void start() = 0;

@@ -1147,7 +1147,7 @@ void implementation::slurp_keys() {
                 nputlogr->trace("SDL_TEXTINPUT: ignoring '%s': no keydown event waiting.",
                                                                         sdl_event.text.text);
             } else {
-                uint32_t codepoint, state = 0;
+                uint32_t codepoint = 0, state = 0;
                 uint8_t *s = (uint8_t *)sdl_event.text.text;
                 while (utf8decode(&state, &codepoint, *s++));
                 df_keydown.unicode = codepoint;

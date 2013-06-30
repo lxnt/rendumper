@@ -30,7 +30,7 @@ Under construction:
 - OpenAL sound module : in progress
 - SoundSense soundpack support in the sound module.
   Depends on MP3 (and other) streaming decoders. XML parse offloaded to
-  a preprocessor.
+  a preprocessor. Loader done, waits on learning OpenAL.
 
 Next:
 ^^^^^
@@ -44,8 +44,6 @@ In no particular order:
 - clean up TTF-related interfaces
 - decide if data races are really wanted. move everything to mqueues if not.
 - clean up itc_message_t - half done
-- compile with the same flags as SDL is: -mmx -3dnow -sse
-- make a knob for max-optimization builds.
 - show fps+averaged times on an overlay. maybe do a graph ala eve online
 - rewrite df-structures/codegen.py, it rotted; revive : it now works, but in
   dire need of ground-up rewrite. 8x code size and ~133x file count reduction as
@@ -445,4 +443,7 @@ Threading:
 
 
 
+crumbs
+------
 
+IMAGE_FILE_LARGE_ADDRESS_AWARE on windows? why isn't it set?

@@ -114,6 +114,7 @@ struct implementation : public iplatform {
             mvwaddstr(stdscr, 5, 0, "Press any key to continue.");
             refresh();
             wgetch(stdscr);
+            ret = true;
         }
         nodelay(stdscr, -1);
 

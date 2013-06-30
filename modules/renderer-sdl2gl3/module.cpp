@@ -318,7 +318,7 @@ void vbstreamer_t::remap_buf(df_buffer_t *buf) {
         buf->ptr = NULL;
         buf->w = w, buf->h = h;
         buf->tail_sizeof = tail_sizeof;
-        setup_buffer_t(buf, pot); // get required_sz
+        setup_buffer_t(buf); // get required_sz
         glBufferData(GL_ARRAY_BUFFER, buf->required_sz, NULL, GL_DYNAMIC_DRAW);
 #else
         realloc_buffer_t(buf, w, h, tail_sizeof);

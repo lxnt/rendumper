@@ -71,6 +71,7 @@ void main() {
     else
         gl_FragColor = mix(tile_color*fg_color, bg_color, 1.0 - tile_color.a);
 
+#if 0
     int dim = tilecrea.z & 7;
     int rain = tilecrea.z & 8;
     int snow = tilecrea.z & 16;
@@ -81,5 +82,6 @@ void main() {
         gl_FragColor.rgba = vec4(0.7, 0.7,1.0, 1.0);
     if (snow > 0)
         gl_FragColor.rgba = vec4(1.0,1.0,1.0, final_alpha);
+#endif
 
 }

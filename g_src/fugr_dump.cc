@@ -60,6 +60,10 @@ world->world_data->regions : std::vector<df::world_region* >:
     df::coord2d_path region_coords;
 */
 
+
+/* The bichache
+    holds pointers to all units, items, buildings and constructions
+    in some coordinate range, indexed by map_block coordinate. */
 struct _bicache_item {
     std::vector<df::building *> buildings;
     std::vector<df::item *> items;
@@ -71,9 +75,6 @@ struct _bicache_item {
 
 
 };
-
-/* holds pointers to all units, items, buildings and constructions
-   in some coordinate range, indexed by map_block coordinate. */
 struct _bicache {
 
     std::vector<_bicache_item> head;
@@ -157,9 +158,10 @@ struct _mat {
         klass(k), num(n), type(t), index(i), id(d) { }
 };
 static const char *_mat_klassname[] = { "BUILTIN", "INORGANIC", "PLANT", NULL };
-
-/* holds all materials in a world, assigns each (mat_type,mat_index) pair an index,
-   and a class that are then used in the dumps and by the raws parser to decode them. */
+/* The material index
+    holds all materials in a world, assigns each (mat_type,mat_index) pair an index,
+    and a class that are then used in the dumps and by the raws parser to decode them.
+        FIXME: most likely lacks stuff like vampire blood, evil clouds, etc. */
 struct material_index {
     std::vector<_mat> mats_list;
     std::set< std::pair<int16_t, int32_t> > soap_set;
@@ -302,7 +304,7 @@ struct material_index {
             }
     }
 };
-//{ some dumpers
+//{ file-only dumpers
 static void dump_constructions(FILE *fp, material_index *midx) {
     fputs("section:constructions\n", fp);
     for (unsigned i=0; i < df::global::world->constructions.size() ; i ++) {
@@ -392,6 +394,8 @@ static void dump_building_defs(FILE *fp) {
 }
 
 //}
+/* holds geology for the entire world
+    TODO: remember how exactly it does that. */
 struct layer_materials_cache {
     uint16_t mtab[256];
 
@@ -613,7 +617,7 @@ void convert_block_row(block_row& row, int start_x, int end_x, int y, int z,
                     df::flow_info &e = *b->flows[i];
                     fseek(fp, flow_offset, SEEK_SET);
                     flow_offset += fprintf(fp, "%hd,%hd,%hd flow type=%s mat=(%hd, %d) density=%hd\n",
-                        e.x, e.y, e.z, df::enums::flow_type::key(e.type), e.mat_type, e.mat_index, e.density);
+                        e.pos.x, e.pos.y, e.pos.z, df::enums::flow_type::key(e.type), e.mat_type, e.mat_index, e.density);
                 }
             }
 
@@ -628,7 +632,6 @@ void convert_block_row(block_row& row, int start_x, int end_x, int y, int z,
                 int8_t   grass_amt = 0;
                 uint16_t building_tile = 0;
                 uint16_t building_mat = 0;
-                uint16_t worldconstr_mat = 0;
                 /* gather materials */
                 for (unsigned i = 0; i < b->block_events.size(); i++)
                     switch (b->block_events[i]->getType()) {
@@ -643,10 +646,10 @@ void convert_block_row(block_row& row, int start_x, int end_x, int y, int z,
                         {
                             df::block_square_event_world_constructionst *e = (df::block_square_event_world_constructionst *)b->block_events[i];
                             if ( e->tile_bitmask.bits[t_y] & ( 1 << t_x  ) ) {
-                                worldconstr_mat = e->inorganic_mat;
+                                ; // do what here?
                             }
-                            fprintf(stderr,"wconstr at %hd %hd %hd %d mat=(0, %d)\n", pos.x, pos.y, pos.z,
-                                e->tile_bitmask.bits[t_y] & ( 1 << t_x  ), e->inorganic_mat);
+                            fprintf(stderr,"wconstr at %hd %hd %hd %d mat=(?, ?)\n", pos.x, pos.y, pos.z,
+                                e->tile_bitmask.bits[t_y] & ( 1 << t_x  ));
                             break;
                         }
                         case df::block_square_event_type::grass:
@@ -713,6 +716,7 @@ void convert_block_row(block_row& row, int start_x, int end_x, int y, int z,
     }
 }
 
+/* dumps entire df-mode site */
 void fg_dump(const char *filename) {
     if (!df::global::world || !df::global::world->world_data) {
         fprintf(stderr, "World data is not available.: %p\n", (void *)df::global::world);

@@ -30,11 +30,9 @@ vec4 attrmix(int c, float alpha) {
 
 void main() {
     uvec4 txl = texture(text_tex, coord);
-#if 1
     int fg_attr_offset = stuff.x;
     int clustermap_row = stuff.y;
     int cluster_index = int(txl.y);
-#if 1
     if (txl.x == 0u) {
         /* we look up the cluster index 'just under' the rest
           of our string. denormalized texcoord x is just fine for that. */
@@ -42,14 +40,7 @@ void main() {
         uvec4 clue = texelFetch(attr_tex, attr_txc, 0);
         cluster_index = int(clue.x);
     }
-#endif
     int attr = attrfetch(fg_attr_offset + cluster_index);
     gl_FragColor = attrmix(attr, txl.x/65536.0);
-#else
-    gl_FragColor = vec4(txl.x/65536.0,txl.x/65536.0,txl.x/65536.0,1.0) ;
-
-    //gl_FragColor = vec4(1.0,1.0,1.0,1.0) ;
-    //gl_FragColor = vec4(coord.x,coord.y,0.0,1.0) ;
-#endif
     gl_FragColor.a = 1.0;
 }

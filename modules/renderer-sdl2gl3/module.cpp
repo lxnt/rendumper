@@ -1721,21 +1721,21 @@ void implementation::slurp_keys() {
                 while (utf8decode(&state, &codepoint, *s++));
                 df_keydown.unicode = codepoint;
                 nputlogr->trace("SDL_TEXTINPUT: Submitting waiting keydown.");
-                nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx uni=%x", df_keydown.sym,
-                                                        df_keydown.mod, df_keydown.unicode);
+                nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx", df_keydown.sym,
+                                                        df_keydown.mod);
                 simuloop->add_input_event(&df_keydown);
                 df_keydown = df_empty_event;
                 keydown_waiting = false;
             }
             continue;
         case SDL_KEYDOWN:
-            nputlogr->trace("SDL_KEYDOWN: %s: sym=%x mod=%hx uni=%x",
+            nputlogr->trace("SDL_KEYDOWN: %s: sym=%x mod=%hx",
                                 SDL_GetKeyName(sdl_event.key.keysym.sym), sdl_event.key.keysym.sym,
-                                        sdl_event.key.keysym.mod, sdl_event.key.keysym.unicode);
+                                        sdl_event.key.keysym.mod);
             if (keydown_waiting) {
                 nputlogr->trace("SDL_KEYDOWN: Submitting waiting keydown.");
-                nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx uni=%x", df_keydown.sym,
-                                                        df_keydown.mod, df_keydown.unicode);
+                nputlogr->trace("DF_KEY_DOWN: sym=%x mod=%hx", df_keydown.sym,
+                                                        df_keydown.mod);
                 simuloop->add_input_event(&df_keydown);
                 df_keydown = df_empty_event;
             }
@@ -1745,15 +1745,16 @@ void implementation::slurp_keys() {
             keydown_waiting = true;
             continue;
         case SDL_KEYUP:
-            nputlogr->trace("SDL_KEYUP: %s: sym=%x mod=%hx uni=%x",
+            nputlogr->trace("SDL_KEYUP: %s: sym=%x mod=%hx",
                                 SDL_GetKeyName(sdl_event.key.keysym.sym), sdl_event.key.keysym.sym,
-                                        sdl_event.key.keysym.mod, sdl_event.key.keysym.unicode);
+                                        sdl_event.key.keysym.mod);
             df_event.type = df_input_event_t::DF_KEY_UP;
             df_event.sym = translate_sdl2_sym(sdl_event.key.keysym.sym);
             df_event.mod = translate_sdl2_mod(sdl_event.key.keysym.mod);
-            df_event.unicode = sdl_event.key.keysym.unicode;
-            nputlogr->trace("DF_KEY_UP: sym=%x mod=%hx uni=%x", df_event.sym,
-                                                    df_event.mod, df_event.unicode);
+            //df_event.unicode = sdl_event.key.keysym.unicode; FIXME!!!
+            df_event.unicode = 0;
+            nputlogr->trace("DF_KEY_UP: sym=%x mod=%hx", df_event.sym,
+                                                    df_event.mod);
             break;
         case SDL_MOUSEMOTION:
             mouse_xw = sdl_event.motion.x;

@@ -387,22 +387,22 @@ struct df_input_event_t {
 */
 struct itc_message_t {
     enum msg_t {
-	quit, 		  // [N]
-	complete,         // [N]
-	set_fps,          // [Y] to the simuloop - implemented, but not used.
-	set_gfps,         // [N]
-	push_resize,      // [N] to the renderer - stubbed out
-	pop_resize,       // [N] to the renderer - stubbed out
-	reset_textures,   // [N] to the renderer - replaced by non-thread-safe setter
-	pause, 		  // [N]
-	start,            // [N]    (unpause)
-	render,           // [Y] to the simuloop - implemented, not used.
-	inc,              // [N]
-	zoom_in, 	  // [N] to the renderer - replaced by non-thread-safe setter
-	zoom_out,         // [N] to the renderer - replaced by non-thread-safe setter
-	zoom_reset,       // [N] to the renderer - replaced by non-thread-safe setter
-	zoom_fullscreen,  // [N] stubbed out
-	zoom_resetgrid,   // [N] replaced by non-thread-safe setter
+        quit,             // [N]
+        complete,         // [N]
+        set_fps,          // [Y] to the simuloop - implemented, but not used.
+        set_gfps,         // [N]
+        push_resize,      // [N] to the renderer - stubbed out
+        pop_resize,       // [N] to the renderer - stubbed out
+        reset_textures,   // [N] to the renderer - replaced by non-thread-safe setter
+        pause,            // [N]
+        start,            // [N]    (unpause)
+        render,           // [Y] to the simuloop - implemented, not used.
+        inc,              // [N]
+        zoom_in,          // [N] to the renderer - replaced by non-thread-safe setter
+        zoom_out,         // [N] to the renderer - replaced by non-thread-safe setter
+        zoom_reset,       // [N] to the renderer - replaced by non-thread-safe setter
+        zoom_fullscreen,  // [N] stubbed out
+        zoom_resetgrid,   // [N] replaced by non-thread-safe setter
 
         render_buffer,    // [Y] buffer submission to the renderer
         offscreen_buffer, // [Y] offscreen rendering duty, tail contains the file name.

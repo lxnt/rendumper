@@ -260,10 +260,10 @@ void implementation::simulation_thread() {
                     mqueue->free(msg);
                     break;
 
-		default:
-		    logr->error("simuloop(): unexpected message type %d", msg->t);
+                default:
+                    logr->error("simuloop(): unexpected message type %d", msg->t);
                     mqueue->free(msg);
-		    break;
+                    break;
             }
         }
 

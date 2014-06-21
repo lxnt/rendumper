@@ -194,8 +194,17 @@ static int wait_on_cond(bool *what, SDL_cond *cond, SDL_mutex *mutex, int timeou
                 if ((timeout < 1) || (rv == SDL_MUTEX_TIMEDOUT))
                     return IMQ_TIMEDOUT;
                 /* unknown error */
-                platform->getlogr("mq.wait_on_cond_timed")->error("timeout=%d, rv=%d, errno=%s, clowns detected.", timeout, rv, strerror(errno));
-                return IMQ_CLOWNS;
+                /* got here with
+                    118098 mq.wait_on_cond_timed [error]: timeout=6, rv=-1, errno=Success, clowns detected.
+                    118098 mq.the_queue [error]: pop(): rv=-100500 (known)
+                    118098 mq.recv [error]: q->pop(): rv=-100500 (known)
+                    118098 cc.simuloop [fatal]: -167800200 from mqueue->recv().
+                */
+
+                platform->getlogr("mq.wait_on_cond_timed")->error("timeout=%d, rv=%d, errno=%s (%d), SDL Error '%s', clowns detected.",
+                    timeout, rv, strerror(errno), errno, SDL_GetError());
+                //return IMQ_CLOWNS;
+                return IMQ_TIMEDOUT;
             }
         }
         /*  'what' is true, but we may have sdl_rv != 0. In this case

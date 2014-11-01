@@ -63,6 +63,12 @@ typedef void (*dep_foo_t)(getplatform_t **, getmqueue_t **,
 
     Think of it more as an interprocess communication / networking protocol,
     rather than a data type.
+
+    TTF-related field, text, is actually a pointer to backend-specific df_text_t instance
+    attached to each buffer. It is used on backend side only, between simuloop and renderer
+    modules, thread ownership same as for df_buffer_t itself.
+    For it not to cross ABI boundary, simuloop and renderer modules must for now be compiled
+    by the same toolchain. To be fixed.
 */
 
 struct df_buffer_t {

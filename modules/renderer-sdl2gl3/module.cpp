@@ -1894,7 +1894,7 @@ void implementation::renderer_thread(void) {
         }
         if (cmd_tex_reset) {
             cmd_tex_reset = false;
-            logr->warn("got cmd_tex_reset");
+            logr->trace("got cmd_tex_reset");
             upload_textures();
         }
 

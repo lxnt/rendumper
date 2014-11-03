@@ -104,5 +104,6 @@ if(BUILD_LIBGRAPHICS)
         add_dependencies(lwapi generate_code)
 
     endif()
+    option(KILL_SWITCH "Two quit events kill the process" OFF)
 endif()
 

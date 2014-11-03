@@ -14,6 +14,11 @@ if(FG_DUMPER)
     set_source_files_properties( enabler.cpp PROPERTIES COMPILE_DEFINITIONS FG_DUMP)
 endif()
 
+if (KILL_SWITCH)
+    set_source_files_properties( enabler.cpp PROPERTIES COMPILE_DEFINITIONS KILL_SWITCH)
+endif()
+
+
 set( SOURCE
     basics.cpp
     command_line.cpp

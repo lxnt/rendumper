@@ -273,8 +273,9 @@ df_texalbum_t *implementation::get_album() {
         rv->index[item->index] = rv->index[item->source]; // copy?
         rv->index[item->index].gray = item->gray;
     }
-
+#if defined(TEXALBUM_DUMP)
     dump_album(rv, "texalbum");
+#endif
     return rv;
 }
 

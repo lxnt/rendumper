@@ -1227,12 +1227,7 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
     glBindTexture(GL_TEXTURE_2D, text_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16UI, tex_w, tex_h, 0, GL_RG_INTEGER , GL_UNSIGNED_SHORT, 0);
     GL_DEAD_YET();
-    /* dump it. */
-    if (!wrote) { FILE *fp = fopen("tex.dump", "w");
-        fwrite(texptr, tex_bo_size, 1, fp);
-        fclose(fp);
-        wrote=1;
-    }
+
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     GL_DEAD_YET();
         //}

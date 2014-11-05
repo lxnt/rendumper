@@ -46,8 +46,9 @@ bool renderer_offscreen::init_video(int, int)       { DFM_STUB(renderer_offscree
 renderer_offscreen::~renderer_offscreen()           { DFM_STUB(renderer_offscreen::~renderer_offscreen); }
 
 renderer_offscreen::renderer_offscreen(int grid_w, int grid_h)    {
-    stubs_logr->info("renderer_offscreen(%d, %d); gps.dimxy %dx%d", grid_w, grid_h, gps.dimx, gps.dimy);
+    stubs_logr->info("renderer_offscreen(%d, %d); gps.dimxy %dx%d gps.screen %p", grid_w, grid_h, gps.dimx, gps.dimy, gps.screen);
     world = getrenderer()->get_offscreen_buffer(grid_w, grid_h);
+    assimilate_buffer(world);
 }
 void renderer_offscreen::update_all(int offset_x, int offset_y) {
     /* okay, this works the following way:
@@ -59,7 +60,12 @@ void renderer_offscreen::update_all(int offset_x, int offset_y) {
     */
 
     if ((offset_x >= world->w) || (offset_y >= world->h)) {
-        stubs_logr->error("update_all(%dx%d): world %ux%u, skipping.", offset_x, offset_x, world->w, world->h);
+        stubs_logr->error("renderer_offscreen::update_all(%dx%d): world %ux%u, skipping.", offset_x, offset_x, world->w, world->h);
+        return;
+    }
+
+    if (gps.screen == NULL) {
+        stubs_logr->error("renderer_offscreen::update_all(): gps.screen is NULL");
         return;
     }
 

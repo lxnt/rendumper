@@ -78,6 +78,9 @@ using std::queue;
 extern ilogger *stubs_logr;
 #define DFM_STUB(foo) stubs_logr->error("Stub '%s' called", #foo)
 
+void assimilate_buffer(df_buffer_t *);
+void eject_buffer(df_buffer_t *);
+
 /* ala gps.screentexpos, but for the dim/rain/snow. can't add it to graphicst alas. */
 extern unsigned char *gps_screenfxpos;
 

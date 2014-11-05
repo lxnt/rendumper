@@ -91,7 +91,8 @@ bool enablerst::uses_opengl(void) { DFM_STUB(enablerst::uses_opengl); return fal
 static bool export_effects = false;
 unsigned char *gps_screenfxpos = NULL;
 static unsigned long tflag;
-static void assimilate_buffer(df_buffer_t *buf) {
+
+void assimilate_buffer(df_buffer_t *buf) {
     gps.screen = buf->screen;
     gps.screentexpos = buf->texpos;
     gps.screentexpos_addcolor = buf->addcolor;
@@ -117,10 +118,11 @@ static void assimilate_buffer(df_buffer_t *buf) {
         }
         tflag = enabler.flag;
     }
+    mainlogr->trace("buffer %p/%p assimilated", buf, buf->screen);
 }
 
-/*  Remove any pointers to the buffer since it is about to be unmapped. */
-static void eject_buffer(df_buffer_t *buf) {
+/* Drop all pointers to the (possibly GL-mapped) buffer since it is done with. */
+void eject_buffer(df_buffer_t *buf) {
     if (!buf || buf->screen != gps.screen)
         mainlogr->fatal("eject_buffer(%p): wrong buffer.", buf);
 
@@ -132,6 +134,7 @@ static void eject_buffer(df_buffer_t *buf) {
     gps.screentexpos_cbr = NULL;
     gps_screenfxpos = NULL;
     gps.screen_limit = NULL;
+    mainlogr->trace("buffer %p/%p ejected", buf, buf->screen);
 }
 
 void fg_dump(const char *filename);

@@ -249,6 +249,9 @@ Note however, that main development goes in sdl2gl3, and those two may lag behin
 TTF support is activated if and only if graphics tileset tile height equals the [TRUETYPE] setting
 in data/init/init.txt. For example if you've got some 16x16 tileset installed, put [TRUETYPE:16] there.
 
+By default, all text is rendered with TTF if it is enabled. To get stock DF rendering (i.e. thoughts screen
+not being TTF), add [TRUETYPE_FORCED:NO] to data/init/init.txt
+
 Attention: hardcoded key bindings
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

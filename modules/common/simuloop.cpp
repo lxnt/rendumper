@@ -62,6 +62,8 @@ struct implementation : public isimuloop {
     uint32_t target_mainloop_ms;
     uint32_t target_renderth_ms;
 
+    bool force_ttf;
+
     /* instrumentation */
 
     uint32_t frames;   // no. of mainloop() calls
@@ -90,6 +92,7 @@ struct implementation : public isimuloop {
                       pedal_to_the_metal(false),
                       target_mainloop_ms(20),
                       target_renderth_ms(20),
+                      force_ttf(true),
                       frames(0),
                       renders(0),
                       mainloop_time_ms(0.02, 10.0, 0.5),
@@ -215,6 +218,8 @@ void implementation::simulation_thread() {
     int32_t read_timeout_ms = 0;
     bool force_renderth = false;  // got a command to render (from whom?)
     bool due_renderth = false;    // next frame is due
+
+    force_ttf = (0 == strcmp(platform->get_setting("init.TRUETYPE_FORCED", "YES"), "YES"));
 
     while (true) {
 
@@ -361,7 +366,7 @@ int implementation::add_string(const char *str, const char *attrs, int len, int 
     const char *foo[] = { "left", "right", "center", "mono" };
     logr_string->trace("\"%s\" xy=%d,%d align=%s space=%d", str, x, y, foo[textalign], space);
 
-    if (renderer->ttf_active() && (textalign != DF_MONOSPACE_LEFT)) {
+    if (renderer->ttf_active() && (force_ttf || (textalign != DF_MONOSPACE_LEFT))) {
         shrink::unicode shrinker(str, attrs, len);
         int grid_w;
         uint32_t w, h, ox, oy, pixel_pad, pixel_offset;

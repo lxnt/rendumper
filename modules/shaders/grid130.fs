@@ -5,6 +5,8 @@ uniform sampler2D font;
 uniform isampler2D findex;      // findex - a texture buffer
 uniform float final_alpha;
 uniform vec3 pszar;             // { Parx, Pary, Psz }
+uniform int   ppzoom;
+
 uniform vec4 colors[16];
 
 flat in ivec4 ansicolors;       // tile: computed foreground and background color indices for tile and creature
@@ -43,7 +45,7 @@ vec4 mg_process(vec4 color, bvec2 magray) {
 }
 
 void main() {
-    vec2 pc = gl_PointCoord/pszar.xy;
+    vec2 pc = gl_PointCoord/(pszar.xy);//*ppzoom);
     if ((pc.x > 1.0) || (pc.y > 1.0)) {
         discard;
     }

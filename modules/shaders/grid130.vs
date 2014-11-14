@@ -5,6 +5,7 @@ const int ANSI_CC = 16;      // ansi color count
 
 uniform ivec4 txsz;          // { w_tiles, h_tiles, tile_w, tile_h }
 uniform vec3  pszar;         // { parx, pary, psz }
+uniform int   ppzoom;
 uniform ivec2 grid_wh;       //   grid size
 
 attribute ivec4 screen;      // { ch, fg, bg, bold }
@@ -33,7 +34,7 @@ void main() {
 
     vec2 posn = 2.0 * (grid.xy + 0.5)/grid_wh - 1.0;
     gl_Position = vec4(posn.x, posn.y, 0.0, 1.0);
-    gl_PointSize = pszar.z;
+    gl_PointSize = pszar.z * ppzoom;
 
     ansicolors.xy = ansiconvert(screen.yzw);
     ansicolors.zw = ivec2(15, 0);

@@ -527,6 +527,7 @@ struct grid_shader_t : public shader_t {
     int u_pszar;
     int u_grid_wh;
     int u_colors;
+    int u_ppzoom;
 
     grid_shader_t(): shader_t(),
         screen_posn(0),
@@ -541,7 +542,7 @@ struct grid_shader_t : public shader_t {
     void get_uniform_locs();
 
     void set_at_frame(float);
-    void set_at_resize(float, float, int, unsigned, unsigned);
+    void set_at_resize(float, float, int, unsigned, unsigned, int);
     void set_at_font(int, int, const ansi_colors_t *);
 };
 
@@ -574,6 +575,7 @@ void grid_shader_t::get_uniform_locs() {
     u_findex_sampler    = glGetUniformLocation(program, "findex");
     u_final_alpha       = glGetUniformLocation(program, "final_alpha");
     u_pszar             = glGetUniformLocation(program, "pszar");
+    u_ppzoom            = glGetUniformLocation(program, "ppzoom");
     u_grid_wh           = glGetUniformLocation(program, "grid_wh");
     u_colors            = glGetUniformLocation(program, "colors");
     if (u_colors == -1)
@@ -594,10 +596,11 @@ void grid_shader_t::set_at_frame(float alpha) {
 }
 
 void grid_shader_t::set_at_resize(float parx, float pary, int psz,
-                                unsigned grid_w, unsigned grid_h) {
+                                unsigned grid_w, unsigned grid_h, int postproc_zoom) {
     glUseProgram(program);
     glUniform3f(u_pszar, parx, pary, psz);      GL_DEAD_YET();
     glUniform2i(u_grid_wh, grid_w, grid_h);     GL_DEAD_YET();
+    glUniform1i(u_ppzoom, postproc_zoom);       GL_DEAD_YET();
 }
 
 void grid_shader_t::set_at_font(int tu_font, int tu_findex,
@@ -618,6 +621,100 @@ void grid_shader_t::set_at_font(int tu_font, int tu_findex,
 }
 
 //} grid_shader_t
+//{ postproc_t
+/*  Postprocessing shader. https://www.shadertoy.com/view/XsjSzR# */
+
+struct postproc_shader_t : public shader_t {
+    int u_src_sampler;
+    int u_resolution;
+    int u_postproc_zoom;
+
+    void bind_attribute_locs();
+    void get_uniform_locs();
+
+    void set_at_frame(GLenum, float, float, int);
+};
+
+void postproc_shader_t::bind_attribute_locs() {
+    glBindAttribLocation(program, 0, "position");
+
+    GL_DEAD_YET();
+}
+
+void postproc_shader_t::get_uniform_locs() {
+    u_resolution  = glGetUniformLocation(program, "iResolution");
+    u_src_sampler = glGetUniformLocation(program, "iChannel0");
+    u_postproc_zoom = glGetUniformLocation(program, "postproc_zoom");
+    GL_DEAD_YET();
+}
+
+void postproc_shader_t::set_at_frame(GLenum source, float w, float h, int ppz) {
+    glUseProgram(program);
+    glUniform1i(u_src_sampler, source - GL_TEXTURE0);   GL_DEAD_YET();
+    glUniform3f(u_resolution, w, h, w/h);  GL_DEAD_YET();
+    glUniform1i(u_postproc_zoom, ppz);  GL_DEAD_YET();
+}
+
+struct postprocessor_t {
+    postproc_shader_t shader;
+    GLuint vaoname, bufname;
+
+    void initialize();
+    void finalize();
+
+    void process(GLenum source, int w, int h, int ppz);
+};
+
+void postprocessor_t::initialize() {
+    shader.initialize("postproc");
+    glGenVertexArrays(1, &vaoname);
+    glGenBuffers(1, &bufname);
+    glBindVertexArray(vaoname);
+    glBindBuffer(GL_ARRAY_BUFFER, bufname);
+    glBufferData(GL_ARRAY_BUFFER, 4096, NULL, GL_STREAM_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 4, GL_INT,  GL_FALSE, 0, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GL_DEAD_YET();
+}
+
+void postprocessor_t::finalize() {
+    shader.finalize();
+    glDeleteVertexArrays(1, &vaoname);
+    glDeleteBuffers(1, &bufname);
+}
+
+void postprocessor_t::process(GLenum source, int w, int h, int ppz) {
+    glBindVertexArray(vaoname);
+    glBindBuffer(GL_ARRAY_BUFFER, bufname);
+
+    int *bd = (int *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    GL_DEAD_YET();
+    if (!bd)
+        platform->fatal("NULL from glMapBuffer() in postprocessor");
+
+    bd[ 0] = 0; bd[ 1] = 0;             // bottom left
+        bd[ 2] = 0; bd[ 3] = 1;
+    bd[ 4] = w; bd[ 5] = 0; // bottom right
+        bd[ 6] = 1; bd[ 7] = 1;
+    bd[ 8] = 0; bd[ 9] = h; // top left
+        bd[10] = 0; bd[11] = 0;
+    bd[12] = w; bd[13] = h; // top right
+        bd[14] = 1; bd[15] = 0;
+
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+
+    shader.set_at_frame(source, w, h, ppz);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+
+//} postproc_shader_t
 //{ blitter_t - fgt.gl.BlitShader, fgt.gl.Blitter
 struct blit_shader_t : public shader_t {
     enum blitmode_t : int {
@@ -1254,6 +1351,74 @@ void ttf_renderer_t::render(df_text_t *text, int pszx, int pszy, int vpw, int vp
 
 //}
 
+//{ tex_fbo_t - fgt.gl.TexFBO w/o pixel mode
+struct tex_fbo_t {
+    GLsizei w, h;
+    GLuint fb_name, tex_name, bo_name;
+
+    tex_fbo_t(): w(0), h(0) {}
+
+    void initialize() {
+        glGenFramebuffers(1, &fb_name);
+        glGenBuffers(1, &bo_name);
+        glGenTextures(1, &tex_name);
+        glBindTexture(GL_TEXTURE_2D, tex_name);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        GL_DEAD_YET();
+    };
+
+    void resize(GLsizei width, GLsizei height) {
+        if ((w == width) and (h == height))
+            return;
+        w = width, h = height;
+
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bo_name); GL_DEAD_YET();
+        glBufferData(GL_PIXEL_UNPACK_BUFFER, w*h*4, NULL, GL_STREAM_DRAW); GL_DEAD_YET();
+        glBindTexture(GL_TEXTURE_2D, tex_name); GL_DEAD_YET();
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h , 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        GL_DEAD_YET();
+        // attach the texture
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb_name);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_2D, tex_name, 0);
+
+        GL_DEAD_YET();
+
+        // check completeness
+        GLenum x = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+        if (x != GL_FRAMEBUFFER_COMPLETE) {
+            GL_DEAD_YET();
+        }
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER,0);
+        GL_DEAD_YET();
+    };
+
+    void bind_as_target() {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb_name);
+        glViewport(0, 0, w, h);
+        GL_DEAD_YET();
+    };
+
+    void bind_as_texture(GLenum textarget) {
+        glActiveTexture(textarget);
+        glBindTexture(GL_TEXTURE_2D, tex_name);
+        GL_DEAD_YET();
+    }
+
+    void finalize() {
+        glDeleteFramebuffers(1, &fb_name);
+        glDeleteTextures(1, &tex_name);
+        glDeleteBuffers(1, &bo_name);
+        GL_DEAD_YET();
+    };
+};
+//}
 /*  OpenGL 3.0 renderer, rewrite of renderer_sdl2gl2. */
 
 struct implementation : public irenderer {
@@ -1329,6 +1494,10 @@ struct implementation : public irenderer {
     df_texalbum_t *album;           // private to upload_textures() method.
 
     ttf_renderer_t ttf;
+
+    tex_fbo_t tex_fbo;
+    int postproc_zoom;
+    postprocessor_t postproc;
 };
 
 void implementation::export_buffer(df_buffer_t *buf, const char *name) {
@@ -1394,7 +1563,7 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
     glBufferData(GL_ARRAY_BUFFER, buf->required_sz, buf->ptr, GL_STREAM_DRAW);
     GL_DEAD_YET();
 
-    grid_shader.set_at_resize(Parx, Pary, Psz_native, buf->w, buf->h);
+    grid_shader.set_at_resize(Parx, Pary, Psz_native, buf->w, buf->h, 1);
     grid_shader.set_at_frame(1.0);
     GL_DEAD_YET();
 
@@ -1427,11 +1596,12 @@ void implementation::export_buffer(df_buffer_t *buf, const char *name) {
     SDL_FreeSurface(surf);
 
     /* restore gridshader and viewport state */
-    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
+    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h, postproc_zoom);
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 }
 
 void implementation::initialize() {
+    postproc_zoom = 6;
     nputlogr = platform->getlogr("sdl.input");
     rshlogr = platform->getlogr("sdl.reshape");
     ilogger *glclogr = platform->getlogr("gl.context");
@@ -1495,6 +1665,8 @@ void implementation::initialize() {
         int init_h = atoi(platform->get_setting("init.WINDOWEDY", "25"));
         window_w = init_w < MAX_GRID_X ? init_w * Pszx : init_w;
         window_h = init_h < MAX_GRID_Y ? init_h * Pszy : init_h;
+        window_w *= postproc_zoom;
+        window_h *= postproc_zoom;
         logr->info("window %dx%d init %dx%d", window_w, window_h, init_w, init_h);
     }
 
@@ -1564,6 +1736,8 @@ void implementation::initialize() {
     grid_streamer.initialize();
     grid_shader.initialize("grid130");
     //blitter.initialize();
+    GL_DEAD_YET();
+
     {
         const char *fontfile = platform->get_setting("init.TRUETYPE_FONT", "data/art/font.ttf");
         const char *truetype = platform->get_setting("init.TRUETYPE", "NO");
@@ -1572,6 +1746,8 @@ void implementation::initialize() {
             lineheight = atoi(truetype);
         ttf.initialize(fontfile, lineheight, colors);
     }
+
+    GL_DEAD_YET();
 
     cmd_zoom_in = cmd_zoom_out = cmd_zoom_reset = false;
     cmd_tex_reset = true;
@@ -1587,7 +1763,10 @@ void implementation::initialize() {
         Psz = Psz_native = Pszy;
     }
     upload_textures();
+    tex_fbo.initialize();
     reshape(-1, -1, Psz_native);
+
+    postproc.initialize();
 }
 
 void implementation::finalize() {
@@ -1596,6 +1775,8 @@ void implementation::finalize() {
     grid_shader.finalize();
     grid_streamer.finalize();
     ttf.finalize();
+    tex_fbo.finalize();
+    postproc.finalize();
 }
 
 void implementation::upload_textures() {
@@ -1607,14 +1788,14 @@ void implementation::upload_textures() {
 
     unsigned font_w, font_h, findex_w, findex_h;
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, fonttex);
+    glActiveTexture(GL_TEXTURE0);           GL_DEAD_YET();
+    glBindTexture(GL_TEXTURE_2D, fonttex);  GL_DEAD_YET();
     font_w = album->album->w;
     font_h = album->height;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_w, font_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, album->album->pixels);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, font_w, font_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, album->album->pixels); GL_DEAD_YET();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);    GL_DEAD_YET();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);    GL_DEAD_YET();
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);      GL_DEAD_YET();
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     GL_DEAD_YET();
@@ -1755,8 +1936,8 @@ void implementation::slurp_keys() {
             mouse_xw = sdl_event.motion.x;
             mouse_yw = sdl_event.motion.y;
             {
-                int _xg = (sdl_event.motion.x - viewport_x) / Pszx;
-                int _yg = (sdl_event.motion.y - viewport_y) / Pszy;
+                int _xg = (sdl_event.motion.x - viewport_x) / (Pszx * postproc_zoom);
+                int _yg = (sdl_event.motion.y - viewport_y) / (Pszy * postproc_zoom);
                 if ((_xg != mouse_xg) || (_yg != mouse_yg)) {
                     df_event.type = df_input_event_t::DF_MOUSE_MOVE;
                     mouse_xg = df_event.grid_x = _xg;
@@ -1948,6 +2129,8 @@ void implementation::renderer_thread(void) {
             }
         }
         if (buf) {
+            tex_fbo.bind_as_target();
+
             if (rshlogr->enabled(LL_TRACE))
                 glClearColor(0.25, 0.75, 0.25, 1.0);
             else
@@ -1974,6 +2157,11 @@ void implementation::renderer_thread(void) {
                            (int)(Psz*Parx), (int)(Psz*Pary),
                             viewport_w, viewport_h);
 
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+            glViewport(0, 0, viewport_w, viewport_h);
+            tex_fbo.bind_as_texture(GL_TEXTURE3);
+            postproc.process(GL_TEXTURE3, viewport_w, viewport_h, postproc_zoom);
+
             SDL_GL_SwapWindow(gl_window);
             logr->trace("swap");
         }
@@ -1991,8 +2179,8 @@ see fgt.gl.rednerer.reshape()
 
 */
 void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
-    rshlogr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f",
-        new_window_w, new_window_h, new_psz, Parx, Pary);
+    rshlogr->trace("reshape(): got window %dx%d psz %d par=%.4fx%.4f ppz=%d",
+        new_window_w, new_window_h, new_psz, Parx, Pary, postproc_zoom);
 
     if ( (new_window_w > 0) && (new_window_h > 0) ) { // a resize
         if (new_psz > 0)
@@ -2002,8 +2190,8 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
         SDL_GetWindowSize(gl_window, &new_window_w, &new_window_h);
     }
 
-    int new_grid_w = new_window_w / (new_psz * Parx);
-    int new_grid_h = new_window_h / (new_psz * Pary);
+    int new_grid_w = new_window_w / (new_psz * Parx * postproc_zoom);
+    int new_grid_h = new_window_h / (new_psz * Pary * postproc_zoom);
 
     rshlogr->trace("reshape(): win_wh=%dx%d pszxy= %fx%f new_grid_wh=%dx%d",
         new_window_w, new_window_h, Psz * Parx, Psz * Pary, new_grid_w, new_grid_h);
@@ -2011,8 +2199,8 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
     new_grid_w = MIN(MAX(new_grid_w, MIN_GRID_X), MAX_GRID_X);
     new_grid_h = MIN(MAX(new_grid_h, MIN_GRID_Y), MAX_GRID_Y);
 
-    viewport_w = lrint(new_grid_w * new_psz * Parx);
-    viewport_h = lrint(new_grid_h * new_psz * Pary);
+    viewport_w = lrint(new_grid_w * new_psz * Parx * postproc_zoom);
+    viewport_h = lrint(new_grid_h * new_psz * Pary * postproc_zoom);
 
     rshlogr->trace("reshape(): clamped_grid_wh: %dx%d; res vp %dx%d",
                         new_grid_w, new_grid_h, viewport_w, viewport_h);
@@ -2052,11 +2240,13 @@ void implementation::reshape(int new_window_w, int new_window_h, int new_psz) {
 
     glViewport(viewport_x, viewport_y, viewport_w, viewport_h);
 
+    tex_fbo.resize(viewport_w, viewport_h);
+
     Psz = new_psz;
     grid_w = new_grid_w, grid_h = new_grid_h;
     grid_streamer.set_grid(grid_w, grid_h);
 
-    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h);
+    grid_shader.set_at_resize(Parx, Pary, Psz, grid_w, grid_h, postproc_zoom);
 
     rshlogr->trace("reshape(): reshaped to vp %dx%d+%d+%d grid %dx%d psz %d par %.4fx%.4f",
                         viewport_w, viewport_h, viewport_x, viewport_y,
